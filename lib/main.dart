@@ -60,7 +60,7 @@ class LoginPage extends StatelessWidget {
                         child: Text(
                           'Simply Serve',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 30,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                           ),
