@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'homepage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -106,7 +107,13 @@ class LoginPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const HomePage(),
+                              ),
+                            );
+                          },
                           child: const Text(
                             'Continue',
                             style: TextStyle(
