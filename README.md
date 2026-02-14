@@ -1,7 +1,8 @@
 # Software Engineering CW2 (Meal Planner)
 ## Software Idea 
 TODO: Organise those into more meaning list of functionality
-
+add nutitionl dashbord 
+add recipie list
 
 Instead of endless browsing, you could use “Spin the wheel” style randomizer for meals (fun + quick).
 
@@ -25,7 +26,8 @@ Hello fresh: delivers the food
 
 ### Features Completed/ WIP
 Test commit
-
+Log in
+dashbored
 
 Ben Charlton: UP2275414 Git: 164635027
 
