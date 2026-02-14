@@ -55,6 +55,17 @@ class LoginPage extends StatelessWidget {
                           height: 200,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          'Simply Serve',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 1),
                       const Text(
                         'Sign in',
