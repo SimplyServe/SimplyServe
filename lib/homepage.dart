@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simplyserve/widgets/widgets.dart';
 
 /// A very basic home page used for the app's starting screen.
 class HomePage extends StatelessWidget {
@@ -7,8 +8,10 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
+      // use AppNavigation as the app bar
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: const AppNavigation(bannerText: 'Simply Serve'),
       ),
       body: Center(
         child: Column(

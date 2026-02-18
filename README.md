@@ -25,9 +25,8 @@ Hello fresh: delivers the food
 
 
 ### Features Completed/ WIP
-Test commit
-Log in
-dashbored
+- Log in
+- Dashboard
 
 Ben Charlton: UP2275414 Git: 164635027
 
