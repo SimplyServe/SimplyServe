@@ -1,0 +1,7 @@
+name: Safety Check
+on: [pull_request]
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "Branch is ready"
