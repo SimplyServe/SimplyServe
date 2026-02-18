@@ -1,36 +1,25 @@
 import 'package:flutter/material.dart';
+import 'widgets/widgets.dart';
 
-/// A very basic home page used for the app's starting screen.
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Welcome',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      // place navigation at top and keep the rest of the page content below
+      body: Column(
+        children: [
+          const AppNavigation(bannerText: 'Free delivery on orders over £30'),
+          Expanded(
+            child: Center(
+              child: Text(
+                'Homepage content',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
-            const SizedBox(height: 12),
-            const Text('This is a very basic home page.'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Hello from HomePage!')),
-                );
-              },
-              child: const Text('Say Hello'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
