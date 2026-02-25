@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
+#Just primary key tables
 class User(Base):
     __tablename__ = "users"
 
@@ -8,6 +10,10 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+
+    shopping_lists = relationship("ShoppingList", back_populates="user", cascade="all, delete-orphan")
+    meals = relationship("Meals", back_populates="user", cascade="all, delete-orphan")
+    saved_recipes = relationship("SavedRecipe", back_populates="user", cascade="all, delete-orphan")
 
 class Ingredients(Base):
     __tablename__ = "ingredients"
@@ -34,6 +40,41 @@ class Preference(Base):
     preference_name = Column(String)
     like = Column(Integer)
 
+#Just foreign key tables
+
+class ShoppingList(Base):
+    __tablename__ = "shopping_list"
+
+    shopping_list_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    created_at = Column(String)
+    # relationship back to User
+    user = relationship("User", back_populates="shopping_lists")
+
+class Meals(Base):
+    __tablename__ = "meals"
+
+    meal_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    planned_date = Column(String)
+    stage = Column(String, index=True)
+
+    # relationship back to User
+    user = relationship("User", back_populates="meals")
+
+class SavedRecipe(Base):
+    __tablename__ = "saved_recipes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id"), index=True)
+    recipe_name = Column(String)
+    user_notes = Column(String)
+
+    # relationship back to User
+    user = relationship("User", back_populates="saved_recipes")
+
+#Just intersection tables
 
 class ShoppingListIngredient(Base):
     __tablename__ = "shopping_list_ingredient"
