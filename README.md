@@ -6,7 +6,7 @@ How to use feature branches:
 In vscode, when commiting changes you will find the main is locked. Create new branch (name doesnt matter) and commit then publish. on github create a merge pull request. After another member approves pull request, merge and then delete branch. 
 
 How to approve:
-On github go to the pull requests tab. under there you will see the most recently created pull request. Read the changes made by team member. In the top right there will be a green button to review work, select the approve category and submit. You can then complete the pull request and delete branch or leave it to the team member that created the request initially.
+On github go to the pull requests tab. under there you will see the most recently created pull request. Read the changes made by team member under the files changed tab. In the top right there will be a green button to review work, select the approve category and submit. You can then complete the pull request and delete branch or leave it to the team member that created the request initially.
 
 
 
