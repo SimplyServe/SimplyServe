@@ -35,15 +35,18 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: HomePage()));
 
       expect(find.text('Welcome'), findsOneWidget);
+      expect(find.text('Hello! This is the dashboard.'), findsOneWidget);
       expect(find.text('View Nutrition Information and Meal Plans'),
           findsOneWidget);
 
-      // Tap the Say Hello button
-      await tester.tap(find.text('Say Hello'));
+      // Tap the nutrition info button
+      await tester.tap(find.text('View Nutrition Information and Meal Plans'));
       await tester.pump(); // start animation for SnackBar
 
       // SnackBar should show the message
-      expect(find.text('Hello from HomePage!'), findsOneWidget);
+      expect(
+          find.text('Here you can view nutrition information and meal plans!'),
+          findsOneWidget);
     });
 
     testWidgets('MyApp and LoginPage widget properties',
@@ -53,7 +56,7 @@ void main() {
 
       // MaterialApp properties from MyApp
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
-      expect(materialApp.title, 'Frontend');
+      expect(materialApp.title, 'Simply Serve');
       expect(materialApp.debugShowCheckedModeBanner, isFalse);
 
       // LoginPage should be the home
