@@ -26,3 +26,10 @@ class RecipeComplexity(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     time_passed = Column(Integer, index=True)
+
+class Preference(Base):
+    __tablename__ = "preference"
+
+    preference_id = Column(Integer, primary_key=True, index=True)
+    preference_name = Column(String)
+    like = Column(Integer)
