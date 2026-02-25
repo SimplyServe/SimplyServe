@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float
+from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey
 from database import Base
 
 class User(Base):
@@ -33,3 +33,53 @@ class Preference(Base):
     preference_id = Column(Integer, primary_key=True, index=True)
     preference_name = Column(String)
     like = Column(Integer)
+
+
+class ShoppingListIngredient(Base):
+    __tablename__ = "shopping_list_ingredient"
+
+    shopping_list_id = Column(Integer, ForeignKey('shopping_list.id'), primary_key=True)
+    ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
+    quantity = Column(Integer)
+    checked = Column(Integer)
+    unit = Column(String)
+
+
+class UserPantry(Base):
+    __tablename__ = "user_pantry"
+
+    ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
+    quantity = Column(Integer)
+    unit = Column(Integer)
+    updated_at = Column(String)
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preference"
+
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
+    preference_id = Column(Integer, ForeignKey('preference.preference_id'), primary_key=True)
+
+
+class RecipeTag(Base):
+    __tablename__ = "recipe_tag"
+
+    tag_id = Column(Integer, ForeignKey('tags.id'), primary_key=True)
+    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+
+
+class MealRecipe(Base):
+    __tablename__ = "meal_recipe"
+
+    meal_id = Column(Integer, ForeignKey('meals.id'), primary_key=True)
+    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+
+
+class RecipeIngredient(Base):
+    __tablename__ = "recipe_ingredient"
+
+    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+    ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
+    quantity = Column(Integer)
+    unit = Column(String)
