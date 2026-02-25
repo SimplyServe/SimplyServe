@@ -74,7 +74,6 @@ class SavedRecipe(Base):
     # relationship back to User
     user = relationship("User", back_populates="saved_recipes")
 
-#Just intersection tables
 class Recipe(Base):
     __tablename__ = "Recipe"
     recipe_id = Column(Integer, primary_key=True, index=True)
@@ -88,7 +87,16 @@ class Recipe(Base):
     carbs = Column(Integer)
     fat = Column(Integer)
     
-    
+    class recipe_feedback(Base):
+    __tablename__ = "recipe_feedback"
+    feeback_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, foreign_key("user_id.id"), primary_key=True)
+    recipe_id = Column(Integer, foreign_key("recipe_id.id"), primary_key=True)
+    rating = Column(Real)
+    liked = Column(Integer)
+    created_at = Column(String
+
+#Just intersection tables
 
 class ShoppingListIngredient(Base):
     __tablename__ = "shopping_list_ingredient"
