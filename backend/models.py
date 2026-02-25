@@ -97,3 +97,11 @@ class RecipeIngredient(Base):
     ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
     quantity = Column(Integer)
     unit = Column(String)
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    tag_name = Column(String, unique=True)
