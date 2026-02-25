@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "*"
+uvicorn = "*"
+sqlalchemy = "*"
+aiosqlite = "*"
+pydantic = {extras = ["email"], version = "*"}
+passlib = {extras = ["bcrypt"], version = "*"}
+bcrypt = "4.0.1"
+python-jose = {extras = ["cryptography"], version = "*"}
+python-multipart = "*"
+email-validator = "*"
+greenlet = "^3.3.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

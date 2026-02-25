@@ -1,43 +1,48 @@
-# Software Engineering CW2 (Meal Planner)
-## Software Idea 
-TODO: Organise those into more meaning list of functionality
-add nutitionl dashbord 
-add recipie list
+# Full Stack Auth App
 
-Instead of endless browsing, you could use “Spin the wheel” style randomizer for meals (fun + quick).
+A simple full-stack application with **FastAPI** (Backend) and **Flutter** (Frontend).
 
-### Implementation Ideas
+## Prerequisites
+- Python 3.11+
+- Poetry
+- Flutter SDK (3.10+)
 
+## 1. Backend Setup (FastAPI)
 
-### Functions
-- Log in
-- Register 
-- Recipe CRUD 
-- View calories
-- Add calories 
-- Log out
+Navigate to the backend directory:
+```bash
+cd backend
+```
 
+Install dependencies and run migrations:
+```bash
+poetry install
+```
 
-### App ideas
-Mealime: good but personilation, calorie counter and recipes behind pay walls
-Meal board: simple, little complexity 
-Hello fresh: delivers the food 
+Start the server:
+```bash
+poetry run uvicorn main:app --reload
+```
+- API Documentation: http://127.0.0.1:8000/docs
 
+## 2. App Setup (Flutter)
 
-### Features Completed/ WIP
-- Log in
-- Dashboard
+Navigate to the app directory:
+```bash
+cd app
+```
 
-Ben Charlton: UP2275414 Git: 164635027
+Install dependencies:
+```bash
+flutter pub get
+```
 
-Ben Brown UP2268495 Git: 235307323
+Run the application:
+```bash
+flutter run
+```
 
-Geeth Alsawair: UP2248997 Git: 235309289
+## Troubleshooting
 
-Ihor Savenko : UP2241487 Git: 42842614
-
-Sujan Rajesh: UP2270752 Git: 149666846
-
-James Hind: UP2267708 Git: 200824129
-
-Dmitrijs Jefimovs: UP2210435 Git: 116079463
+- **Windows Symlinks:** If `flutter pub get` or `flutter run` fails with symlink errors, enable **Developer Mode** in Windows Settings > Privacy & security > For developers.
+- **Android Emulator:** Ensure you use `10.0.2.2:8000` to connect to localhost from the emulator (already configured in `lib/services/auth_service.dart`).
