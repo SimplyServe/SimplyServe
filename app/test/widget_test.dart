@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simplyserve/authorisation.dart';
 import 'package:simplyserve/main.dart';
-import 'package:simplyserve/homepage.dart';
+import 'package:simplyserve/views/dashboard.dart';
 
 void main() {
-  group('Widget tests for LoginPage and HomePage', () {
-    testWidgets('LoginPage shows key elements and navigates to HomePage',
+  group('Widget tests for LoginPage and DashboardView', () {
+    testWidgets('LoginPage shows key elements and navigates to DashboardView',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginPage()));
+      // Use MyApp to get proper routing
+      await tester.pumpWidget(const MyApp());
 
       // Basic text checks
       expect(find.text('Sign in'), findsOneWidget);
@@ -21,18 +22,19 @@ void main() {
       expect(find.text('Continue'), findsOneWidget);
       expect(find.text('Create an account'), findsOneWidget);
 
-      // Tap Continue and expect HomePage to appear
+      // Tap Continue and expect DashboardView to appear
       await tester.ensureVisible(find.text('Continue'));
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(HomePage), findsOneWidget);
+      expect(find.byType(DashboardView), findsOneWidget);
       expect(find.text('Welcome'), findsOneWidget);
     });
 
-    testWidgets('HomePage shows welcome text and SnackBar on button',
+    testWidgets('DashboardView shows welcome text and SnackBar on button',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: HomePage()));
+      // Test DashboardView directly
+      await tester.pumpWidget(const MaterialApp(home: DashboardView()));
 
       expect(find.text('Welcome'), findsOneWidget);
       expect(find.text('Hello! This is the dashboard.'), findsOneWidget);
@@ -59,7 +61,7 @@ void main() {
       expect(materialApp.title, 'Simply Serve');
       expect(materialApp.debugShowCheckedModeBanner, isFalse);
 
-      // LoginPage should be the home
+      // LoginPage should be the initial route
       expect(find.byType(LoginPage), findsOneWidget);
 
       // Image asset is present and uses the expected asset name
