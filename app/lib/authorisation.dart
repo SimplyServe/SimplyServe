@@ -1,5 +1,6 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
-import 'homepage.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -103,11 +104,10 @@ class LoginPage extends StatelessWidget {
                             ),
                           ),
                           onPressed: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (_) => const HomePage(),
-                                ),
-                                (Route<dynamic> route) => false);
+                            Navigator.of(context).pushNamedAndRemoveUntil(
+                              '/',
+                              (Route<dynamic> route) => false,
+                            );
                           },
                           child: const Text(
                             'Continue',
