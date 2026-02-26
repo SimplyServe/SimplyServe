@@ -9,9 +9,9 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // use AppNavigation as the app bar
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: const AppNavigation(bannerText: 'Simply Serve'),
+      appBar: const PreferredSize(
+        preferredSize: Size.fromHeight(60),
+        child: AppNavigation(bannerText: 'Simply Serve'),
       ),
       body: Center(
         child: Column(
