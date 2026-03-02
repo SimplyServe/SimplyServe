@@ -87,14 +87,14 @@ class Recipe(Base):
     carbs = Column(Integer)
     fat = Column(Integer)
     
-    class recipe_feedback(Base):
+class recipe_feedback(Base):
     __tablename__ = "recipe_feedback"
-    feeback_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, foreign_key("user_id.id"), primary_key=True)
-    recipe_id = Column(Integer, foreign_key("recipe_id.id"), primary_key=True)
+    feedback_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id"), primary_key=True)
     rating = Column(Real)
     liked = Column(Integer)
-    created_at = Column(String
+    created_at = Column(String)
 
 #Just intersection tables
 
