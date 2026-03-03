@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/widgets/navbar.dart';
+import 'package:simplyserve/widgets/spinning_wheel.dart';
 
-/// Dashboard view - the main landing page after login
+
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
@@ -9,54 +10,30 @@ class DashboardView extends StatelessWidget {
   Widget build(BuildContext context) {
     return NavBarScaffold(
       title: 'Dashboard',
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Welcome',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'Welcome back!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Hello! This is the dashboard.',
-                style: TextStyle(fontSize: 18),
-                textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Here is your daily meal suggestion.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
               ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Here you can view nutrition information and meal plans!',
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF74BC42),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
-                  ),
-                ),
-                child: const Text(
-                  'View Nutrition Information and Meal Plans',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
+            ),
+            SizedBox(height: 24),
+            SpinningWheelWidget(),
+            SizedBox(height: 24),
+          ],
         ),
       ),
     );

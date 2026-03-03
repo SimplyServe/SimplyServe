@@ -1,9 +1,17 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  bool isLogin = true;
 
   @override
   Widget build(BuildContext context) {
@@ -52,9 +60,9 @@ class LoginPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 1),
-                      const Text(
-                        'Sign in',
-                        style: TextStyle(
+                      Text(
+                        isLogin ? 'Sign in' : 'Create Account',
+                        style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
@@ -80,7 +88,7 @@ class LoginPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const TextField(
-                        obscureText: true, // hides the password input from user
+                        obscureText: true,
                         decoration: InputDecoration(
                           labelText: 'Password',
                           border: OutlineInputBorder(
@@ -92,6 +100,22 @@ class LoginPage extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (!isLogin) ...[
+                        const SizedBox(height: 20),
+                        const TextField(
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'Repeat Password',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderSide: BorderSide(color: Color(0xFF1C2A45)),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
@@ -103,11 +127,15 @@ class LoginPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          onPressed: () {
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                              '/',
-                              (Route<dynamic> route) => false,
-                            );
+                          onPressed: () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setBool('isLoggedIn', true);
+                            if (mounted) {
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/',
+                                (Route<dynamic> route) => false,
+                              );
+                            }
                           },
                           child: const Text(
                             'Continue',
@@ -127,11 +155,11 @@ class LoginPage extends StatelessWidget {
                               color: Colors.grey.withOpacity(0.4),
                             ),
                           ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
-                              'Need an account?',
-                              style: TextStyle(color: Colors.grey),
+                              isLogin ? 'Need an account?' : 'Already have an account?',
+                              style: const TextStyle(color: Colors.grey),
                             ),
                           ),
                           Expanded(
@@ -152,10 +180,14 @@ class LoginPage extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          onPressed: () {},
-                          child: const Text(
-                            'Create an account',
-                            style: TextStyle(
+                          onPressed: () {
+                            setState(() {
+                              isLogin = !isLogin;
+                            });
+                          },
+                          child: Text(
+                            isLogin ? 'Create an account' : 'Log in instead',
+                            style: const TextStyle(
                               color: Color.fromARGB(255, 0, 0, 0),
                               fontWeight: FontWeight.w600,
                             ),
