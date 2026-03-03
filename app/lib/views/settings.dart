@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/widgets/navbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Settings view - app configuration and preferences
 class SettingsView extends StatelessWidget {
@@ -20,7 +21,9 @@ class SettingsView extends StatelessWidget {
                 icon: Icons.person,
                 title: 'Profile',
                 subtitle: 'Manage your profile information',
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushNamed(context, '/profile');
+                },
               ),
               _buildSettingsTile(
                 icon: Icons.lock,
@@ -66,6 +69,33 @@ class SettingsView extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade50,
+                foregroundColor: Colors.red,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('isLoggedIn', false);
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                }
+              },
+              child: const Text(
+                'Log Out', 
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
