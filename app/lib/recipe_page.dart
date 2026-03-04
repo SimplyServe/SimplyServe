@@ -18,6 +18,7 @@ class RecipeModel {
   final NutritionInfo nutrition;
   final List<String> ingredients;
   final List<String> steps;
+  final List<String> tags;
 
   const RecipeModel({
     required this.title,
@@ -31,6 +32,7 @@ class RecipeModel {
     required this.nutrition,
     required this.ingredients,
     required this.steps,
+    this.tags = const [],
   });
 }
 
@@ -64,6 +66,7 @@ final RecipeModel kSalmonRecipe = RecipeModel(
   totalTime: '30 min',
   servings: 4,
   difficulty: 'Easy',
+  tags: const ['High Protein', 'Gluten Free'],
   nutrition: const NutritionInfo(
     calories: 520,
     protein: '42 g',
@@ -106,6 +109,7 @@ final RecipeModel kChickenTacosRecipe = RecipeModel(
   totalTime: '35 min',
   servings: 4,
   difficulty: 'Easy',
+  tags: const ['High Protein', 'Dairy Free'],
   nutrition: const NutritionInfo(
     calories: 430,
     protein: '34 g',
@@ -150,6 +154,7 @@ final RecipeModel kCarbonaraRecipe = RecipeModel(
   totalTime: '20 min',
   servings: 2,
   difficulty: 'Medium',
+  tags: const ['Comfort Food'],
   nutrition: const NutritionInfo(
     calories: 610,
     protein: '28 g',
@@ -174,6 +179,95 @@ final RecipeModel kCarbonaraRecipe = RecipeModel(
     'Add a splash of the reserved pasta water to the egg mixture and stir to temper it. Pour the mixture over the pasta, tossing quickly and continuously so the eggs emulsify into a creamy sauce rather than scrambling.',
     'Add more pasta water, a little at a time, until the sauce reaches a glossy, coating consistency.',
     'Serve immediately in warm bowls, topped with extra Pecorino and a crack of black pepper.',
+  ],
+);
+
+final RecipeModel kBeefStirFryRecipe = RecipeModel(
+  title: 'Beef & Broccoli Stir Fry',
+  summary:
+      'A takeaway favourite made at home in 25 minutes. Tender strips of beef and'
+      ' crisp broccoli tossed in a rich, glossy soy-ginger sauce.',
+  imageUrl:
+      'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=1200&q=80',
+  prepTime: '10 min',
+  cookTime: '15 min',
+  totalTime: '25 min',
+  servings: 3,
+  difficulty: 'Easy',
+  tags: const ['High Protein', 'Dairy Free'],
+  nutrition: const NutritionInfo(
+    calories: 380,
+    protein: '38 g',
+    carbs: '22 g',
+    fats: '14 g',
+  ),
+  ingredients: [
+    '400 g beef sirloin or flank steak, thinly sliced',
+    '2 cups broccoli florets',
+    '3 cloves garlic, minced',
+    '1 tsp fresh ginger, grated',
+    '3 tbsp soy sauce',
+    '1 tbsp oyster sauce',
+    '1 tbsp sesame oil',
+    '1 tsp cornstarch',
+    '1 tsp brown sugar',
+    '2 tbsp vegetable oil',
+    'Sesame seeds and spring onions, to garnish',
+    'Steamed rice, to serve',
+  ],
+  steps: [
+    'In a bowl, toss the sliced beef with 1 tbsp soy sauce and the cornstarch. Set aside to marinate for 5 minutes.',
+    'Whisk together the remaining soy sauce, oyster sauce, sesame oil, and brown sugar in a small bowl to make the stir-fry sauce.',
+    'Heat 1 tbsp vegetable oil in a wok or large skillet over high heat until smoking. Add the beef in a single layer and cook for 1–2 minutes per side until browned. Remove and set aside.',
+    'Add the remaining oil to the wok. Stir-fry the broccoli for 2–3 minutes until bright green and just tender.',
+    'Add the garlic and ginger and stir-fry for 30 seconds until fragrant.',
+    'Return the beef to the wok and pour over the sauce. Toss everything together over high heat for 1 minute until the sauce thickens and coats the beef and broccoli.',
+    'Scatter with sesame seeds and sliced spring onions. Serve immediately over steamed rice.',
+  ],
+);
+
+final RecipeModel kMasalaDaalRecipe = RecipeModel(
+  title: 'Masala Daal',
+  summary:
+      'A warming, deeply spiced Indian red lentil soup tempered with caramelised onions,'
+      ' tomatoes, and aromatics. Naturally vegan and packed with plant-based protein.',
+  imageUrl:
+      'https://images.unsplash.com/photo-1546549032-9571cd6b27df?w=1200&q=80',
+  prepTime: '10 min',
+  cookTime: '30 min',
+  totalTime: '40 min',
+  servings: 4,
+  difficulty: 'Easy',
+  tags: const ['Vegan', 'High Fibre', 'High Protein'],
+  nutrition: const NutritionInfo(
+    calories: 310,
+    protein: '18 g',
+    carbs: '48 g',
+    fats: '6 g',
+  ),
+  ingredients: [
+    '250 g red lentils, rinsed',
+    '1 large onion, finely sliced',
+    '3 cloves garlic, minced',
+    '1 tsp fresh ginger, grated',
+    '2 ripe tomatoes, diced',
+    '2 tbsp vegetable oil or ghee',
+    '1 tsp cumin seeds',
+    '1 tsp ground turmeric',
+    '1 tsp ground coriander',
+    '½ tsp chilli flakes (or to taste)',
+    '900 ml vegetable stock',
+    'Salt to taste',
+    'Fresh coriander and a squeeze of lemon, to serve',
+  ],
+  steps: [
+    'Place the rinsed lentils in a saucepan with the vegetable stock and turmeric. Bring to a boil, then reduce heat and simmer for 20 minutes, stirring occasionally, until the lentils are completely soft and mushy.',
+    'Meanwhile, heat the oil in a separate pan over medium heat. Add the cumin seeds and let them sizzle for 30 seconds.',
+    'Add the sliced onions and cook for 8–10 minutes, stirring frequently, until deep golden brown.',
+    'Stir in the garlic, ginger, ground coriander, and chilli flakes. Cook for 1 minute until fragrant.',
+    'Add the diced tomatoes and cook for 5 minutes until they break down into a thick paste.',
+    'Pour the onion-tomato tarka into the cooked lentils. Stir well to combine and season with salt. Simmer together for 5 minutes to let the flavours meld.',
+    'Finish with a squeeze of lemon juice and scatter with fresh coriander. Serve with warm naan or steamed basmati rice.',
   ],
 );
 
