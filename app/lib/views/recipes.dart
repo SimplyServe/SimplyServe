@@ -36,22 +36,96 @@ Color _tagColour(String tag) {
 // Recipes view
 // ─────────────────────────────────────────────
 
-class RecipesView extends StatelessWidget {
+// Changed to StatefulWidget to support searching
+class RecipesView extends StatefulWidget {
   const RecipesView({super.key});
 
   @override
+  State<RecipesView> createState() => _RecipesViewState();
+}
+
+class _RecipesViewState extends State<RecipesView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<RecipeModel> get _filteredRecipes {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return _allRecipes;
+    return _allRecipes.where((r) {
+      final title = r.title.toLowerCase();
+      final summary = r.summary.toLowerCase();
+      final tags = r.tags.map((t) => t.toLowerCase());
+      return title.contains(q) || summary.contains(q) || tags.any((t) => t.contains(q));
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final results = _filteredRecipes;
     return NavBarScaffold(
       title: 'Recipes',
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        itemCount: _allRecipes.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _RecipeCard(recipe: _allRecipes[index]),
-          );
-        },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _query = v),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search recipes',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+
+          // Results list
+          Expanded(
+            child: results.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'No recipes found for "$_query".',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _RecipeCard(recipe: results[index]),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
