@@ -1,11 +1,5 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/recipe_service.dart';
-
-
-
-
 
 class RecipeModel {
   final String title;
@@ -53,238 +47,6 @@ class NutritionInfo {
   });
 }
 
-
-
-
-
-final RecipeModel kSalmonRecipe = RecipeModel(
-  id: 1,
-  title: 'Creamy Tuscan Salmon',
-  summary:
-      'A restaurant-quality dish ready in under 30 minutes. Pan-seared salmon fillets'
-      ' bathed in a rich garlic cream sauce with sun-dried tomatoes and fresh spinach.',
-  imageUrl:
-      'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=1200&q=80',
-  prepTime: '10 min',
-  cookTime: '20 min',
-  totalTime: '30 min',
-  servings: 4,
-  difficulty: 'Easy',
-  tags: const ['High Protein', 'Gluten Free'],
-  nutrition: const NutritionInfo(
-    calories: 520,
-    protein: '42 g',
-    carbs: '12 g',
-    fats: '34 g',
-  ),
-  ingredients: [
-    '4 salmon fillets (approx. 150 g each)',
-    '3 cloves garlic, minced',
-    '1 cup heavy cream',
-    '½ cup sun-dried tomatoes, drained and chopped',
-    '2 cups fresh baby spinach',
-    '½ cup grated Parmesan cheese',
-    '1 tbsp olive oil',
-    '1 tsp Italian seasoning',
-    'Salt and black pepper to taste',
-    'Fresh basil leaves, to garnish',
-  ],
-  steps: [
-    'Pat the salmon fillets dry with paper towels and season both sides generously with salt, black pepper, and Italian seasoning.',
-    'Heat olive oil in a large skillet over medium-high heat. Once shimmering, place the salmon skin-side down and sear for 4–5 minutes until the skin is crispy.',
-    'Flip the salmon and cook for a further 3–4 minutes. Remove from the skillet and set aside on a warm plate.',
-    'In the same skillet, reduce the heat to medium. Add the minced garlic and sauté for 30 seconds until fragrant, scraping up any browned bits.',
-    'Pour in the heavy cream and bring to a gentle simmer. Stir in the Parmesan cheese until fully melted into the sauce.',
-    'Add the sun-dried tomatoes and fresh spinach. Stir until the spinach wilts and the sauce thickens slightly, about 2 minutes.',
-    'Return the salmon to the skillet and spoon the sauce over the fillets. Simmer together for 1–2 minutes to marry the flavours.',
-    'Garnish with fresh basil leaves and serve immediately over pasta, rice, or crusty bread.',
-  ],
-);
-
-final RecipeModel kChickenTacosRecipe = RecipeModel(
-  id: 2,
-  title: 'Crispy Chicken Tacos',
-  summary:
-      'Street-style chicken tacos with a smoky chipotle marinade, fresh pico de gallo,'
-      ' creamy avocado, and a squeeze of lime — ready in 35 minutes.',
-  imageUrl:
-      'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=1200&q=80',
-  prepTime: '15 min',
-  cookTime: '20 min',
-  totalTime: '35 min',
-  servings: 4,
-  difficulty: 'Easy',
-  tags: const ['High Protein', 'Dairy Free'],
-  nutrition: const NutritionInfo(
-    calories: 430,
-    protein: '34 g',
-    carbs: '38 g',
-    fats: '16 g',
-  ),
-  ingredients: [
-    '500 g boneless chicken thighs',
-    '2 tbsp chipotle paste',
-    '1 tbsp olive oil',
-    '1 tsp smoked paprika',
-    '1 tsp ground cumin',
-    '½ tsp garlic powder',
-    '8 small corn or flour tortillas',
-    '2 ripe avocados, sliced',
-    '2 limes, cut into wedges',
-    '1 cup pico de gallo (or fresh salsa)',
-    '½ cup sour cream',
-    'Fresh coriander leaves, to garnish',
-    'Salt and black pepper to taste',
-  ],
-  steps: [
-    'In a bowl, mix the chipotle paste, olive oil, smoked paprika, cumin, and garlic powder. Season with salt and pepper.',
-    'Add the chicken thighs to the marinade and toss to coat. Leave for at least 10 minutes (or up to 24 hours in the fridge).',
-    'Heat a large griddle or skillet over high heat. Cook the chicken for 5–6 minutes per side until charred and cooked through. Rest for 5 minutes.',
-    'Slice or shred the rested chicken into bite-sized pieces.',
-    'Warm the tortillas directly over a gas flame for 15–20 seconds per side, or in a dry pan, until pliable and lightly charred.',
-    'To assemble: spread a little sour cream on each tortilla, then top with chicken, avocado slices, and pico de gallo.',
-    'Garnish with fresh coriander and a squeeze of lime. Serve immediately.',
-  ],
-);
-
-final RecipeModel kCarbonaraRecipe = RecipeModel(
-  id: 3,
-  title: 'Spaghetti Carbonara',
-  summary:
-      'The ultimate Roman classic made in just 20 minutes. Silky egg-and-Pecorino sauce'
-      ' clings to al-dente spaghetti with crispy guanciale — no cream required.',
-  imageUrl:
-      'https://images.unsplash.com/photo-1612874742237-6526221588e3?w=1200&q=80',
-  prepTime: '5 min',
-  cookTime: '15 min',
-  totalTime: '20 min',
-  servings: 2,
-  difficulty: 'Medium',
-  tags: const ['Comfort Food'],
-  nutrition: const NutritionInfo(
-    calories: 610,
-    protein: '28 g',
-    carbs: '72 g',
-    fats: '22 g',
-  ),
-  ingredients: [
-    '200 g spaghetti',
-    '100 g guanciale (or pancetta), cut into small cubes',
-    '2 large eggs',
-    '2 egg yolks',
-    '60 g Pecorino Romano, finely grated',
-    '30 g Parmesan, finely grated',
-    '1 tsp freshly cracked black pepper',
-    'Salt (for pasta water)',
-  ],
-  steps: [
-    'Bring a large pot of salted water to a rolling boil. Cook the spaghetti until al dente according to package instructions. Reserve 1 cup of pasta water before draining.',
-    'While the pasta cooks, place the guanciale in a cold skillet. Set over medium heat and cook, stirring occasionally, until the fat has rendered and the pieces are golden and crispy, about 6–8 minutes. Remove from heat.',
-    'In a bowl, whisk together the eggs, egg yolks, Pecorino Romano, and Parmesan until smooth. Season generously with cracked black pepper.',
-    'Drain the spaghetti and immediately add it to the skillet with the guanciale (off the heat). Toss to coat the pasta in the rendered fat.',
-    'Add a splash of the reserved pasta water to the egg mixture and stir to temper it. Pour the mixture over the pasta, tossing quickly and continuously so the eggs emulsify into a creamy sauce rather than scrambling.',
-    'Add more pasta water, a little at a time, until the sauce reaches a glossy, coating consistency.',
-    'Serve immediately in warm bowls, topped with extra Pecorino and a crack of black pepper.',
-  ],
-);
-
-final RecipeModel kBeefStirFryRecipe = RecipeModel(
-  id: 4,
-  title: 'Beef & Broccoli Stir Fry',
-  summary:
-      'A takeaway favourite made at home in 25 minutes. Tender strips of beef and'
-      ' crisp broccoli tossed in a rich, glossy soy-ginger sauce.',
-  imageUrl:
-      'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=1200&q=80',
-  prepTime: '10 min',
-  cookTime: '15 min',
-  totalTime: '25 min',
-  servings: 3,
-  difficulty: 'Easy',
-  tags: const ['High Protein', 'Dairy Free'],
-  nutrition: const NutritionInfo(
-    calories: 380,
-    protein: '38 g',
-    carbs: '22 g',
-    fats: '14 g',
-  ),
-  ingredients: [
-    '400 g beef sirloin or flank steak, thinly sliced',
-    '2 cups broccoli florets',
-    '3 cloves garlic, minced',
-    '1 tsp fresh ginger, grated',
-    '3 tbsp soy sauce',
-    '1 tbsp oyster sauce',
-    '1 tbsp sesame oil',
-    '1 tsp cornstarch',
-    '1 tsp brown sugar',
-    '2 tbsp vegetable oil',
-    'Sesame seeds and spring onions, to garnish',
-    'Steamed rice, to serve',
-  ],
-  steps: [
-    'In a bowl, toss the sliced beef with 1 tbsp soy sauce and the cornstarch. Set aside to marinate for 5 minutes.',
-    'Whisk together the remaining soy sauce, oyster sauce, sesame oil, and brown sugar in a small bowl to make the stir-fry sauce.',
-    'Heat 1 tbsp vegetable oil in a wok or large skillet over high heat until smoking. Add the beef in a single layer and cook for 1–2 minutes per side until browned. Remove and set aside.',
-    'Add the remaining oil to the wok. Stir-fry the broccoli for 2–3 minutes until bright green and just tender.',
-    'Add the garlic and ginger and stir-fry for 30 seconds until fragrant.',
-    'Return the beef to the wok and pour over the sauce. Toss everything together over high heat for 1 minute until the sauce thickens and coats the beef and broccoli.',
-    'Scatter with sesame seeds and sliced spring onions. Serve immediately over steamed rice.',
-  ],
-);
-
-final RecipeModel kMasalaDaalRecipe = RecipeModel(
-  id: 5,
-  title: 'Masala Daal',
-  summary:
-      'A warming, deeply spiced Indian red lentil soup tempered with caramelised onions,'
-      ' tomatoes, and aromatics. Naturally vegan and packed with plant-based protein.',
-  imageUrl:
-      'https://images.unsplash.com/photo-1546549032-9571cd6b27df?w=1200&q=80',
-  prepTime: '10 min',
-  cookTime: '30 min',
-  totalTime: '40 min',
-  servings: 4,
-  difficulty: 'Easy',
-  tags: const ['Vegan', 'High Fibre', 'High Protein'],
-  nutrition: const NutritionInfo(
-    calories: 310,
-    protein: '18 g',
-    carbs: '48 g',
-    fats: '6 g',
-  ),
-  ingredients: [
-    '250 g red lentils, rinsed',
-    '1 large onion, finely sliced',
-    '3 cloves garlic, minced',
-    '1 tsp fresh ginger, grated',
-    '2 ripe tomatoes, diced',
-    '2 tbsp vegetable oil or ghee',
-    '1 tsp cumin seeds',
-    '1 tsp ground turmeric',
-    '1 tsp ground coriander',
-    '½ tsp chilli flakes (or to taste)',
-    '900 ml vegetable stock',
-    'Salt to taste',
-    'Fresh coriander and a squeeze of lemon, to serve',
-  ],
-  steps: [
-    'Place the rinsed lentils in a saucepan with the vegetable stock and turmeric. Bring to a boil, then reduce heat and simmer for 20 minutes, stirring occasionally, until the lentils are completely soft and mushy.',
-    'Meanwhile, heat the oil in a separate pan over medium heat. Add the cumin seeds and let them sizzle for 30 seconds.',
-    'Add the sliced onions and cook for 8–10 minutes, stirring frequently, until deep golden brown.',
-    'Stir in the garlic, ginger, ground coriander, and chilli flakes. Cook for 1 minute until fragrant.',
-    'Add the diced tomatoes and cook for 5 minutes until they break down into a thick paste.',
-    'Pour the onion-tomato tarka into the cooked lentils. Stir well to combine and season with salt. Simmer together for 5 minutes to let the flavours meld.',
-    'Finish with a squeeze of lemon juice and scatter with fresh coriander. Serve with warm naan or steamed basmati rice.',
-  ],
-);
-
-
-
-
-
-
-
 class RecipePage extends StatefulWidget {
   final RecipeModel? recipe;
 
@@ -299,7 +61,45 @@ class _RecipePageState extends State<RecipePage> {
 
   static const Color _brand = Color(0xFF74BC42);
 
-  RecipeModel get _recipe => widget.recipe ?? kSalmonRecipe;
+  RecipeModel get _recipe =>
+      widget.recipe ??
+      const RecipeModel(
+        title: 'Spaghetti Bolognese',
+        summary:
+            'A classic Italian pasta dish with rich, meaty sauce. Perfect for a hearty family meal.',
+        imageUrl:
+            'https://images.unsplash.com/photo-1604908177520-9c8b1e5f1a2c?auto=format&fit=crop&w=800&q=80',
+        prepTime: '15 mins',
+        cookTime: '45 mins',
+        totalTime: '1 hr',
+        servings: 4,
+        difficulty: 'Medium',
+        nutrition: NutritionInfo(
+          calories: 550,
+          protein: '25g',
+          carbs: '60g',
+          fats: '20g',
+        ),
+        ingredients: [
+          '400g spaghetti',
+          '2 tbsp olive oil',
+          '1 onion, finely chopped',
+          '2 garlic cloves, minced',
+          '500g ground beef',
+          '400g canned tomatoes',
+          '2 tbsp tomato paste',
+          '1 tsp dried oregano',
+          'Salt and pepper to taste',
+          'Grated Parmesan cheese, to serve',
+        ],
+        steps: [
+          'Cook spaghetti according to package instructions. Drain and set aside.',
+          'Heat olive oil in a large pan over medium heat. Add onion and garlic, sauté until softened.',
+          'Add ground beef to the pan and cook until browned.',
+          'Stir in canned tomatoes, tomato paste, oregano, salt, and pepper. Simmer for 20-25 minutes.',
+          'Serve sauce over spaghetti and top with grated Parmesan cheese.',
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +146,6 @@ class _RecipePageState extends State<RecipePage> {
       ),
     );
   }
-
 
   SliverAppBar _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
@@ -430,11 +229,6 @@ class _RecipePageState extends State<RecipePage> {
   }
 }
 
-
-
-
-
-
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
@@ -480,7 +274,6 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-
 class _TitleSection extends StatelessWidget {
   final RecipeModel recipe;
 
@@ -514,7 +307,6 @@ class _TitleSection extends StatelessWidget {
   }
 }
 
-
 class _SectionHeader extends StatelessWidget {
   final String title;
 
@@ -545,7 +337,6 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
-
 
 class _MetadataRow extends StatelessWidget {
   final RecipeModel recipe;
@@ -640,7 +431,6 @@ class _MetaChip extends StatelessWidget {
     );
   }
 }
-
 
 class _NutritionGrid extends StatelessWidget {
   final NutritionInfo nutrition;
@@ -773,7 +563,6 @@ class _NutritionCard extends StatelessWidget {
   }
 }
 
-
 class _IngredientsList extends StatelessWidget {
   final List<String> ingredients;
 
@@ -833,7 +622,6 @@ class _IngredientsList extends StatelessWidget {
     );
   }
 }
-
 
 class _InstructionsList extends StatelessWidget {
   final List<String> steps;
