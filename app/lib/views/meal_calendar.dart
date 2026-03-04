@@ -103,8 +103,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                         final selected = isSelected(r);
                         return ListTile(
                           leading: SizedBox(
-                            width: 56,
-                            height: 44,
+                            width: 40,
+                            height: 30,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
@@ -201,7 +201,9 @@ class _MealCalendarViewState extends State<MealCalendarView> {
 
     return NavBarScaffold(
       title: 'Meal Calendar',
-      body: Padding(
+      // Changed to SingleChildScrollView + shrink-wrapped GridView so content
+      // fits on one scrollable page instead of using Expanded.
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -250,76 +252,75 @@ class _MealCalendarViewState extends State<MealCalendarView> {
             ),
             const SizedBox(height: 8),
 
-            // Calendar grid
-            Expanded(
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  childAspectRatio: 1.0,
-                  crossAxisSpacing: 6,
-                  mainAxisSpacing: 6,
-                ),
-                itemCount: rows * 7,
-                itemBuilder: (context, index) {
-                  final dayIndex = index - startWeekday + 1;
-                  final inMonth = dayIndex >= 1 && dayIndex <= daysInMonth;
-                  if (!inMonth) {
-                    return Container(); // empty cell
-                  }
-                  final day = DateTime(year, month, dayIndex);
-                  final key = _dayKey(day);
-                  final scheduled = _scheduled[key] ?? [];
-                  return GestureDetector(
-                    onTap: () => _openDaySheet(day),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$dayIndex',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: (day.day == DateTime.now().day &&
-                                        day.month == DateTime.now().month &&
-                                        day.year == DateTime.now().year)
-                                    ? const Color(0xFF74BC42)
-                                    : Colors.black),
-                          ),
-                          const Spacer(),
-                          if (scheduled.isNotEmpty)
-                            Align(
-                              alignment: Alignment.bottomRight,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF74BC42),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${scheduled.length} recipe${scheduled.length > 1 ? 's' : ''}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 11),
-                                ),
+            // Calendar grid (shrink-wrapped so it lives inside the scroll view)
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                childAspectRatio: 1.0,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+              ),
+              itemCount: rows * 7,
+              itemBuilder: (context, index) {
+                final dayIndex = index - startWeekday + 1;
+                final inMonth = dayIndex >= 1 && dayIndex <= daysInMonth;
+                if (!inMonth) {
+                  return Container(); // empty cell
+                }
+                final day = DateTime(year, month, dayIndex);
+                final key = _dayKey(day);
+                final scheduled = _scheduled[key] ?? [];
+                return GestureDetector(
+                  onTap: () => _openDaySheet(day),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$dayIndex',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: (day.day == DateTime.now().day &&
+                                      day.month == DateTime.now().month &&
+                                      day.year == DateTime.now().year)
+                                  ? const Color(0xFF74BC42)
+                                  : Colors.black),
+                        ),
+                        const Spacer(),
+                        if (scheduled.isNotEmpty)
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF74BC42),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${scheduled.length} recipe${scheduled.length > 1 ? 's' : ''}',
+                                style: const TextStyle(color: Colors.white, fontSize: 11),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 12),
