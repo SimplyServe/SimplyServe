@@ -14,25 +14,28 @@ class DashboardView extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
+          children: [
+            const Text(
               'Welcome back!',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 8),
+            const Text(
               'Here is your daily meal suggestion.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
               ),
             ),
-            SizedBox(height: 24),
-            SpinningWheelWidget(),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
+            const SpinningWheelWidget(),
+            const SizedBox(height: 24),
+
+            // Meal Calendar navigation moved into the app drawer.
+            const SizedBox(height: 12),
           ],
         ),
       ),
