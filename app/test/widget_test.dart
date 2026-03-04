@@ -70,7 +70,7 @@ void main() {
       final image = tester.widget<Image>(find.byType(Image));
       final provider = image.image;
       expect(provider, isA<AssetImage>());
-      expect((provider as AssetImage).assetName, 'assets/image.png');
+      expect((provider as AssetImage).assetName, 'assets/images/image.png');
 
       // There are two TextFields and the second (password) hides input
       final textFields =
