@@ -23,3 +23,32 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+class NutritionInfo(BaseModel):
+    calories: int
+    protein: str
+    carbs: str
+    fats: str
+
+class RecipeBase(BaseModel):
+    title: str
+    summary: str
+    image_url: Optional[str] = None
+    prep_time: str
+    cook_time: str
+    total_time: str
+    servings: int
+    difficulty: str
+    tags: list[str] = []
+    ingredients: list[str] = []
+    steps: list[str] = []
+    nutrition: Optional[NutritionInfo] = None
+
+class RecipeCreate(RecipeBase):
+    pass
+
+class Recipe(RecipeBase):
+    id: int
+
+    class Config:
+        from_attributes = True

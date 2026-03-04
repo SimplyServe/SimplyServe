@@ -1,7 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:simplyserve/services/profile_service.dart';
 
-class ProfileView extends StatelessWidget {
+class ProfileView extends StatefulWidget {
   const ProfileView({super.key});
+
+  @override
+  State<ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends State<ProfileView> {
+  final ProfileService _profileService = ProfileService();
+  bool isLoading = true;
+  String email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    final userData = await _profileService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        if (userData != null) {
+          email = userData['email'] ?? 'No email set';
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,38 +41,38 @@ class ProfileView extends StatelessWidget {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            const CircleAvatar(
-              radius: 50,
-              backgroundColor: Color(0xFF74BC42),
-              child: Icon(Icons.person, size: 50, color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Best User',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Color(0xFF74BC42),
+                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'SimplyServe User',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  _buildProfileItem(Icons.settings, 'Account Actions', 'Tap to edit settings'),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'user@example.com',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 32),
-            _buildProfileItem(Icons.phone, 'Phone', '+44 7777 777777'),
-            _buildProfileItem(Icons.location_on, 'Location', 'Portsmouth, UK'),
-            _buildProfileItem(Icons.cake, 'Date of Birth', 'January 1, 1990'),
-          ],
-        ),
-      ),
     );
   }
 

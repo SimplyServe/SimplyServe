@@ -1,18 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/recipe_page.dart';
+import 'package:simplyserve/services/recipe_service.dart';
+import 'package:simplyserve/views/recipe_form.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
-// All available recipes shown on the browse page.
-// Swap these out for a backend fetch once the API is ready.
-final List<RecipeModel> _allRecipes = [
-  kSalmonRecipe,
-  kCarbonaraRecipe,
-  kChickenTacosRecipe,
-  kBeefStirFryRecipe,
-  kMasalaDaalRecipe,
-];
 
-// Colour assigned to each tag label.
+
+
 Color _tagColour(String tag) {
   switch (tag) {
     case 'Vegan':
@@ -32,11 +26,11 @@ Color _tagColour(String tag) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Recipes view
-// ─────────────────────────────────────────────
 
-// Changed to StatefulWidget to support searching
+
+
+
+
 class RecipesView extends StatefulWidget {
   const RecipesView({super.key});
 
@@ -62,28 +56,27 @@ int _parseMins(String t) =>
 
 class _RecipesViewState extends State<RecipesView> {
   final TextEditingController _searchController = TextEditingController();
+  final RecipeService _recipeService = RecipeService();
   String _query = '';
+  bool _isLoading = true;
+  final List<RecipeModel> _allRecipes = [];
 
-  // Advanced-search state
-  bool _showAdvanced = false;
-  final Set<String> _selectedTags = {};
-  final Set<String> _selectedDifficulties = {};
-  double _maxDuration = 120; // minutes; 120 = "any"
-
-  int get _activeFilterCount {
-    int n = 0;
-    if (_selectedTags.isNotEmpty) n++;
-    if (_selectedDifficulties.isNotEmpty) n++;
-    if (_maxDuration < 120) n++;
-    return n;
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecipes();
   }
 
-  void _clearFilters() {
-    setState(() {
-      _selectedTags.clear();
-      _selectedDifficulties.clear();
-      _maxDuration = 120;
-    });
+  Future<void> _fetchRecipes() async {
+    setState(() => _isLoading = true);
+    final recipes = await _recipeService.getRecipes();
+    if (mounted) {
+      setState(() {
+         _allRecipes.clear();
+         _allRecipes.addAll(recipes);
+         _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -135,10 +128,23 @@ class _RecipesViewState extends State<RecipesView> {
 
     return NavBarScaffold(
       title: 'Recipes',
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF74BC42),
+        onPressed: () async {
+          final added = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (c) => const RecipeFormView()),
+          );
+          if (added == true) {
+            _fetchRecipes();
+          }
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: Column(
         children: [
           // ── Search bar ──────────────────────────────
-          Padding(
+            Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
             child: TextField(
               controller: _searchController,
@@ -267,7 +273,9 @@ class _RecipesViewState extends State<RecipesView> {
 
           // ── Results list ────────────────────────────
           Expanded(
-            child: results.isEmpty
+            child: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF74BC42)))
+              : results.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -289,16 +297,19 @@ class _RecipesViewState extends State<RecipesView> {
                       ),
                     ),
                   )
-                : ListView.builder(
-                    padding:
+                : RefreshIndicator(
+                    onRefresh: _fetchRecipes,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: results.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _RecipeCard(recipe: results[index]),
-                      );
-                    },
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _RecipeCard(recipe: results[index]),
+                        );
+                      },
                   ),
           ),
         ],
@@ -501,6 +512,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
                 Text('Any',
                     style: TextStyle(fontSize: 10, color: Color(0xFFAAAAAA))),
               ],
+                    ),
             ),
           ),
         ],
@@ -509,9 +521,9 @@ class _AdvancedFilterPanel extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-// Recipe card widget
-// ─────────────────────────────────────────────
+
+
+
 
 class _RecipeCard extends StatelessWidget {
   final RecipeModel recipe;
@@ -528,7 +540,6 @@ class _RecipeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.07),
               blurRadius: 12,
               offset: const Offset(0, 4),
@@ -539,7 +550,6 @@ class _RecipeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Hero image ──────────────────────────────
             SizedBox(
               height: 180,
               width: double.infinity,
@@ -568,13 +578,11 @@ class _RecipeCard extends StatelessWidget {
               ),
             ),
 
-            // ── Text content ────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title
                   Text(
                     recipe.title,
                     maxLines: 1,
@@ -587,7 +595,6 @@ class _RecipeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
 
-                  // Short description
                   Text(
                     recipe.summary,
                     maxLines: 2,
@@ -600,7 +607,6 @@ class _RecipeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Metadata row: time + difficulty
                   Row(
                     children: [
                       const Icon(Icons.schedule_outlined,
@@ -632,7 +638,6 @@ class _RecipeCard extends StatelessWidget {
                     ],
                   ),
 
-                  // Tags (only if present)
                   if (recipe.tags.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Wrap(
@@ -653,9 +658,9 @@ class _RecipeCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-// Tag chip
-// ─────────────────────────────────────────────
+
+
+
 
 class _TagChip extends StatelessWidget {
   final String label;
@@ -668,11 +673,9 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        // ignore: deprecated_member_use
         color: colour.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          // ignore: deprecated_member_use
           color: colour.withOpacity(0.4),
         ),
       ),

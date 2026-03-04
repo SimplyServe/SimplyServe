@@ -1,31 +1,29 @@
 import 'package:flutter/material.dart';
 
-/// A scaffold wrapper that includes a drawer-based navigation system
-/// This makes it easy to use consistent navigation across multiple pages
+
+
 class NavBarScaffold extends StatelessWidget {
   final Widget body;
   final String title;
+  final Widget? floatingActionButton;
 
   const NavBarScaffold({
     super.key,
     required this.body,
     required this.title,
+    this.floatingActionButton,
   });
 
-  /// Helper method to handle navigation
   void _navigate(BuildContext context, String routeName) {
     final currentRoute = ModalRoute.of(context)?.settings.name;
 
-    // Close the drawer safely
     Navigator.of(context).maybePop();
 
-    // Only navigate if not already on that route
     if (currentRoute != routeName) {
       Navigator.pushReplacementNamed(context, routeName);
     }
   }
 
-  /// Check if a route is currently active
   bool _isActiveRoute(BuildContext context, String routeName) {
     return ModalRoute.of(context)?.settings.name == routeName;
   }
@@ -33,7 +31,6 @@ class NavBarScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const themeColor = Color(0xFF74BC42);
-    // ignore: deprecated_member_use
     final selectedTileColor = themeColor.withOpacity(0.1);
 
     return Scaffold(
@@ -118,6 +115,7 @@ class NavBarScaffold extends StatelessWidget {
         ),
       ),
       body: body,
+      floatingActionButton: floatingActionButton,
     );
   }
 }

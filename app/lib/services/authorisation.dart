@@ -2,8 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthService {
-  // Use 10.0.2.2 for Android emulator to access localhost
-  // Use localhost for iOS simulator or web
   final String baseUrl = 'http://localhost:8000';
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -25,7 +23,7 @@ class AuthService {
 
       final token = response.data['access_token'];
       await _storage.write(key: 'token', value: token);
-      return null; // No error
+      return null;
     } on DioException catch (e) {
       if (e.response != null) {
         return e.response?.data['detail'] ?? 'Login failed';

@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
-#Just primary key tables
 class User(Base):
     __tablename__ = "users"
 
@@ -40,15 +39,13 @@ class Preference(Base):
     preference_name = Column(String)
     like = Column(Integer)
 
-#Just foreign key tables
-
 class ShoppingList(Base):
     __tablename__ = "shopping_list"
 
     shopping_list_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     created_at = Column(String)
-    # relationship back to User
+
     user = relationship("User", back_populates="shopping_lists")
 
 class Meals(Base):
@@ -59,7 +56,6 @@ class Meals(Base):
     planned_date = Column(String)
     stage = Column(String, index=True)
 
-    # relationship back to User
     user = relationship("User", back_populates="meals")
 
 class Recipe(Base):
@@ -75,6 +71,12 @@ class Recipe(Base):
     carbs = Column(Integer)
     fat = Column(Integer)
 
+    summary = Column(String)
+    image_url = Column(String)
+    cook_time = Column(Integer)
+    servings = Column(Integer)
+    instructions = Column(String) 
+
 class SavedRecipe(Base):
     __tablename__ = "saved_recipes"
 
@@ -84,7 +86,6 @@ class SavedRecipe(Base):
     recipe_name = Column(String)
     user_notes = Column(String)
 
-    # relationship back to User
     user = relationship("User", back_populates="saved_recipes")
 
 class recipe_feedback(Base):
@@ -96,8 +97,6 @@ class recipe_feedback(Base):
     liked = Column(Integer)
     created_at = Column(String)
 
-#Just intersection tables
-
 class ShoppingListIngredient(Base):
     __tablename__ = "shopping_list_ingredient"
 
@@ -106,7 +105,6 @@ class ShoppingListIngredient(Base):
     quantity = Column(Integer)
     checked = Column(Integer)
     unit = Column(String)
-
 
 class UserPantry(Base):
     __tablename__ = "user_pantry"
@@ -117,13 +115,11 @@ class UserPantry(Base):
     unit = Column(Integer)
     updated_at = Column(String)
 
-
 class UserPreference(Base):
     __tablename__ = "user_preference"
 
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     preference_id = Column(Integer, ForeignKey('preference.preference_id'), primary_key=True)
-
 
 class RecipeTag(Base):
     __tablename__ = "recipe_tag"
@@ -131,13 +127,11 @@ class RecipeTag(Base):
     tag_id = Column(Integer, ForeignKey('tags.id'), primary_key=True)
     recipe_id = Column(Integer, ForeignKey('recipe.recipe_id'), primary_key=True)
 
-
 class MealRecipe(Base):
     __tablename__ = "meal_recipe"
 
     meal_id = Column(Integer, ForeignKey('meals.meal_id'), primary_key=True)
     recipe_id = Column(Integer, ForeignKey('recipe.recipe_id'), primary_key=True)
-
 
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredient"
@@ -146,7 +140,6 @@ class RecipeIngredient(Base):
     ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
     quantity = Column(Integer)
     unit = Column(String)
-
 
 class Tag(Base):
     __tablename__ = "tags"
