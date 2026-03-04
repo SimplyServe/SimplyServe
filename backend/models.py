@@ -77,13 +77,13 @@ class SavedRecipe(Base):
 class Recipe(Base):
     __tablename__ = "Recipe"
     recipe_id = Column(Integer, primary_key=True, index=True)
-    complexity_id = Column(Integer, foreign_key("complexity_id"), primary_key=True)
+    complexity_id = Column(Integer, ForeignKey("recipe_complexity.id"), index=True)
     recipe_name = Column(String)
     cuisine = Column(String)
     prep_time = Column(Integer)
-    cost_estimate = Column(Real)
+    cost_estimate = Column(Float)
     calories = Column(Integer)
-    protien = Column(Integer)
+    protein = Column(Integer)
     carbs = Column(Integer)
     fat = Column(Integer)
     
