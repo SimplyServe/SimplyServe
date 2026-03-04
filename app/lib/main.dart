@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simplyserve/authorisation.dart';
+import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/views/dashboard.dart';
 import 'package:simplyserve/views/recipes.dart';
 import 'package:simplyserve/views/settings.dart';
@@ -16,9 +17,9 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
-  
+
   const MyApp({super.key, required this.isLoggedIn});
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -29,6 +30,11 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/': (context) => const DashboardView(),
         '/recipes': (context) => const RecipesView(),
+        '/recipe': (context) {
+          final recipe =
+              ModalRoute.of(context)?.settings.arguments as RecipeModel?;
+          return RecipePage(recipe: recipe);
+        },
         '/settings': (context) => const SettingsView(),
         '/profile': (context) => const ProfileView(),
       },

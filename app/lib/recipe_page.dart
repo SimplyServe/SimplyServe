@@ -1,0 +1,720 @@
+import 'package:flutter/material.dart';
+
+// ─────────────────────────────────────────────
+// Mock data model
+// ─────────────────────────────────────────────
+
+class RecipeModel {
+  final String title;
+  final String summary;
+  final String imageUrl;
+  final String prepTime;
+  final String cookTime;
+  final String totalTime;
+  final int servings;
+  final String difficulty;
+  final NutritionInfo nutrition;
+  final List<String> ingredients;
+  final List<String> steps;
+
+  const RecipeModel({
+    required this.title,
+    required this.summary,
+    required this.imageUrl,
+    required this.prepTime,
+    required this.cookTime,
+    required this.totalTime,
+    required this.servings,
+    required this.difficulty,
+    required this.nutrition,
+    required this.ingredients,
+    required this.steps,
+  });
+}
+
+class NutritionInfo {
+  final int calories;
+  final String protein;
+  final String carbs;
+  final String fats;
+
+  const NutritionInfo({
+    required this.calories,
+    required this.protein,
+    required this.carbs,
+    required this.fats,
+  });
+}
+
+// ─────────────────────────────────────────────
+// Dummy recipe data
+// ─────────────────────────────────────────────
+
+final RecipeModel _dummyRecipe = RecipeModel(
+  title: 'Creamy Tuscan Salmon',
+  summary:
+      'A restaurant-quality dish ready in under 30 minutes. Pan-seared salmon fillets'
+      ' bathed in a rich garlic cream sauce with sun-dried tomatoes and fresh spinach.',
+  imageUrl:
+      'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=1200&q=80',
+  prepTime: '10 min',
+  cookTime: '20 min',
+  totalTime: '30 min',
+  servings: 4,
+  difficulty: 'Easy',
+  nutrition: const NutritionInfo(
+    calories: 520,
+    protein: '42 g',
+    carbs: '12 g',
+    fats: '34 g',
+  ),
+  ingredients: [
+    '4 salmon fillets (approx. 150 g each)',
+    '3 cloves garlic, minced',
+    '1 cup heavy cream',
+    '½ cup sun-dried tomatoes, drained and chopped',
+    '2 cups fresh baby spinach',
+    '½ cup grated Parmesan cheese',
+    '1 tbsp olive oil',
+    '1 tsp Italian seasoning',
+    'Salt and black pepper to taste',
+    'Fresh basil leaves, to garnish',
+  ],
+  steps: [
+    'Pat the salmon fillets dry with paper towels and season both sides generously with salt, black pepper, and Italian seasoning.',
+    'Heat olive oil in a large skillet over medium-high heat. Once shimmering, place the salmon skin-side down and sear for 4–5 minutes until the skin is crispy.',
+    'Flip the salmon and cook for a further 3–4 minutes. Remove from the skillet and set aside on a warm plate.',
+    'In the same skillet, reduce the heat to medium. Add the minced garlic and sauté for 30 seconds until fragrant, scraping up any browned bits.',
+    'Pour in the heavy cream and bring to a gentle simmer. Stir in the Parmesan cheese until fully melted into the sauce.',
+    'Add the sun-dried tomatoes and fresh spinach. Stir until the spinach wilts and the sauce thickens slightly, about 2 minutes.',
+    'Return the salmon to the skillet and spoon the sauce over the fillets. Simmer together for 1–2 minutes to marry the flavours.',
+    'Garnish with fresh basil leaves and serve immediately over pasta, rice, or crusty bread.',
+  ],
+);
+
+// ─────────────────────────────────────────────
+// Route-passable entry point
+// ─────────────────────────────────────────────
+
+/// Pass an optional [recipe] argument via `Navigator.pushNamed` arguments,
+/// or leave it null to display the built-in dummy recipe.
+class RecipePage extends StatefulWidget {
+  final RecipeModel? recipe;
+
+  const RecipePage({super.key, this.recipe});
+
+  @override
+  State<RecipePage> createState() => _RecipePageState();
+}
+
+class _RecipePageState extends State<RecipePage> {
+  bool _isFavourited = false;
+
+  static const Color _brand = Color(0xFF74BC42);
+
+  RecipeModel get _recipe => widget.recipe ?? _dummyRecipe;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        slivers: [
+          _buildSliverAppBar(context),
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _TitleSection(recipe: _recipe),
+                      const SizedBox(height: 28),
+                      _MetadataRow(recipe: _recipe),
+                      const SizedBox(height: 28),
+                      _SectionHeader(title: 'Nutrition per Serving'),
+                      const SizedBox(height: 16),
+                      _NutritionGrid(nutrition: _recipe.nutrition),
+                      const SizedBox(height: 28),
+                      _SectionHeader(title: 'Ingredients'),
+                      const SizedBox(height: 16),
+                      _IngredientsList(ingredients: _recipe.ingredients),
+                      const SizedBox(height: 28),
+                      _SectionHeader(title: 'Instructions'),
+                      const SizedBox(height: 16),
+                      _InstructionsList(steps: _recipe.steps),
+                      const SizedBox(height: 48),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Sliver App Bar with hero image ──────────────────────────────────────
+
+  SliverAppBar _buildSliverAppBar(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 360,
+      pinned: true,
+      backgroundColor: Colors.white,
+      elevation: 1,
+      leading: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: _CircleIconButton(
+          icon: Icons.arrow_back_ios_new_rounded,
+          onTap: () => Navigator.maybePop(context),
+          tooltip: 'Back',
+        ),
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: _CircleIconButton(
+            icon: _isFavourited
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            iconColor: _isFavourited ? Colors.redAccent : Colors.black87,
+            onTap: () => setState(() => _isFavourited = !_isFavourited),
+            tooltip:
+                _isFavourited ? 'Remove from Favourites' : 'Add to Favourites',
+          ),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        background: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+          child: Image.network(
+            _recipe.imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: const Color(0xFFE8F5E9),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!
+                        : null,
+                    color: _brand,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (_, __, ___) => Container(
+              color: const Color(0xFFE8F5E9),
+              child: const Center(
+                child: Icon(Icons.broken_image_outlined,
+                    size: 64, color: Colors.grey),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Reusable sub-widgets
+// ─────────────────────────────────────────────
+
+/// Circular icon button used for back/favourite actions.
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color? iconColor;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+    this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(50),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                // ignore: deprecated_member_use
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: iconColor ?? Colors.black87,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Title and summary block.
+class _TitleSection extends StatelessWidget {
+  final RecipeModel recipe;
+
+  const _TitleSection({required this.recipe});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          recipe.title,
+          style: const TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A1A1A),
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          recipe.summary,
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.grey[600],
+            height: 1.6,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bold section heading with a green left accent bar.
+class _SectionHeader extends StatelessWidget {
+  final String title;
+
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 22,
+          decoration: BoxDecoration(
+            color: const Color(0xFF74BC42),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Horizontal scrollable row of metadata chips.
+class _MetadataRow extends StatelessWidget {
+  final RecipeModel recipe;
+
+  const _MetadataRow({required this.recipe});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _MetaItem(
+          icon: Icons.timer_outlined, label: 'Prep', value: recipe.prepTime),
+      _MetaItem(
+          icon: Icons.local_fire_department_outlined,
+          label: 'Cook',
+          value: recipe.cookTime),
+      _MetaItem(
+          icon: Icons.schedule_outlined,
+          label: 'Total',
+          value: recipe.totalTime),
+      _MetaItem(
+          icon: Icons.people_outline_rounded,
+          label: 'Serves',
+          value: '${recipe.servings}'),
+      _MetaItem(
+          icon: Icons.bar_chart_rounded,
+          label: 'Difficulty',
+          value: recipe.difficulty),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: items
+            .map((item) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _MetaChip(item: item),
+                ))
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _MetaItem {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _MetaItem(
+      {required this.icon, required this.label, required this.value});
+}
+
+class _MetaChip extends StatelessWidget {
+  final _MetaItem item;
+
+  const _MetaChip({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            // ignore: deprecated_member_use
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(item.icon, color: const Color(0xFF74BC42), size: 22),
+          const SizedBox(height: 6),
+          Text(
+            item.value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            item.label,
+            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Responsive 2×2 nutrition grid.
+class _NutritionGrid extends StatelessWidget {
+  final NutritionInfo nutrition;
+
+  const _NutritionGrid({required this.nutrition});
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      _NutritionCard(
+        label: 'Calories',
+        value: '${nutrition.calories}',
+        unit: 'kcal',
+        icon: Icons.local_fire_department_rounded,
+        color: const Color(0xFFFF7043),
+      ),
+      _NutritionCard(
+        label: 'Protein',
+        value: nutrition.protein,
+        unit: '',
+        icon: Icons.fitness_center_rounded,
+        color: const Color(0xFF42A5F5),
+      ),
+      _NutritionCard(
+        label: 'Carbs',
+        value: nutrition.carbs,
+        unit: '',
+        icon: Icons.grain_rounded,
+        color: const Color(0xFFFFCA28),
+      ),
+      _NutritionCard(
+        label: 'Fats',
+        value: nutrition.fats,
+        unit: '',
+        icon: Icons.water_drop_rounded,
+        color: const Color(0xFF74BC42),
+      ),
+    ];
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final crossCount = constraints.maxWidth > 500 ? 4 : 2;
+      return GridView.count(
+        crossAxisCount: crossCount,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 1.4,
+        children: cards,
+      );
+    });
+  }
+}
+
+class _NutritionCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+  final IconData icon;
+  final Color color;
+
+  const _NutritionCard({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            // ignore: deprecated_member_use
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              // ignore: deprecated_member_use
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  if (unit.isNotEmpty) ...[
+                    const SizedBox(width: 3),
+                    Text(
+                      unit,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    ),
+                  ],
+                ],
+              ),
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bullet-point ingredients list.
+class _IngredientsList extends StatelessWidget {
+  final List<String> ingredients;
+
+  const _IngredientsList({required this.ingredients});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            // ignore: deprecated_member_use
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: ingredients.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          indent: 56,
+          color: Colors.grey[100],
+        ),
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(top: 6),
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF74BC42),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    ingredients[index],
+                    style: const TextStyle(
+                        fontSize: 14, height: 1.5, color: Color(0xFF333333)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Numbered step-by-step instructions list.
+class _InstructionsList extends StatelessWidget {
+  final List<String> steps;
+
+  const _InstructionsList({required this.steps});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(steps.length, (index) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _StepCard(stepNumber: index + 1, instruction: steps[index]),
+        );
+      }),
+    );
+  }
+}
+
+class _StepCard extends StatelessWidget {
+  final int stepNumber;
+  final String instruction;
+
+  const _StepCard({required this.stepNumber, required this.instruction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            // ignore: deprecated_member_use
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Step number badge
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFF74BC42),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$stepNumber',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                instruction,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF333333),
+                  height: 1.6,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
