@@ -247,7 +247,7 @@ class WheelPainter extends CustomPainter {
 
     for (int i = 0; i < items.length; i++) {
       final paint = Paint()
-        ..color = i % 2 == 0 ? const Color(0xFF74BC42) : const Color(0xFF86D54A)
+        ..color = i % 2 == 0 ? const Color(0xFF74BC42) : const Color(0xFF74BC42)
         ..style = PaintingStyle.fill;
 
       canvas.drawArc(
