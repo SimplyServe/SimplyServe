@@ -18,12 +18,6 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   final RecipeService _recipeService = RecipeService();
   bool _isLoading = true;
 
-  final List<RecipeModel> _hardcodedFallback = [
-    kSalmonRecipe,
-    kCarbonaraRecipe,
-    kChickenTacosRecipe,
-  ];
-
   final Map<String, RecipeModel> _recipeMap = {};
 
   List<String> get _meals => _recipeMap.keys.toList();
@@ -34,8 +28,8 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   void initState() {
     super.initState();
     _controller = AnimationController(
-       vsync: this,
-       duration: const Duration(seconds: 4),
+      vsync: this,
+      duration: const Duration(seconds: 4),
     );
 
     _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
@@ -47,14 +41,8 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
     if (mounted) {
       setState(() {
         _recipeMap.clear();
-        if (recipes.isEmpty) {
-          for (var r in _hardcodedFallback) {
-             _recipeMap[r.title] = r;
-          }
-        } else {
-          for (var r in recipes) {
-             _recipeMap[r.title] = r;
-          }
+        for (var r in recipes) {
+          _recipeMap[r.title] = r;
         }
         _isLoading = false;
       });
@@ -132,67 +120,76 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
             ),
           ),
           const SizedBox(height: 12),
-
           const Icon(
             Icons.arrow_drop_down,
             size: 40,
             color: Color(0xFF1C2A45),
           ),
-
           _isLoading
               ? const SizedBox(
                   width: 260,
                   height: 260,
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF74BC42))),
                 )
-              : Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    AnimatedBuilder(
-                        animation: _animation,
-                        builder: (context, child) {
-                          return Transform.rotate(
-                            angle: _animation.value,
-                            child: SizedBox(
-                              width: 260,
-                              height: 260,
-                              child: CustomPaint(
-                                painter: WheelPainter(_meals),
-                              ),
-                            ),
-                          );
-                        }),
-                    GestureDetector(
-                      onTap: _spinWheel,
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 5,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'SPIN',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF1C2A45),
-                          ),
+              : _meals.isEmpty
+                  ? const SizedBox(
+                      width: 260,
+                      height: 260,
+                      child: Center(
+                        child: Text(
+                          'No recipes available',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                       ),
+                    )
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AnimatedBuilder(
+                            animation: _animation,
+                            builder: (context, child) {
+                              return Transform.rotate(
+                                angle: _animation.value,
+                                child: SizedBox(
+                                  width: 260,
+                                  height: 260,
+                                  child: CustomPaint(
+                                    painter: WheelPainter(_meals),
+                                  ),
+                                ),
+                              );
+                            }),
+                        GestureDetector(
+                          onTap: _spinWheel,
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.15),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'SPIN',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF1C2A45),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-
           const SizedBox(height: 24),
-
           AnimatedOpacity(
             opacity: _selectedMeal.isNotEmpty ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),
@@ -214,7 +211,6 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
               ),
             ),
           ),
-
           AnimatedOpacity(
             opacity: _selectedMeal.isNotEmpty ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),

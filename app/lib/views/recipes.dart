@@ -4,9 +4,6 @@ import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
-
-
-
 Color _tagColour(String tag) {
   switch (tag) {
     case 'Vegan':
@@ -25,11 +22,6 @@ Color _tagColour(String tag) {
       return const Color(0xFF757575);
   }
 }
-
-
-
-
-
 
 class RecipesView extends StatefulWidget {
   const RecipesView({super.key});
@@ -61,6 +53,24 @@ class _RecipesViewState extends State<RecipesView> {
   bool _isLoading = true;
   final List<RecipeModel> _allRecipes = [];
 
+  final Set<String> _selectedTags = {};
+  final Set<String> _selectedDifficulties = {};
+  double _maxDuration = 120;
+  bool _showAdvanced = false;
+
+  int get _activeFilterCount =>
+      _selectedTags.length +
+      _selectedDifficulties.length +
+      (_maxDuration < 120 ? 1 : 0);
+
+  void _clearFilters() {
+    setState(() {
+      _selectedTags.clear();
+      _selectedDifficulties.clear();
+      _maxDuration = 120;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,9 +82,9 @@ class _RecipesViewState extends State<RecipesView> {
     final recipes = await _recipeService.getRecipes();
     if (mounted) {
       setState(() {
-         _allRecipes.clear();
-         _allRecipes.addAll(recipes);
-         _isLoading = false;
+        _allRecipes.clear();
+        _allRecipes.addAll(recipes);
+        _isLoading = false;
       });
     }
   }
@@ -144,7 +154,7 @@ class _RecipesViewState extends State<RecipesView> {
       body: Column(
         children: [
           // ── Search bar ──────────────────────────────
-            Padding(
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
             child: TextField(
               controller: _searchController,
@@ -274,43 +284,45 @@ class _RecipesViewState extends State<RecipesView> {
           // ── Results list ────────────────────────────
           Expanded(
             child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF74BC42)))
-              : results.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.search_off_rounded,
-                              size: 48, color: Colors.grey),
-                          const SizedBox(height: 12),
-                          Text(
-                            _query.isNotEmpty
-                                ? 'No recipes found for "$_query".'
-                                : 'No recipes match the selected filters.',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 14),
+                ? const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF74BC42)))
+                : results.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.search_off_rounded,
+                                  size: 48, color: Colors.grey),
+                              const SizedBox(height: 12),
+                              Text(
+                                _query.isNotEmpty
+                                    ? 'No recipes found for "$_query".'
+                                    : 'No recipes match the selected filters.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 14),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _fetchRecipes,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          itemCount: results.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _RecipeCard(recipe: results[index]),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchRecipes,
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      itemCount: results.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _RecipeCard(recipe: results[index]),
-                        );
-                      },
-                  ),
           ),
         ],
       ),
@@ -512,7 +524,6 @@ class _AdvancedFilterPanel extends StatelessWidget {
                 Text('Any',
                     style: TextStyle(fontSize: 10, color: Color(0xFFAAAAAA))),
               ],
-                    ),
             ),
           ),
         ],
@@ -520,10 +531,6 @@ class _AdvancedFilterPanel extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 class _RecipeCard extends StatelessWidget {
   final RecipeModel recipe;
@@ -577,7 +584,6 @@ class _RecipeCard extends StatelessWidget {
                 ),
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
               child: Column(
@@ -594,7 +600,6 @@ class _RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-
                   Text(
                     recipe.summary,
                     maxLines: 2,
@@ -606,7 +611,6 @@ class _RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-
                   Row(
                     children: [
                       const Icon(Icons.schedule_outlined,
@@ -637,7 +641,6 @@ class _RecipeCard extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   if (recipe.tags.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Wrap(
@@ -657,10 +660,6 @@ class _RecipeCard extends StatelessWidget {
     );
   }
 }
-
-
-
-
 
 class _TagChip extends StatelessWidget {
   final String label;

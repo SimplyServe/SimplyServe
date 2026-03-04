@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/recipe_page.dart';
+import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
 // Simple in-memory meal calendar. Persist as needed.
@@ -15,14 +16,24 @@ class _MealCalendarViewState extends State<MealCalendarView> {
   // Key: yyyy-MM-dd, Value: list of recipes scheduled for that day
   final Map<String, List<RecipeModel>> _scheduled = {};
 
-  // Use the hardcoded recipe constants from recipe_page.dart
-  List<RecipeModel> get _availableRecipes => [
-        kSalmonRecipe,
-        kChickenTacosRecipe,
-        kCarbonaraRecipe,
-        kBeefStirFryRecipe,
-        kMasalaDaalRecipe,
-      ];
+  bool _isLoading = true;
+  List<RecipeModel> _availableRecipes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecipes();
+  }
+
+  Future<void> _fetchRecipes() async {
+    final recipes = await RecipeService().getRecipes();
+    if (mounted) {
+      setState(() {
+        _availableRecipes = recipes;
+        _isLoading = false;
+      });
+    }
+  }
 
   String _dayKey(DateTime d) => "${d.year.toString().padLeft(4, '0')}-"
       "${d.month.toString().padLeft(2, '0')}-"
@@ -58,8 +69,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
 
           return SafeArea(
             child: Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              padding:
+                  EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -98,67 +109,77 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                   Padding(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Column(
-                      children: _availableRecipes.map((r) {
-                        final selected = isSelected(r);
-                        return ListTile(
-                          leading: SizedBox(
-                            width: 40,
-                            height: 30,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                r.imageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    Container(color: Colors.grey[200]),
-                              ),
-                            ),
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF74BC42)))
+                        : Column(
+                            children: _availableRecipes.map((r) {
+                              final selected = isSelected(r);
+                              return ListTile(
+                                leading: SizedBox(
+                                  width: 40,
+                                  height: 30,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      r.imageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          Container(color: Colors.grey[200]),
+                                    ),
+                                  ),
+                                ),
+                                title: Text(r.title),
+                                subtitle: Text(r.totalTime),
+                                trailing: IconButton(
+                                  icon: Icon(
+                                      selected
+                                          ? Icons.check_box
+                                          : Icons.check_box_outline_blank,
+                                      color: selected
+                                          ? const Color(0xFF74BC42)
+                                          : null),
+                                  onPressed: () {
+                                    setModalState(() {
+                                      if (selected) {
+                                        scheduled.removeWhere(
+                                            (s) => s.title == r.title);
+                                      } else {
+                                        scheduled.add(r);
+                                      }
+                                    });
+                                    // keep sheet open but reflect change in parent state as well
+                                    setState(() {
+                                      if (scheduled.isEmpty) {
+                                        _scheduled.remove(key);
+                                      } else {
+                                        _scheduled[key] = List.from(scheduled);
+                                      }
+                                    });
+                                  },
+                                ),
+                                onTap: () {
+                                  // toggle
+                                  setModalState(() {
+                                    if (selected) {
+                                      scheduled.removeWhere(
+                                          (s) => s.title == r.title);
+                                    } else {
+                                      scheduled.add(r);
+                                    }
+                                  });
+                                  setState(() {
+                                    if (scheduled.isEmpty) {
+                                      _scheduled.remove(key);
+                                    } else {
+                                      _scheduled[key] = List.from(scheduled);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
                           ),
-                          title: Text(r.title),
-                          subtitle: Text(r.totalTime),
-                          trailing: IconButton(
-                            icon: Icon(
-                                selected ? Icons.check_box : Icons.check_box_outline_blank,
-                                color: selected ? const Color(0xFF74BC42) : null),
-                            onPressed: () {
-                              setModalState(() {
-                                if (selected) {
-                                  scheduled.removeWhere((s) => s.title == r.title);
-                                } else {
-                                  scheduled.add(r);
-                                }
-                              });
-                              // keep sheet open but reflect change in parent state as well
-                              setState(() {
-                                if (scheduled.isEmpty) {
-                                  _scheduled.remove(key);
-                                } else {
-                                  _scheduled[key] = List.from(scheduled);
-                                }
-                              });
-                            },
-                          ),
-                          onTap: () {
-                            // toggle
-                            setModalState(() {
-                              if (selected) {
-                                scheduled.removeWhere((s) => s.title == r.title);
-                              } else {
-                                scheduled.add(r);
-                              }
-                            });
-                            setState(() {
-                              if (scheduled.isEmpty) {
-                                _scheduled.remove(key);
-                              } else {
-                                _scheduled[key] = List.from(scheduled);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -209,7 +230,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
     final bool isNarrow = screenWidth < 420;
     final desiredCellHeight = isNarrow ? 92.0 : 72.0;
     final cellWidth =
-        (screenWidth - horizontalPadding - (crossAxisCount - 1) * spacing) / crossAxisCount;
+        (screenWidth - horizontalPadding - (crossAxisCount - 1) * spacing) /
+            crossAxisCount;
     final childAspectRatio = cellWidth / desiredCellHeight;
 
     return NavBarScaffold(
@@ -227,7 +249,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                   icon: const Icon(Icons.chevron_left),
                   onPressed: () {
                     setState(() {
-                      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+                      _visibleMonth =
+                          DateTime(_visibleMonth.year, _visibleMonth.month - 1);
                     });
                   },
                 ),
@@ -235,7 +258,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                   child: Center(
                     child: Text(
                       "${_monthName(month)} ${year}",
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -243,7 +267,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                   icon: const Icon(Icons.chevron_right),
                   onPressed: () {
                     setState(() {
-                      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
+                      _visibleMonth =
+                          DateTime(_visibleMonth.year, _visibleMonth.month + 1);
                     });
                   },
                 ),
@@ -331,7 +356,9 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                                 child: Text(
                                   '${scheduled.length}',
                                   style: const TextStyle(
-                                      color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ),
