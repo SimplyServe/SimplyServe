@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simplyserve/views/meal_calendar.dart';
 
 /// A scaffold wrapper that includes a drawer-based navigation system
 /// This makes it easy to use consistent navigation across multiple pages
@@ -105,6 +106,25 @@ class NavBarScaffold extends StatelessWidget {
               selectedTileColor: selectedTileColor,
               selectedColor: themeColor,
               onTap: () => _navigate(context, '/recipes'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month),
+              title: const Text('Meal Calendar'),
+              // Highlight as active only if route name matches; fall back to false
+              selected: _isActiveRoute(context, '/calendar'),
+              selectedTileColor: selectedTileColor,
+              selectedColor: themeColor,
+              onTap: () {
+                final currentRoute = ModalRoute.of(context)?.settings.name;
+                Navigator.of(context).maybePop();
+                if (currentRoute != '/calendar') {
+                  // Push the calendar page directly (named route may not be registered).
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MealCalendarView()),
+                  );
+                }
+              },
             ),
             ListTile(
               leading: const Icon(Icons.settings),
