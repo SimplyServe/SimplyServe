@@ -62,37 +62,37 @@ class Meals(Base):
     # relationship back to User
     user = relationship("User", back_populates="meals")
 
+class Recipe(Base):
+    __tablename__ = "recipe"
+    recipe_id = Column(Integer, primary_key=True, index=True)
+    complexity_id = Column(Integer, ForeignKey("recipe_complexity.id"))
+    recipe_name = Column(String)
+    cuisine = Column(String)
+    prep_time = Column(Integer)
+    cost_estimate = Column(Integer)
+    calories = Column(Integer)
+    protien = Column(Integer)
+    carbs = Column(Integer)
+    fat = Column(Integer)
+
 class SavedRecipe(Base):
     __tablename__ = "saved_recipes"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    recipe_id = Column(Integer, ForeignKey("recipes.id"), index=True)
+    recipe_id = Column(Integer, ForeignKey("recipe.recipe_id"), index=True)
     recipe_name = Column(String)
     user_notes = Column(String)
 
     # relationship back to User
     user = relationship("User", back_populates="saved_recipes")
 
-class Recipe(Base):
-    __tablename__ = "Recipe"
-    recipe_id = Column(Integer, primary_key=True, index=True)
-    complexity_id = Column(Integer, ForeignKey("recipe_complexity.id"), index=True)
-    recipe_name = Column(String)
-    cuisine = Column(String)
-    prep_time = Column(Integer)
-    cost_estimate = Column(Float)
-    calories = Column(Integer)
-    protein = Column(Integer)
-    carbs = Column(Integer)
-    fat = Column(Integer)
-    
 class recipe_feedback(Base):
     __tablename__ = "recipe_feedback"
     feedback_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    recipe_id = Column(Integer, ForeignKey("recipes.id"), primary_key=True)
-    rating = Column(Real)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    recipe_id = Column(Integer, ForeignKey("recipe.recipe_id"), index=True)
+    rating = Column(Integer)
     liked = Column(Integer)
     created_at = Column(String)
 
@@ -101,7 +101,7 @@ class recipe_feedback(Base):
 class ShoppingListIngredient(Base):
     __tablename__ = "shopping_list_ingredient"
 
-    shopping_list_id = Column(Integer, ForeignKey('shopping_list.id'), primary_key=True)
+    shopping_list_id = Column(Integer, ForeignKey('shopping_list.shopping_list_id'), primary_key=True)
     ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
     quantity = Column(Integer)
     checked = Column(Integer)
@@ -129,20 +129,20 @@ class RecipeTag(Base):
     __tablename__ = "recipe_tag"
 
     tag_id = Column(Integer, ForeignKey('tags.id'), primary_key=True)
-    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+    recipe_id = Column(Integer, ForeignKey('recipe.recipe_id'), primary_key=True)
 
 
 class MealRecipe(Base):
     __tablename__ = "meal_recipe"
 
-    meal_id = Column(Integer, ForeignKey('meals.id'), primary_key=True)
-    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+    meal_id = Column(Integer, ForeignKey('meals.meal_id'), primary_key=True)
+    recipe_id = Column(Integer, ForeignKey('recipe.recipe_id'), primary_key=True)
 
 
 class RecipeIngredient(Base):
     __tablename__ = "recipe_ingredient"
 
-    recipe_id = Column(Integer, ForeignKey('recipes.id'), primary_key=True)
+    recipe_id = Column(Integer, ForeignKey('recipe.recipe_id'), primary_key=True)
     ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
     quantity = Column(Integer)
     unit = Column(String)
