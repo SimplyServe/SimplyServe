@@ -22,6 +22,10 @@ A Flutter-based meal planning application that helps users manage their nutritio
 - ✅ **Settings** - Comprehensive settings with account management, preferences, and app information
 - ✅ **Navigation Drawer** - Consistent navigation across all views with active route highlighting
 - ✅ **Responsive Design** - Clean, modern UI with custom theme color (#74BC42)
+- ✅ **Meal Randomiser (Spin the Wheel)** - Interactive spinning wheel on the dashboard that randomly selects a recipe; each segment maps directly to a real recipe and the "Go to Recipe" button navigates to the full recipe page
+- ✅ **Dynamic Recipe Page** - Universal recipe page template driven entirely by a `RecipeModel` object; displays hero image, title, summary, prep/cook/total time, servings, difficulty, per-serving nutrition grid, ingredients list, and numbered step-by-step instructions
+- ✅ **Recipe Catalogue** - Scrollable card-based recipe browser with hero image, short description, metadata (time, difficulty, servings), and colour-coded dietary tag chips (e.g. Vegan, High Protein, Gluten Free)
+- ✅ **Dietary Tags** - Recipes labelled with condition tags (Vegan, High Protein, High Fibre, Gluten Free, Dairy Free, Comfort Food) displayed as colour-coded chips on both the catalogue and recipe cards
 
 ### App Structure
 
@@ -29,12 +33,15 @@ A Flutter-based meal planning application that helps users manage their nutritio
 lib/
 ├── main.dart                    # App entry point with routing configuration
 ├── authorisation.dart           # Login page with authentication
+├── recipe_page.dart             # Dynamic recipe page template + all RecipeModel data
 ├── views/
-│   ├── dashboard.dart          # Dashboard view with nutrition info
-│   ├── recipes.dart            # Recipe browsing interface
+│   ├── dashboard.dart          # Dashboard view with spinning wheel
+│   ├── recipes.dart            # Recipe catalogue (card-based browser)
+│   ├── profile.dart            # User profile view
 │   └── settings.dart           # Settings and preferences
 └── widgets/
     ├── navbar.dart             # Reusable navigation drawer
+    ├── spinning_wheel.dart     # Animated meal randomiser widget
     └── widgets.dart            # Shared widget components
 ```
 
@@ -186,8 +193,10 @@ Planned features for upcoming releases:
 - [ ] User profile management
 - [ ] Recipe favorites and custom collections
 - [ ] Dietary preference customization
-- [ ] Meal randomizer ("Spin the wheel" feature)
-- [ ] Backend API integration
+- ✅ Meal randomiser ("Spin the wheel" feature) — wheel segments wired to real recipes
+- ✅ Dynamic recipe page template — universal layout driven by recipe data
+- ✅ Recipe catalogue with dietary tag chips
+- [ ] Backend API integration — migrate hardcoded recipe data to database; `POST /recipes` insert + `GET /recipes/{id}` fetch endpoints planned
 - [ ] User registration system
 
 ## Team Members
@@ -206,4 +215,4 @@ This project is developed as part of a Software Engineering coursework (CW2).
 
 ---
 
-**Last Updated:** February 26, 2026
+**Last Updated:** March 4, 2026
