@@ -199,6 +199,19 @@ class _MealCalendarViewState extends State<MealCalendarView> {
     final totalCells = startWeekday + daysInMonth;
     final rows = (totalCells / 7).ceil();
 
+    // Responsive sizing for calendar boxes
+    final media = MediaQuery.of(context);
+    final screenWidth = media.size.width;
+    const horizontalPadding = 16.0 * 2; // padding from SingleChildScrollView
+    const spacing = 6.0;
+    const crossAxisCount = 7;
+    // On narrow screens (mobile) use taller boxes; on large screens slightly shorter
+    final bool isNarrow = screenWidth < 420;
+    final desiredCellHeight = isNarrow ? 92.0 : 72.0;
+    final cellWidth =
+        (screenWidth - horizontalPadding - (crossAxisCount - 1) * spacing) / crossAxisCount;
+    final childAspectRatio = cellWidth / desiredCellHeight;
+
     return NavBarScaffold(
       title: 'Meal Calendar',
       // Changed to SingleChildScrollView + shrink-wrapped GridView so content
@@ -256,12 +269,11 @@ class _MealCalendarViewState extends State<MealCalendarView> {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                // increase aspect ratio so each box is shorter (smaller height)
-                childAspectRatio: 1.3,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
               ),
               itemCount: rows * 7,
               itemBuilder: (context, index) {
@@ -277,7 +289,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                   onTap: () => _openDaySheet(day),
                   child: Container(
                     // reduced internal padding to make box content more compact
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -295,7 +307,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                         Text(
                           '$dayIndex',
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: isNarrow ? 13 : 12,
                               fontWeight: FontWeight.bold,
                               color: (day.day == DateTime.now().day &&
                                       day.month == DateTime.now().month &&
@@ -307,15 +319,20 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                         if (scheduled.isNotEmpty)
                           Align(
                             alignment: Alignment.bottomRight,
+                            // show only the number to avoid overflow, use small circle badge
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              width: 22,
+                              height: 22,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF74BC42),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text(
-                                '${scheduled.length} recipe${scheduled.length > 1 ? 's' : ''}',
-                                style: const TextStyle(color: Colors.white, fontSize: 10),
+                              child: Center(
+                                child: Text(
+                                  '${scheduled.length}',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
                               ),
                             ),
                           ),
