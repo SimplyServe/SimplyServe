@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/authorisation.dart'; // Import AuthService
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -12,6 +13,101 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool isLogin = true;
+  bool isLoading = false; // Loading state indicator
+
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _repeatPasswordController = TextEditingController();
+  final AuthService _authService = AuthService(); // Instantiate AuthService
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _repeatPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  Future<void> _handleAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorSnackBar('Please enter both email and password.');
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      if (isLogin) {
+        // Handle Login
+        final error = await _authService.login(email, password);
+        if (error == null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/',
+              (Route<dynamic> route) => false,
+            );
+          }
+        } else {
+          _showErrorSnackBar(error);
+        }
+      } else {
+        // Handle Registration
+        final repeatPassword = _repeatPasswordController.text;
+        if (password != repeatPassword) {
+          _showErrorSnackBar('Passwords do not match.');
+          setState(() {
+            isLoading = false;
+          });
+          return;
+        }
+
+        final error = await _authService.register(email, password);
+        if (error == null) {
+          // Registration successful, attempt auto-login
+          final loginError = await _authService.login(email, password);
+          if (loginError == null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('isLoggedIn', true);
+            if (mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/',
+                (Route<dynamic> route) => false,
+              );
+            }
+          } else {
+            _showErrorSnackBar(
+                'Registration successful, but auto-login failed: $loginError');
+          }
+        } else {
+          _showErrorSnackBar(error);
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('An unexpected error occurred.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,8 +170,9 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
-                      const TextField(
-                        decoration: InputDecoration(
+                      TextField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
                           labelText: 'Email address',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -87,7 +184,8 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const TextField(
+                      TextField(
+                        controller: _passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText: 'Password',
@@ -102,15 +200,18 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       if (!isLogin) ...[
                         const SizedBox(height: 20),
-                        const TextField(
+                        TextField(
+                          controller: _repeatPasswordController,
                           obscureText: true,
-                          decoration: InputDecoration(
+                          decoration: const InputDecoration(
                             labelText: 'Repeat Password',
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide(color: Color(0xFF1C2A45)),
                             ),
                           ),
@@ -127,24 +228,24 @@ class _LoginPageState extends State<LoginPage> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          onPressed: () async {
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.setBool('isLoggedIn', true);
-                            if (mounted) {
-                              Navigator.of(context).pushNamedAndRemoveUntil(
-                                '/',
-                                (Route<dynamic> route) => false,
-                              );
-                            }
-                          },
-                          child: const Text(
-                            'Continue',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color.fromARGB(255, 0, 0, 0),
-                            ),
-                          ),
+                          onPressed: isLoading ? null : _handleAuth,
+                          child: isLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Continue',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color.fromARGB(255, 0, 0, 0),
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -158,7 +259,9 @@ class _LoginPageState extends State<LoginPage> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text(
-                              isLogin ? 'Need an account?' : 'Already have an account?',
+                              isLogin
+                                  ? 'Need an account?'
+                                  : 'Already have an account?',
                               style: const TextStyle(color: Colors.grey),
                             ),
                           ),
