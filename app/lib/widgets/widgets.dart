@@ -54,7 +54,7 @@ class AppNavigation extends StatelessWidget {
                       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
                     },
                     child: Image.asset(
-                      'assets/image.png',
+                      'assets/images/image.png',
                       height: 80,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
