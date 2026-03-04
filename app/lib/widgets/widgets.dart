@@ -10,14 +10,12 @@ class AppNavigation extends StatelessWidget {
     return TextButton(
       onPressed: onPressed,
       style: ButtonStyle(
-        // changed WidgetStateProperty -> MaterialStateProperty
         padding: WidgetStateProperty.all(
           const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         ),
         foregroundColor: WidgetStateProperty.all(Colors.grey[800]),
         textStyle: WidgetStateProperty.resolveWith<TextStyle?>(
           (states) {
-            // changed WidgetState -> MaterialState
             final hovered = states.contains(WidgetState.hovered);
             return TextStyle(
               fontSize: 16,
@@ -37,13 +35,11 @@ class AppNavigation extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints){
         final showFullNav = constraints.maxWidth > 900;
-        
         return Container(
           height: 60,
           color: Colors.white,
           child: Column(
             children: [
-              // Top banner
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -69,7 +65,6 @@ class AppNavigation extends StatelessWidget {
                       },
                     ),
                   ),
-                  // Centered nav buttons
                   if (showFullNav)
                      Expanded(
                        child: Center(
@@ -81,13 +76,11 @@ class AppNavigation extends StatelessWidget {
                              _navTextButton(context, 'holder', () => Navigator.pushNamed(context, '/holder')),
                              const SizedBox(width: 12),
                              _navTextButton(context, 'About', () => Navigator.pushNamed(context, '/holder')),
-                             
                            ],
                          ),
                        ),
                      )
                   else
-                    // show a compact popup menu on small screens
                     PopupMenuButton<int>(
                       icon: const Icon(Icons.menu, color: Colors.grey),
                       onSelected: (value) {

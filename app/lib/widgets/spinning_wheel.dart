@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:simplyserve/recipe_page.dart';
+import 'package:simplyserve/services/recipe_service.dart';
 
 class SpinningWheelWidget extends StatefulWidget {
   const SpinningWheelWidget({super.key});
@@ -14,12 +15,16 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   late AnimationController _controller;
   late Animation<double> _animation;
 
-  // Maps wheel label → RecipeModel. Add more entries here as recipes are added.
-  final Map<String, RecipeModel> _recipeMap = {
-    'Tuscan Salmon': kSalmonRecipe,
-    'Carbonara': kCarbonaraRecipe,
-    'Chicken Tacos': kChickenTacosRecipe,
-  };
+  final RecipeService _recipeService = RecipeService();
+  bool _isLoading = true;
+
+  final List<RecipeModel> _hardcodedFallback = [
+    kSalmonRecipe,
+    kCarbonaraRecipe,
+    kChickenTacosRecipe,
+  ];
+
+  final Map<String, RecipeModel> _recipeMap = {};
 
   List<String> get _meals => _recipeMap.keys.toList();
 
@@ -29,11 +34,31 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
+       vsync: this,
+       duration: const Duration(seconds: 4),
     );
 
     _animation = Tween<double>(begin: 0, end: 0).animate(_controller);
+    _fetchRecipes();
+  }
+
+  Future<void> _fetchRecipes() async {
+    final recipes = await _recipeService.getRecipes();
+    if (mounted) {
+      setState(() {
+        _recipeMap.clear();
+        if (recipes.isEmpty) {
+          for (var r in _hardcodedFallback) {
+             _recipeMap[r.title] = r;
+          }
+        } else {
+          for (var r in recipes) {
+             _recipeMap[r.title] = r;
+          }
+        }
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -108,59 +133,63 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
           ),
           const SizedBox(height: 12),
 
-          // Arrow pointing down
           const Icon(
             Icons.arrow_drop_down,
             size: 40,
             color: Color(0xFF1C2A45),
           ),
 
-          // Wheel and Spin Button
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              AnimatedBuilder(
-                  animation: _animation,
-                  builder: (context, child) {
-                    return Transform.rotate(
-                      angle: _animation.value,
-                      child: SizedBox(
-                        width: 260,
-                        height: 260,
-                        child: CustomPaint(
-                          painter: WheelPainter(_meals),
+          _isLoading
+              ? const SizedBox(
+                  width: 260,
+                  height: 260,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedBuilder(
+                        animation: _animation,
+                        builder: (context, child) {
+                          return Transform.rotate(
+                            angle: _animation.value,
+                            child: SizedBox(
+                              width: 260,
+                              height: 260,
+                              child: CustomPaint(
+                                painter: WheelPainter(_meals),
+                              ),
+                            ),
+                          );
+                        }),
+                    GestureDetector(
+                      onTap: _spinWheel,
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'SPIN',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF1C2A45),
+                          ),
                         ),
                       ),
-                    );
-                  }),
-              GestureDetector(
-                onTap: _spinWheel,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'SPIN',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF1C2A45),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ],
-          ),
 
           const SizedBox(height: 24),
 
@@ -186,7 +215,6 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
             ),
           ),
 
-          // "Go to Recipe" button — shown only when a meal has been selected
           AnimatedOpacity(
             opacity: _selectedMeal.isNotEmpty ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),

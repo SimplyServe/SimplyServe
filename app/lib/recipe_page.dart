@@ -1,10 +1,11 @@
-// ignore_for_file: prefer_const_constructors
+
 
 import 'package:flutter/material.dart';
+import 'package:simplyserve/services/recipe_service.dart';
 
-// ─────────────────────────────────────────────
-// Mock data model
-// ─────────────────────────────────────────────
+
+
+
 
 class RecipeModel {
   final String title;
@@ -19,6 +20,7 @@ class RecipeModel {
   final List<String> ingredients;
   final List<String> steps;
   final List<String> tags;
+  final int? id;
 
   const RecipeModel({
     required this.title,
@@ -33,6 +35,7 @@ class RecipeModel {
     required this.ingredients,
     required this.steps,
     this.tags = const [],
+    this.id,
   });
 }
 
@@ -50,11 +53,12 @@ class NutritionInfo {
   });
 }
 
-// ─────────────────────────────────────────────
-// Recipe data
-// ─────────────────────────────────────────────
+
+
+
 
 final RecipeModel kSalmonRecipe = RecipeModel(
+  id: 1,
   title: 'Creamy Tuscan Salmon',
   summary:
       'A restaurant-quality dish ready in under 30 minutes. Pan-seared salmon fillets'
@@ -98,6 +102,7 @@ final RecipeModel kSalmonRecipe = RecipeModel(
 );
 
 final RecipeModel kChickenTacosRecipe = RecipeModel(
+  id: 2,
   title: 'Crispy Chicken Tacos',
   summary:
       'Street-style chicken tacos with a smoky chipotle marinade, fresh pico de gallo,'
@@ -143,6 +148,7 @@ final RecipeModel kChickenTacosRecipe = RecipeModel(
 );
 
 final RecipeModel kCarbonaraRecipe = RecipeModel(
+  id: 3,
   title: 'Spaghetti Carbonara',
   summary:
       'The ultimate Roman classic made in just 20 minutes. Silky egg-and-Pecorino sauce'
@@ -183,6 +189,7 @@ final RecipeModel kCarbonaraRecipe = RecipeModel(
 );
 
 final RecipeModel kBeefStirFryRecipe = RecipeModel(
+  id: 4,
   title: 'Beef & Broccoli Stir Fry',
   summary:
       'A takeaway favourite made at home in 25 minutes. Tender strips of beef and'
@@ -227,6 +234,7 @@ final RecipeModel kBeefStirFryRecipe = RecipeModel(
 );
 
 final RecipeModel kMasalaDaalRecipe = RecipeModel(
+  id: 5,
   title: 'Masala Daal',
   summary:
       'A warming, deeply spiced Indian red lentil soup tempered with caramelised onions,'
@@ -271,12 +279,12 @@ final RecipeModel kMasalaDaalRecipe = RecipeModel(
   ],
 );
 
-// ─────────────────────────────────────────────
-// Route-passable entry point
-// ─────────────────────────────────────────────
 
-/// Pass an optional [recipe] argument via `Navigator.pushNamed` arguments,
-/// or leave it null to display the built-in dummy recipe.
+
+
+
+
+
 class RecipePage extends StatefulWidget {
   final RecipeModel? recipe;
 
@@ -339,7 +347,6 @@ class _RecipePageState extends State<RecipePage> {
     );
   }
 
-  // ── Sliver App Bar with hero image ──────────────────────────────────────
 
   SliverAppBar _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
@@ -356,6 +363,22 @@ class _RecipePageState extends State<RecipePage> {
         ),
       ),
       actions: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: _CircleIconButton(
+            icon: Icons.delete_outline,
+            iconColor: Colors.black87,
+            onTap: () async {
+              if (_recipe.id != null) {
+                bool result = await RecipeService().deleteRecipe(_recipe.id!);
+                if (result && context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              }
+            },
+            tooltip: 'Delete Recipe',
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: _CircleIconButton(
@@ -407,11 +430,11 @@ class _RecipePageState extends State<RecipePage> {
   }
 }
 
-// ─────────────────────────────────────────────
-// Reusable sub-widgets
-// ─────────────────────────────────────────────
 
-/// Circular icon button used for back/favourite actions.
+
+
+
+
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
@@ -440,7 +463,6 @@ class _CircleIconButton extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                // ignore: deprecated_member_use
                 color: Colors.black.withOpacity(0.12),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -458,7 +480,7 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
-/// Title and summary block.
+
 class _TitleSection extends StatelessWidget {
   final RecipeModel recipe;
 
@@ -492,7 +514,7 @@ class _TitleSection extends StatelessWidget {
   }
 }
 
-/// Bold section heading with a green left accent bar.
+
 class _SectionHeader extends StatelessWidget {
   final String title;
 
@@ -524,7 +546,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Horizontal scrollable row of metadata chips.
+
 class _MetadataRow extends StatelessWidget {
   final RecipeModel recipe;
 
@@ -590,7 +612,6 @@ class _MetaChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -620,7 +641,7 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
-/// Responsive 2×2 nutrition grid.
+
 class _NutritionGrid extends StatelessWidget {
   final NutritionInfo nutrition;
 
@@ -697,7 +718,6 @@ class _NutritionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -712,7 +732,6 @@ class _NutritionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              // ignore: deprecated_member_use
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -754,7 +773,7 @@ class _NutritionCard extends StatelessWidget {
   }
 }
 
-/// Bullet-point ingredients list.
+
 class _IngredientsList extends StatelessWidget {
   final List<String> ingredients;
 
@@ -768,7 +787,6 @@ class _IngredientsList extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -816,7 +834,7 @@ class _IngredientsList extends StatelessWidget {
   }
 }
 
-/// Numbered step-by-step instructions list.
+
 class _InstructionsList extends StatelessWidget {
   final List<String> steps;
 
@@ -849,7 +867,6 @@ class _StepCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -860,7 +877,6 @@ class _StepCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Step number badge
           Container(
             width: 32,
             height: 32,

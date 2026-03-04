@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Settings view - app configuration and preferences
+
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
 
@@ -90,7 +90,7 @@ class SettingsView extends StatelessWidget {
                 }
               },
               child: const Text(
-                'Log Out', 
+                'Log Out',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)
               ),
             ),

@@ -12,7 +12,6 @@ from database import get_db
 from models import User
 from schemas import TokenData
 
-# Secret key for JWT encoding/decoding. In production, use env variable.
 SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -50,7 +49,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         token_data = TokenData(email=email)
     except JWTError:
         raise credentials_exception
-    
+
     result = await db.execute(select(User).where(User.email == token_data.email))
     user = result.scalars().first()
     if user is None:

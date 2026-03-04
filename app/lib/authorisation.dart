@@ -1,8 +1,8 @@
-// ignore_for_file: deprecated_member_use
+
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/authorisation.dart'; // Import AuthService
+import 'services/authorisation.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,12 +13,12 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool isLogin = true;
-  bool isLoading = false; // Loading state indicator
+  bool isLoading = false;
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _repeatPasswordController = TextEditingController();
-  final AuthService _authService = AuthService(); // Instantiate AuthService
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -52,7 +52,6 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       if (isLogin) {
-        // Handle Login
         final error = await _authService.login(email, password);
         if (error == null) {
           final prefs = await SharedPreferences.getInstance();
@@ -67,7 +66,6 @@ class _LoginPageState extends State<LoginPage> {
           _showErrorSnackBar(error);
         }
       } else {
-        // Handle Registration
         final repeatPassword = _repeatPasswordController.text;
         if (password != repeatPassword) {
           _showErrorSnackBar('Passwords do not match.');
@@ -79,7 +77,6 @@ class _LoginPageState extends State<LoginPage> {
 
         final error = await _authService.register(email, password);
         if (error == null) {
-          // Registration successful, attempt auto-login
           final loginError = await _authService.login(email, password);
           if (loginError == null) {
             final prefs = await SharedPreferences.getInstance();
