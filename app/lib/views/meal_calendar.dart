@@ -258,7 +258,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                childAspectRatio: 1.0,
+                // increase aspect ratio so each box is shorter (smaller height)
+                childAspectRatio: 1.3,
                 crossAxisSpacing: 6,
                 mainAxisSpacing: 6,
               ),
@@ -275,7 +276,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                 return GestureDetector(
                   onTap: () => _openDaySheet(day),
                   child: Container(
-                    padding: const EdgeInsets.all(6),
+                    // reduced internal padding to make box content more compact
+                    padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
@@ -293,6 +295,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                         Text(
                           '$dayIndex',
                           style: TextStyle(
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: (day.day == DateTime.now().day &&
                                       day.month == DateTime.now().month &&
@@ -312,7 +315,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                               ),
                               child: Text(
                                 '${scheduled.length} recipe${scheduled.length > 1 ? 's' : ''}',
-                                style: const TextStyle(color: Colors.white, fontSize: 11),
+                                style: const TextStyle(color: Colors.white, fontSize: 10),
                               ),
                             ),
                           ),
