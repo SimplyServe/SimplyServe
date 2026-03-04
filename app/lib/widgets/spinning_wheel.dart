@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:simplyserve/recipe_page.dart';
 
 class SpinningWheelWidget extends StatefulWidget {
   const SpinningWheelWidget({super.key});
@@ -13,16 +14,14 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   late AnimationController _controller;
   late Animation<double> _animation;
 
-  final List<String> _meals = [
-    'Pizza',
-    'Burger',
-    'Pasta',
-    'Salad',
-    'Sushi',
-    'Tacos',
-    'Steak',
-    'Wrap'
-  ];
+  // Maps wheel label → RecipeModel. Add more entries here as recipes are added.
+  final Map<String, RecipeModel> _recipeMap = {
+    'Tuscan Salmon': kSalmonRecipe,
+    'Carbonara': kCarbonaraRecipe,
+    'Chicken Tacos': kChickenTacosRecipe,
+  };
+
+  List<String> get _meals => _recipeMap.keys.toList();
 
   String _selectedMeal = '';
 
@@ -199,10 +198,12 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // TODO: pass the real RecipeModel matching _selectedMeal
-                      // once recipes are loaded from the backend.
-                      // For now, navigates to the dummy recipe page.
-                      Navigator.pushNamed(context, '/recipe');
+                      final recipe = _recipeMap[_selectedMeal];
+                      Navigator.pushNamed(
+                        context,
+                        '/recipe',
+                        arguments: recipe,
+                      );
                     },
                     icon: const Icon(Icons.menu_book_rounded,
                         color: Colors.white),
@@ -272,19 +273,37 @@ class WheelPainter extends CustomPainter {
 
       canvas.save();
       canvas.translate(center.dx, center.dy);
-      canvas.rotate(i * sweepAngle + sweepAngle / 2);
+
+      final midAngle = i * sweepAngle + sweepAngle / 2;
+      final normalizedMid = midAngle % (2 * math.pi);
+      final isFlipped =
+          normalizedMid > math.pi / 2 && normalizedMid < 3 * math.pi / 2;
 
       final textPainter = TextPainter(
         text: TextSpan(
           text: items[i],
           style: const TextStyle(
-              color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
         ),
         textDirection: TextDirection.ltr,
+        maxLines: 2,
+        ellipsis: '..',
       );
-      textPainter.layout();
+      textPainter.layout(maxWidth: radius * 0.44);
 
-      canvas.translate(radius * 0.55, -textPainter.height / 2);
+      canvas.rotate(midAngle);
+      if (isFlipped) {
+        canvas.rotate(math.pi);
+        canvas.translate(
+          -(radius * 0.55 + textPainter.width / 2),
+          -textPainter.height / 2,
+        );
+      } else {
+        canvas.translate(
+          radius * 0.55 - textPainter.width / 2,
+          -textPainter.height / 2,
+        );
+      }
       textPainter.paint(canvas, Offset.zero);
       canvas.restore();
     }

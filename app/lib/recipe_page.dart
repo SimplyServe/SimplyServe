@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────
@@ -47,10 +49,10 @@ class NutritionInfo {
 }
 
 // ─────────────────────────────────────────────
-// Dummy recipe data
+// Recipe data
 // ─────────────────────────────────────────────
 
-final RecipeModel _dummyRecipe = RecipeModel(
+final RecipeModel kSalmonRecipe = RecipeModel(
   title: 'Creamy Tuscan Salmon',
   summary:
       'A restaurant-quality dish ready in under 30 minutes. Pan-seared salmon fillets'
@@ -92,6 +94,89 @@ final RecipeModel _dummyRecipe = RecipeModel(
   ],
 );
 
+final RecipeModel kChickenTacosRecipe = RecipeModel(
+  title: 'Crispy Chicken Tacos',
+  summary:
+      'Street-style chicken tacos with a smoky chipotle marinade, fresh pico de gallo,'
+      ' creamy avocado, and a squeeze of lime — ready in 35 minutes.',
+  imageUrl:
+      'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=1200&q=80',
+  prepTime: '15 min',
+  cookTime: '20 min',
+  totalTime: '35 min',
+  servings: 4,
+  difficulty: 'Easy',
+  nutrition: const NutritionInfo(
+    calories: 430,
+    protein: '34 g',
+    carbs: '38 g',
+    fats: '16 g',
+  ),
+  ingredients: [
+    '500 g boneless chicken thighs',
+    '2 tbsp chipotle paste',
+    '1 tbsp olive oil',
+    '1 tsp smoked paprika',
+    '1 tsp ground cumin',
+    '½ tsp garlic powder',
+    '8 small corn or flour tortillas',
+    '2 ripe avocados, sliced',
+    '2 limes, cut into wedges',
+    '1 cup pico de gallo (or fresh salsa)',
+    '½ cup sour cream',
+    'Fresh coriander leaves, to garnish',
+    'Salt and black pepper to taste',
+  ],
+  steps: [
+    'In a bowl, mix the chipotle paste, olive oil, smoked paprika, cumin, and garlic powder. Season with salt and pepper.',
+    'Add the chicken thighs to the marinade and toss to coat. Leave for at least 10 minutes (or up to 24 hours in the fridge).',
+    'Heat a large griddle or skillet over high heat. Cook the chicken for 5–6 minutes per side until charred and cooked through. Rest for 5 minutes.',
+    'Slice or shred the rested chicken into bite-sized pieces.',
+    'Warm the tortillas directly over a gas flame for 15–20 seconds per side, or in a dry pan, until pliable and lightly charred.',
+    'To assemble: spread a little sour cream on each tortilla, then top with chicken, avocado slices, and pico de gallo.',
+    'Garnish with fresh coriander and a squeeze of lime. Serve immediately.',
+  ],
+);
+
+final RecipeModel kCarbonaraRecipe = RecipeModel(
+  title: 'Spaghetti Carbonara',
+  summary:
+      'The ultimate Roman classic made in just 20 minutes. Silky egg-and-Pecorino sauce'
+      ' clings to al-dente spaghetti with crispy guanciale — no cream required.',
+  imageUrl:
+      'https://images.unsplash.com/photo-1612874742237-6526221588e3?w=1200&q=80',
+  prepTime: '5 min',
+  cookTime: '15 min',
+  totalTime: '20 min',
+  servings: 2,
+  difficulty: 'Medium',
+  nutrition: const NutritionInfo(
+    calories: 610,
+    protein: '28 g',
+    carbs: '72 g',
+    fats: '22 g',
+  ),
+  ingredients: [
+    '200 g spaghetti',
+    '100 g guanciale (or pancetta), cut into small cubes',
+    '2 large eggs',
+    '2 egg yolks',
+    '60 g Pecorino Romano, finely grated',
+    '30 g Parmesan, finely grated',
+    '1 tsp freshly cracked black pepper',
+    'Salt (for pasta water)',
+  ],
+  steps: [
+    'Bring a large pot of salted water to a rolling boil. Cook the spaghetti until al dente according to package instructions. Reserve 1 cup of pasta water before draining.',
+    'While the pasta cooks, place the guanciale in a cold skillet. Set over medium heat and cook, stirring occasionally, until the fat has rendered and the pieces are golden and crispy, about 6–8 minutes. Remove from heat.',
+    'In a bowl, whisk together the eggs, egg yolks, Pecorino Romano, and Parmesan until smooth. Season generously with cracked black pepper.',
+    'Drain the spaghetti and immediately add it to the skillet with the guanciale (off the heat). Toss to coat the pasta in the rendered fat.',
+    'Add a splash of the reserved pasta water to the egg mixture and stir to temper it. Pour the mixture over the pasta, tossing quickly and continuously so the eggs emulsify into a creamy sauce rather than scrambling.',
+    'Add more pasta water, a little at a time, until the sauce reaches a glossy, coating consistency.',
+    'Serve immediately in warm bowls, topped with extra Pecorino and a crack of black pepper.',
+  ],
+);
+
 // ─────────────────────────────────────────────
 // Route-passable entry point
 // ─────────────────────────────────────────────
@@ -112,7 +197,7 @@ class _RecipePageState extends State<RecipePage> {
 
   static const Color _brand = Color(0xFF74BC42);
 
-  RecipeModel get _recipe => widget.recipe ?? _dummyRecipe;
+  RecipeModel get _recipe => widget.recipe ?? kSalmonRecipe;
 
   @override
   Widget build(BuildContext context) {
