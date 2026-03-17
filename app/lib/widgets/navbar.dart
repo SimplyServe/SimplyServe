@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/views/meal_calendar.dart';
+import 'package:simplyserve/views/shopping_list.dart';
 
 
 
@@ -122,6 +123,14 @@ class NavBarScaffold extends StatelessWidget {
                   );
                 }
               },
+            ),
+            ListTile(
+              leading: const Icon(Icons.shopping_cart_outlined),
+              title: const Text('Shopping List'),
+              selected: _isActiveRoute(context, '/shopping-list'),
+              selectedTileColor: selectedTileColor,
+              selectedColor: themeColor,
+              onTap: () => _navigate(context, '/shopping-list'),
             ),
             ListTile(
               leading: const Icon(Icons.settings),
