@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/recipe_service.dart';
+import 'package:simplyserve/services/shopping_list_service.dart';
 
 class RecipeModel {
   final String title;
@@ -105,6 +106,37 @@ class _RecipePageState extends State<RecipePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              ShoppingListService().addIngredients(_recipe.ingredients);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Items added to shopping list successfully!'),
+                  backgroundColor: Color(0xFF74BC42),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.add_shopping_cart_rounded),
+            label: const Text('Add Ingredients to Cart'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _brand,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
