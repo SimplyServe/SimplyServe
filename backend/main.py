@@ -20,10 +20,72 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 
+RECIPE_INGREDIENTS = {
+    "Tuscan Salmon": [
+        "2 salmon fillets",
+        "1 cup heavy cream",
+        "1 cup fresh spinach",
+        "1/2 cup sun-dried tomatoes",
+        "4 garlic cloves, minced",
+        "1 tbsp olive oil",
+        "1 tsp Italian seasoning",
+        "Salt and pepper to taste",
+        "Grated Parmesan cheese, to serve",
+    ],
+    "Carbonara": [
+        "400g spaghetti",
+        "200g pancetta or guanciale",
+        "4 large eggs",
+        "100g Pecorino Romano, grated",
+        "50g Parmesan, grated",
+        "2 garlic cloves",
+        "2 tbsp olive oil",
+        "Black pepper to taste",
+        "Salt for pasta water",
+    ],
+    "Chicken Tacos": [
+        "500g chicken breast, sliced",
+        "8 small flour tortillas",
+        "1 tsp cumin",
+        "1 tsp smoked paprika",
+        "1/2 tsp chilli powder",
+        "2 limes, juiced",
+        "1 cup fresh salsa",
+        "1/2 cup sour cream",
+        "1 avocado, sliced",
+        "Fresh coriander, to serve",
+    ],
+}
+
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
+
+    async with database.AsyncSessionLocal() as db:
+        for recipe_name, ing_list in RECIPE_INGREDIENTS.items():
+            res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_name == recipe_name))
+            recipe = res.scalars().first()
+            if not recipe:
+                continue
+
+            existing = await db.execute(
+                select(models.RecipeIngredient).where(models.RecipeIngredient.recipe_id == recipe.recipe_id)
+            )
+            if existing.scalars().first():
+                continue
+
+            for ing_name in ing_list:
+                res = await db.execute(select(models.Ingredients).where(models.Ingredients.ingredient_name == ing_name))
+                ing = res.scalars().first()
+                if not ing:
+                    ing = models.Ingredients(ingredient_name=ing_name)
+                    db.add(ing)
+                    await db.commit()
+                    await db.refresh(ing)
+                db.add(models.RecipeIngredient(ingredient_id=ing.id, recipe_id=recipe.recipe_id, quantity=1, unit="ea"))
+
+        await db.commit()
 
 import json
 from datetime import datetime

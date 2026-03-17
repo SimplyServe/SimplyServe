@@ -6,6 +6,7 @@ import 'package:simplyserve/views/dashboard.dart';
 import 'package:simplyserve/views/recipes.dart';
 import 'package:simplyserve/views/settings.dart';
 import 'package:simplyserve/views/profile.dart';
+import 'package:simplyserve/views/shopping_list.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
         },
         '/settings': (context) => const SettingsView(),
         '/profile': (context) => const ProfileView(),
+        '/shopping-list': (context) => const ShoppingListView(),
       },
     );
   }
