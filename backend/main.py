@@ -2,12 +2,14 @@ from typing import Optional
 from fractions import Fraction
 import json
 import re
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import text
 from datetime import timedelta, datetime
 
 import models, schemas, auth, database
@@ -61,6 +63,7 @@ RECIPE_INGREDIENTS = {
 }
 
 VALID_UNITS = {unit.value for unit in schemas.UnitEnum}
+BASE_INGREDIENTS_FILE = Path(__file__).resolve().parent / "data" / "base_ingredients.json"
 
 UNIT_ALIASES = {
     "tsp": "tsp",
@@ -104,6 +107,10 @@ UNIT_ALIASES = {
 _LEADING_AMOUNT_PATTERN = re.compile(
     r"^\s*(?P<qty>\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)\s*(?P<unit>[A-Za-z]+)?\s+(?P<name>.+)$"
 )
+
+
+def _normalize_ingredient_name(name: str) -> str:
+    return " ".join(name.strip().lower().split())
 
 
 def _parse_quantity(value: str) -> float:
@@ -162,21 +169,117 @@ def _parse_ingredient_text(raw: str) -> dict:
 
 
 async def _find_or_create_ingredient(db: AsyncSession, ingredient_name: str) -> models.Ingredients:
+    normalized_name = _normalize_ingredient_name(ingredient_name)
     res = await db.execute(
-        select(models.Ingredients).where(models.Ingredients.ingredient_name == ingredient_name)
+        select(models.Ingredients).where(models.Ingredients.normalized_name == normalized_name)
     )
     ingredient = res.scalars().first()
     if ingredient:
+        if ingredient.ingredient_name != ingredient_name:
+            ingredient.ingredient_name = ingredient_name
+            await db.commit()
         return ingredient
 
-    ingredient = models.Ingredients(ingredient_name=ingredient_name)
+    ingredient = models.Ingredients(
+        ingredient_name=ingredient_name,
+        normalized_name=normalized_name,
+        is_base=False,
+    )
     db.add(ingredient)
     await db.commit()
     await db.refresh(ingredient)
     return ingredient
 
 
+async def _ensure_ingredient_table_columns() -> None:
+    async with engine.begin() as conn:
+        table_info = await conn.execute(text("PRAGMA table_info(ingredients)"))
+        columns = {row[1] for row in table_info.fetchall()}
+
+        if "normalized_name" not in columns:
+            await conn.execute(text("ALTER TABLE ingredients ADD COLUMN normalized_name VARCHAR"))
+        if "is_base" not in columns:
+            await conn.execute(text("ALTER TABLE ingredients ADD COLUMN is_base BOOLEAN NOT NULL DEFAULT 0"))
+
+
+async def _seed_base_ingredients_catalog(db: AsyncSession) -> None:
+    if not BASE_INGREDIENTS_FILE.exists():
+        return
+
+    raw_content = BASE_INGREDIENTS_FILE.read_text(encoding="utf-8").strip()
+    if not raw_content:
+        return
+
+    try:
+        payload = json.loads(raw_content)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Invalid JSON in base ingredients catalog") from exc
+
+    if not isinstance(payload, list):
+        raise RuntimeError("Base ingredients catalog must be a JSON array")
+
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+
+        ingredient_name = str(item.get("ingredient_name") or item.get("name") or "").strip()
+        if not ingredient_name:
+            continue
+
+        avg_calories = item.get("avg_calories")
+        avg_protein = item.get("avg_protein")
+        avg_carbs = item.get("avg_carbs")
+        avg_fat = item.get("avg_fat")
+        avg_cost = item.get("avg_cost")
+
+        if avg_calories is not None:
+            avg_calories = int(avg_calories)
+        if avg_protein is not None:
+            avg_protein = int(avg_protein)
+        if avg_carbs is not None:
+            avg_carbs = int(avg_carbs)
+        if avg_fat is not None:
+            avg_fat = int(avg_fat)
+        if avg_cost is not None:
+            avg_cost = float(avg_cost)
+
+        normalized_name = _normalize_ingredient_name(ingredient_name)
+        res = await db.execute(
+            select(models.Ingredients).where(models.Ingredients.normalized_name == normalized_name)
+        )
+        ingredient = res.scalars().first()
+
+        if ingredient:
+            ingredient.ingredient_name = ingredient_name
+            ingredient.is_base = True
+            ingredient.avg_calories = avg_calories
+            ingredient.avg_protein = avg_protein
+            ingredient.avg_carbs = avg_carbs
+            ingredient.avg_fat = avg_fat
+            ingredient.avg_cost = avg_cost
+        else:
+            ingredient = models.Ingredients(
+                ingredient_name=ingredient_name,
+                normalized_name=normalized_name,
+                is_base=True,
+                avg_calories=avg_calories,
+                avg_protein=avg_protein,
+                avg_carbs=avg_carbs,
+                avg_fat=avg_fat,
+                avg_cost=avg_cost,
+            )
+            db.add(ingredient)
+
+    await db.commit()
+
+
 async def _normalize_existing_ingredient_data(db: AsyncSession) -> None:
+    ingredients_res = await db.execute(select(models.Ingredients))
+    for ingredient in ingredients_res.scalars().all():
+        ingredient.normalized_name = _normalize_ingredient_name(ingredient.ingredient_name or "")
+        if ingredient.is_base is None:
+            ingredient.is_base = False
+
     rows_res = await db.execute(
         select(models.RecipeIngredient, models.Ingredients)
         .join(models.Ingredients, models.Ingredients.id == models.RecipeIngredient.ingredient_id)
@@ -253,7 +356,11 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
 
+    await _ensure_ingredient_table_columns()
+
     async with database.AsyncSessionLocal() as db:
+        await _seed_base_ingredients_catalog(db)
+
         for recipe_name, ing_list in RECIPE_INGREDIENTS.items():
             res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_name == recipe_name))
             recipe = res.scalars().first()
@@ -502,6 +609,7 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
 async def search_ingredients(
     q: str = "",
     limit: int = 20,
+    base_only: bool = False,
     db: AsyncSession = Depends(database.get_db),
 ):
     trimmed_query = q.strip()
@@ -510,9 +618,13 @@ async def search_ingredients(
     if limit > 50:
         limit = 50
 
-    stmt = select(models.Ingredients).order_by(models.Ingredients.ingredient_name.asc())
+    stmt = select(models.Ingredients)
+    if base_only:
+        stmt = stmt.where(models.Ingredients.is_base == True)
     if trimmed_query:
         stmt = stmt.where(models.Ingredients.ingredient_name.ilike(f"%{trimmed_query}%"))
+
+    stmt = stmt.order_by(models.Ingredients.is_base.desc(), models.Ingredients.ingredient_name.asc())
     stmt = stmt.limit(limit)
 
     result = await db.execute(stmt)

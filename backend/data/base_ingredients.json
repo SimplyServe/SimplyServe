@@ -1,0 +1,10 @@
+[ 
+	{
+		"ingredient_name": "test",
+		"avg_calories": 100,
+		"avg_protein": 10,
+		"avg_carbs": 20,
+		"avg_fat": 5,
+		"avg_cost": 1.99
+	}
+]

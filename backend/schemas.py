@@ -54,6 +54,7 @@ class RecipeIngredientItem(BaseModel):
 class IngredientSearchResult(BaseModel):
     id: int
     ingredient_name: str
+    is_base: bool = False
 
     class Config:
         from_attributes = True

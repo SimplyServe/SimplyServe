@@ -19,6 +19,8 @@ class Ingredients(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ingredient_name = Column(String, index=True)
+    normalized_name = Column(String, index=True)
+    is_base = Column(Boolean, default=False, nullable=False)
     avg_calories = Column(Integer)
     avg_protein = Column(Integer)
     avg_carbs = Column(Integer)
