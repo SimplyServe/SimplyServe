@@ -1,30 +1,30 @@
 [
 	{
 		"ingredient_name": "salmon fillet",
-		"avg_calories": 208,
-		"avg_protein": 20,
+		"avg_calories": 2.08,
+		"avg_protein": 0.2,
 		"avg_carbs": 0,
-		"avg_fat": 13,
-		"avg_cost": 3.99
+		"avg_fat": 0.13,
+		"avg_cost": 0.0399
 	},
 	{
 		"ingredient_name": "chicken breast",
-		"avg_calories": 165,
-		"avg_protein": 31,
+		"avg_calories": 1.65,
+		"avg_protein": 0.31,
 		"avg_carbs": 0,
-		"avg_fat": 4,
-		"avg_cost": 2.49
+		"avg_fat": 0.04,
+		"avg_cost": 0.0249
 	},
 	{
 		"ingredient_name": "lean beef mince",
-		"avg_calories": 217,
-		"avg_protein": 26,
+		"avg_calories": 2.17,
+		"avg_protein": 0.26,
 		"avg_carbs": 0,
-		"avg_fat": 12,
-		"avg_cost": 2.79
+		"avg_fat": 0.12,
+		"avg_cost": 0.0279
 	},
 	{
-		"ingredient_name": "eggs",
+		"ingredient_name": "egg",
 		"avg_calories": 155,
 		"avg_protein": 13,
 		"avg_carbs": 1,
@@ -33,83 +33,83 @@
 	},
 	{
 		"ingredient_name": "greek yogurt",
-		"avg_calories": 97,
-		"avg_protein": 10,
-		"avg_carbs": 4,
-		"avg_fat": 5,
-		"avg_cost": 0.89
+		"avg_calories": 0.97,
+		"avg_protein": 0.1,
+		"avg_carbs": 0.04,
+		"avg_fat": 0.05,
+		"avg_cost": 0.0089
 	},
 	{
 		"ingredient_name": "milk",
-		"avg_calories": 61,
-		"avg_protein": 3,
-		"avg_carbs": 5,
-		"avg_fat": 3,
-		"avg_cost": 0.22
+		"avg_calories": 0.61,
+		"avg_protein": 0.03,
+		"avg_carbs": 0.05,
+		"avg_fat": 0.03,
+		"avg_cost": 0.0022
 	},
 	{
 		"ingredient_name": "cheddar cheese",
-		"avg_calories": 403,
-		"avg_protein": 25,
-		"avg_carbs": 1,
-		"avg_fat": 33,
-		"avg_cost": 1.49
+		"avg_calories": 4.03,
+		"avg_protein": 0.25,
+		"avg_carbs": 0.01,
+		"avg_fat": 0.33,
+		"avg_cost": 0.0149
 	},
 	{
 		"ingredient_name": "parmesan cheese",
-		"avg_calories": 431,
-		"avg_protein": 38,
-		"avg_carbs": 4,
-		"avg_fat": 29,
-		"avg_cost": 2.29
+		"avg_calories": 4.31,
+		"avg_protein": 0.38,
+		"avg_carbs": 0.04,
+		"avg_fat": 0.29,
+		"avg_cost": 0.0229
 	},
 	{
 		"ingredient_name": "olive oil",
-		"avg_calories": 884,
+		"avg_calories": 8.84,
 		"avg_protein": 0,
 		"avg_carbs": 0,
-		"avg_fat": 100,
-		"avg_cost": 0.18
+		"avg_fat": 1,
+		"avg_cost": 0.0018
 	},
 	{
 		"ingredient_name": "butter",
-		"avg_calories": 717,
-		"avg_protein": 1,
-		"avg_carbs": 1,
-		"avg_fat": 81,
-		"avg_cost": 0.16
+		"avg_calories": 7.17,
+		"avg_protein": 0.01,
+		"avg_carbs": 0.01,
+		"avg_fat": 0.81,
+		"avg_cost": 0.0016
 	},
 	{
 		"ingredient_name": "white rice",
-		"avg_calories": 130,
-		"avg_protein": 2,
-		"avg_carbs": 28,
+		"avg_calories": 1.3,
+		"avg_protein": 0.02,
+		"avg_carbs": 0.28,
 		"avg_fat": 0,
-		"avg_cost": 0.21
+		"avg_cost": 0.0021
 	},
 	{
 		"ingredient_name": "brown rice",
-		"avg_calories": 123,
-		"avg_protein": 3,
-		"avg_carbs": 26,
-		"avg_fat": 1,
-		"avg_cost": 0.28
+		"avg_calories": 1.23,
+		"avg_protein": 0.03,
+		"avg_carbs": 0.26,
+		"avg_fat": 0.01,
+		"avg_cost": 0.0028
 	},
 	{
 		"ingredient_name": "spaghetti",
-		"avg_calories": 158,
-		"avg_protein": 6,
-		"avg_carbs": 31,
-		"avg_fat": 1,
-		"avg_cost": 0.35
+		"avg_calories": 1.58,
+		"avg_protein": 0.06,
+		"avg_carbs": 0.31,
+		"avg_fat": 0.01,
+		"avg_cost": 0.0035
 	},
 	{
 		"ingredient_name": "oats",
-		"avg_calories": 389,
-		"avg_protein": 17,
-		"avg_carbs": 66,
-		"avg_fat": 7,
-		"avg_cost": 0.19
+		"avg_calories": 3.89,
+		"avg_protein": 0.17,
+		"avg_carbs": 0.66,
+		"avg_fat": 0.07,
+		"avg_cost": 0.0019
 	},
 	{
 		"ingredient_name": "flour tortilla",
@@ -161,19 +161,19 @@
 	},
 	{
 		"ingredient_name": "spinach",
-		"avg_calories": 23,
-		"avg_protein": 3,
-		"avg_carbs": 4,
+		"avg_calories": 0.23,
+		"avg_protein": 0.03,
+		"avg_carbs": 0.04,
 		"avg_fat": 0,
-		"avg_cost": 0.99
+		"avg_cost": 0.0099
 	},
 	{
 		"ingredient_name": "broccoli",
-		"avg_calories": 35,
-		"avg_protein": 2,
-		"avg_carbs": 7,
+		"avg_calories": 0.35,
+		"avg_protein": 0.02,
+		"avg_carbs": 0.07,
 		"avg_fat": 0,
-		"avg_cost": 0.84
+		"avg_cost": 0.0084
 	},
 	{
 		"ingredient_name": "bell pepper",
@@ -225,67 +225,67 @@
 	},
 	{
 		"ingredient_name": "chickpeas",
-		"avg_calories": 164,
-		"avg_protein": 9,
-		"avg_carbs": 27,
-		"avg_fat": 3,
-		"avg_cost": 0.73
+		"avg_calories": 1.64,
+		"avg_protein": 0.09,
+		"avg_carbs": 0.27,
+		"avg_fat": 0.03,
+		"avg_cost": 0.0073
 	},
 	{
 		"ingredient_name": "black beans",
-		"avg_calories": 132,
-		"avg_protein": 9,
-		"avg_carbs": 24,
-		"avg_fat": 1,
-		"avg_cost": 0.62
+		"avg_calories": 1.32,
+		"avg_protein": 0.09,
+		"avg_carbs": 0.24,
+		"avg_fat": 0.01,
+		"avg_cost": 0.0062
 	},
 	{
 		"ingredient_name": "lentils",
-		"avg_calories": 116,
-		"avg_protein": 9,
-		"avg_carbs": 20,
+		"avg_calories": 1.16,
+		"avg_protein": 0.09,
+		"avg_carbs": 0.2,
 		"avg_fat": 0,
-		"avg_cost": 0.54
+		"avg_cost": 0.0054
 	},
 	{
 		"ingredient_name": "canned tuna",
-		"avg_calories": 132,
-		"avg_protein": 29,
+		"avg_calories": 1.32,
+		"avg_protein": 0.29,
 		"avg_carbs": 0,
-		"avg_fat": 1,
-		"avg_cost": 1.35
+		"avg_fat": 0.01,
+		"avg_cost": 0.0135
 	},
 	{
 		"ingredient_name": "tofu",
-		"avg_calories": 76,
-		"avg_protein": 8,
-		"avg_carbs": 2,
-		"avg_fat": 5,
-		"avg_cost": 1.29
+		"avg_calories": 0.76,
+		"avg_protein": 0.08,
+		"avg_carbs": 0.02,
+		"avg_fat": 0.05,
+		"avg_cost": 0.0129
 	},
 	{
 		"ingredient_name": "heavy cream",
-		"avg_calories": 340,
-		"avg_protein": 2,
-		"avg_carbs": 3,
-		"avg_fat": 36,
-		"avg_cost": 0.92
+		"avg_calories": 3.4,
+		"avg_protein": 0.02,
+		"avg_carbs": 0.03,
+		"avg_fat": 0.36,
+		"avg_cost": 0.0092
 	},
 	{
 		"ingredient_name": "sour cream",
-		"avg_calories": 193,
-		"avg_protein": 2,
-		"avg_carbs": 5,
-		"avg_fat": 19,
-		"avg_cost": 0.74
+		"avg_calories": 1.93,
+		"avg_protein": 0.02,
+		"avg_carbs": 0.05,
+		"avg_fat": 0.19,
+		"avg_cost": 0.0074
 	},
 	{
 		"ingredient_name": "sun-dried tomatoes",
-		"avg_calories": 258,
-		"avg_protein": 14,
-		"avg_carbs": 56,
-		"avg_fat": 3,
-		"avg_cost": 2.89
+		"avg_calories": 2.58,
+		"avg_protein": 0.14,
+		"avg_carbs": 0.56,
+		"avg_fat": 0.03,
+		"avg_cost": 0.0289
 	},
 	{
 		"ingredient_name": "lime",
@@ -297,11 +297,11 @@
 	},
 	{
 		"ingredient_name": "coriander",
-		"avg_calories": 23,
-		"avg_protein": 2,
-		"avg_carbs": 4,
-		"avg_fat": 1,
-		"avg_cost": 0.79
+		"avg_calories": 0.23,
+		"avg_protein": 0.02,
+		"avg_carbs": 0.04,
+		"avg_fat": 0.01,
+		"avg_cost": 0.0079
 	},
 	{
 		"ingredient_name": "salt",
@@ -309,38 +309,38 @@
 		"avg_protein": 0,
 		"avg_carbs": 0,
 		"avg_fat": 0,
-		"avg_cost": 0.02
+		"avg_cost": 0.0002
 	},
 	{
 		"ingredient_name": "black pepper",
-		"avg_calories": 251,
-		"avg_protein": 10,
-		"avg_carbs": 64,
-		"avg_fat": 3,
-		"avg_cost": 0.12
+		"avg_calories": 2.51,
+		"avg_protein": 0.1,
+		"avg_carbs": 0.64,
+		"avg_fat": 0.03,
+		"avg_cost": 0.0012
 	},
 	{
 		"ingredient_name": "italian seasoning",
-		"avg_calories": 306,
-		"avg_protein": 11,
-		"avg_carbs": 64,
-		"avg_fat": 5,
-		"avg_cost": 0.14
+		"avg_calories": 3.06,
+		"avg_protein": 0.11,
+		"avg_carbs": 0.64,
+		"avg_fat": 0.05,
+		"avg_cost": 0.0014
 	},
 	{
 		"ingredient_name": "smoked paprika",
-		"avg_calories": 282,
-		"avg_protein": 14,
-		"avg_carbs": 54,
-		"avg_fat": 13,
-		"avg_cost": 0.11
+		"avg_calories": 2.82,
+		"avg_protein": 0.14,
+		"avg_carbs": 0.54,
+		"avg_fat": 0.13,
+		"avg_cost": 0.0011
 	},
 	{
 		"ingredient_name": "cumin",
-		"avg_calories": 375,
-		"avg_protein": 18,
-		"avg_carbs": 44,
-		"avg_fat": 22,
-		"avg_cost": 0.1
+		"avg_calories": 3.75,
+		"avg_protein": 0.18,
+		"avg_carbs": 0.44,
+		"avg_fat": 0.22,
+		"avg_cost": 0.001
 	}
 ]
