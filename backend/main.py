@@ -83,12 +83,75 @@ async def startup():
                     db.add(ing)
                     await db.commit()
                     await db.refresh(ing)
-                db.add(models.RecipeIngredient(ingredient_id=ing.id, recipe_id=recipe.recipe_id, quantity=1, unit="ea"))
+                db.add(models.RecipeIngredient(ingredient_id=ing.id, recipe_id=recipe.recipe_id, quantity=1, unit="pcs"))
 
         await db.commit()
 
 import json
 from datetime import datetime
+
+
+VALID_UNITS = {unit.value for unit in schemas.UnitEnum}
+
+
+def _normalize_unit(value: Optional[str]) -> str:
+    unit = (value or "pcs").strip().lower()
+    if unit in {"ea", "piece", "pieces"}:
+        unit = "pcs"
+    if unit not in VALID_UNITS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid unit '{unit}'. Allowed values: {', '.join(sorted(VALID_UNITS))}",
+        )
+    return unit
+
+
+def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
+    try:
+        payload = json.loads(ingredients_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=422, detail="ingredients_json must be valid JSON") from exc
+
+    if not isinstance(payload, list):
+        raise HTTPException(status_code=422, detail="ingredients_json must be a JSON array")
+
+    parsed: list[dict] = []
+    seen: set[str] = set()
+    for item in payload:
+        name: Optional[str] = None
+        quantity: float = 1.0
+        unit: str = "pcs"
+
+        if isinstance(item, str):
+            name = item.strip()
+        elif isinstance(item, dict):
+            name = str(item.get("ingredient_name") or item.get("name") or "").strip()
+            quantity_value = item.get("quantity", 1)
+            try:
+                quantity = float(quantity_value)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(status_code=422, detail=f"Invalid quantity for ingredient '{name}'") from exc
+            unit = _normalize_unit(str(item.get("unit") or "pcs"))
+        else:
+            raise HTTPException(status_code=422, detail="Each ingredient must be a string or object")
+
+        if not name:
+            continue
+        if quantity <= 0:
+            raise HTTPException(status_code=422, detail=f"Quantity must be greater than 0 for ingredient '{name}'")
+
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+
+        parsed.append({
+            "ingredient_name": name,
+            "quantity": quantity,
+            "unit": unit,
+        })
+
+    return parsed
 
 async def seed_user_data(user_id: int, db: AsyncSession):
 
@@ -189,7 +252,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
-import json
 from fastapi import File, UploadFile, Form
 import os
 import uuid
@@ -211,9 +273,24 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
         tags = tag_result.scalars().all()
 
         ing_result = await db.execute(
-            select(models.Ingredients.ingredient_name).join(models.RecipeIngredient).where(models.RecipeIngredient.recipe_id == r.recipe_id)
+            select(
+                models.Ingredients.ingredient_name,
+                models.RecipeIngredient.quantity,
+                models.RecipeIngredient.unit,
+            )
+            .join(models.RecipeIngredient)
+            .where(models.RecipeIngredient.recipe_id == r.recipe_id)
         )
-        ingredients = ing_result.scalars().all()
+        ingredient_rows = ing_result.all()
+        recipe_ingredients = [
+            {
+                "ingredient_name": row[0],
+                "quantity": float(row[1] or 1),
+                "unit": _normalize_unit(row[2]),
+            }
+            for row in ingredient_rows
+        ]
+        ingredients = [ri["ingredient_name"] for ri in recipe_ingredients]
 
         recipe_dict = {
             "title": r.recipe_name or "",
@@ -226,6 +303,7 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
             "difficulty": "Medium", 
             "tags": tags,
             "ingredients": ingredients,
+            "recipe_ingredients": recipe_ingredients,
             "steps": json.loads(r.instructions) if r.instructions else [],
             "nutrition": schemas.NutritionInfo(
                 calories=r.calories or 0,
@@ -237,6 +315,28 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
         }
         recipe_responses.append(schemas.Recipe(**recipe_dict))
     return recipe_responses
+
+
+@app.get("/ingredients", response_model=list[schemas.IngredientSearchResult])
+async def search_ingredients(
+    q: str = "",
+    limit: int = 20,
+    db: AsyncSession = Depends(database.get_db),
+):
+    trimmed_query = q.strip()
+    if limit < 1:
+        limit = 1
+    if limit > 50:
+        limit = 50
+
+    stmt = select(models.Ingredients).order_by(models.Ingredients.ingredient_name.asc())
+    if trimmed_query:
+        stmt = stmt.where(models.Ingredients.ingredient_name.ilike(f"%{trimmed_query}%"))
+    stmt = stmt.limit(limit)
+
+    result = await db.execute(stmt)
+    ingredients = result.scalars().all()
+    return ingredients
 
 @app.post("/recipes", response_model=schemas.Recipe)
 async def create_recipe(
@@ -290,8 +390,9 @@ async def create_recipe(
         rt = models.RecipeTag(tag_id=tag.id, recipe_id=new_recipe.recipe_id)
         db.add(rt)
 
-    ingredients = list(set(json.loads(ingredients_json)))
-    for ing_name in ingredients:
+    parsed_ingredients = _parse_ingredient_payload(ingredients_json)
+    for ingredient in parsed_ingredients:
+        ing_name = ingredient["ingredient_name"]
         res = await db.execute(select(models.Ingredients).where(models.Ingredients.ingredient_name == ing_name))
         ing = res.scalars().first()
         if not ing:
@@ -300,10 +401,24 @@ async def create_recipe(
             await db.commit()
             await db.refresh(ing)
 
-        ri = models.RecipeIngredient(ingredient_id=ing.id, recipe_id=new_recipe.recipe_id, quantity=1, unit="ea")
+        ri = models.RecipeIngredient(
+            ingredient_id=ing.id,
+            recipe_id=new_recipe.recipe_id,
+            quantity=ingredient["quantity"],
+            unit=ingredient["unit"],
+        )
         db.add(ri)
 
     await db.commit()
+
+    recipe_ingredients = [
+        {
+            "ingredient_name": ingredient["ingredient_name"],
+            "quantity": ingredient["quantity"],
+            "unit": ingredient["unit"],
+        }
+        for ingredient in parsed_ingredients
+    ]
 
     return {
         "title": title,
@@ -315,7 +430,8 @@ async def create_recipe(
         "servings": servings,
         "difficulty": difficulty,
         "tags": tags,
-        "ingredients": ingredients,
+        "ingredients": [ingredient["ingredient_name"] for ingredient in parsed_ingredients],
+        "recipe_ingredients": recipe_ingredients,
         "steps": json.loads(steps_json),
         "nutrition": None,
         "id": new_recipe.recipe_id,

@@ -23,7 +23,8 @@ class RecipeService {
 
   Future<List<RecipeModel>> getRecipes() async {
     try {
-      final response = await _dio.get('/recipes', options: await _getAuthOptions());
+      final response =
+          await _dio.get('/recipes', options: await _getAuthOptions());
       final List<dynamic> data = response.data;
       return data.map((json) => _fromJson(json)).toList();
     } catch (e) {
@@ -32,7 +33,31 @@ class RecipeService {
     }
   }
 
-  Future<RecipeModel?> createRecipe(RecipeModel recipe, XFile? imageFile) async {
+  Future<List<String>> searchIngredients(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      return [];
+    }
+
+    try {
+      final response = await _dio.get(
+        '/ingredients',
+        queryParameters: {'q': trimmed, 'limit': 12},
+        options: await _getAuthOptions(),
+      );
+      final List<dynamic> data = response.data;
+      return data
+          .map((item) => (item['ingredient_name'] ?? '').toString())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    } catch (e) {
+      print('Error searching ingredients: $e');
+      return [];
+    }
+  }
+
+  Future<RecipeModel?> createRecipe(
+      RecipeModel recipe, XFile? imageFile) async {
     try {
       final token = await _storage.read(key: 'token');
       final Map<String, dynamic> dataMap = {
@@ -44,7 +69,8 @@ class RecipeService {
         'servings': recipe.servings,
         'difficulty': recipe.difficulty,
         'tags_json': jsonEncode(recipe.tags),
-        'ingredients_json': jsonEncode(recipe.ingredients),
+        'ingredients_json': jsonEncode(
+            recipe.ingredients.map((item) => item.toJson()).toList()),
         'steps_json': jsonEncode(recipe.steps),
       };
 
@@ -74,27 +100,41 @@ class RecipeService {
   }
 
   Future<bool> deleteRecipe(int id) async {
-     try {
-       await _dio.delete('/recipes/$id', options: await _getAuthOptions());
-       return true;
-     } catch (e) {
-       print('Error deleting recipe: $e');
-       return false;
-     }
+    try {
+      await _dio.delete('/recipes/$id', options: await _getAuthOptions());
+      return true;
+    } catch (e) {
+      print('Error deleting recipe: $e');
+      return false;
+    }
   }
 
   RecipeModel _fromJson(Map<String, dynamic> json) {
+    final List<IngredientEntry> structuredIngredients =
+        (json['recipe_ingredients'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(IngredientEntry.fromJson)
+            .where((item) => item.name.trim().isNotEmpty)
+            .toList();
+
+    final List<IngredientEntry> ingredients = structuredIngredients.isNotEmpty
+        ? structuredIngredients
+        : List<String>.from(json['ingredients'] ?? [])
+            .map(IngredientEntry.fromLegacy)
+            .toList();
+
     return RecipeModel(
       title: json['title'] ?? '',
       summary: json['summary'] ?? '',
-      imageUrl: json['image_url'] ?? 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=1200&q=80',
+      imageUrl: json['image_url'] ??
+          'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=1200&q=80',
       prepTime: json['prep_time'] ?? '',
       cookTime: json['cook_time'] ?? '',
       totalTime: json['total_time'] ?? '',
       servings: json['servings'] ?? 1,
       difficulty: json['difficulty'] ?? 'Medium',
       tags: List<String>.from(json['tags'] ?? []),
-      ingredients: List<String>.from(json['ingredients'] ?? []),
+      ingredients: ingredients,
       steps: List<String>.from(json['steps'] ?? []),
       nutrition: json['nutrition'] != null
           ? NutritionInfo(
@@ -103,7 +143,8 @@ class RecipeService {
               carbs: json['nutrition']['carbs'] ?? '0g',
               fats: json['nutrition']['fats'] ?? '0g',
             )
-          : const NutritionInfo(calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
+          : const NutritionInfo(
+              calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
       id: json['id'],
     );
   }

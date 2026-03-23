@@ -138,7 +138,7 @@ class RecipeIngredient(Base):
 
     recipe_id = Column(Integer, ForeignKey('recipe.recipe_id'), primary_key=True)
     ingredient_id = Column(Integer, ForeignKey('ingredients.id'), primary_key=True)
-    quantity = Column(Integer)
+    quantity = Column(Float)
     unit = Column(String)
 
 class Tag(Base):
