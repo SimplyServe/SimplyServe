@@ -351,6 +351,58 @@ async def _normalize_existing_ingredient_data(db: AsyncSession) -> None:
 
     await db.commit()
 
+
+def _format_grams(value: float) -> str:
+    rounded = round(value, 2)
+    if rounded.is_integer():
+        return f"{int(rounded)}g"
+    return f"{rounded:g}g"
+
+
+def _build_nutrition_info(totals: dict, servings: int) -> schemas.NutritionInfo:
+    safe_servings = max(servings, 1)
+    calories_per_serving = totals["calories"] / safe_servings
+    protein_per_serving = totals["protein"] / safe_servings
+    carbs_per_serving = totals["carbs"] / safe_servings
+    fats_per_serving = totals["fats"] / safe_servings
+
+    return schemas.NutritionInfo(
+        calories=int(round(calories_per_serving)),
+        protein=_format_grams(protein_per_serving),
+        carbs=_format_grams(carbs_per_serving),
+        fats=_format_grams(fats_per_serving),
+    )
+
+
+async def _calculate_recipe_nutrition_totals(db: AsyncSession, recipe_id: int) -> dict:
+    rows_res = await db.execute(
+        select(
+            models.RecipeIngredient.quantity,
+            models.Ingredients.avg_calories,
+            models.Ingredients.avg_protein,
+            models.Ingredients.avg_carbs,
+            models.Ingredients.avg_fat,
+        )
+        .join(models.Ingredients, models.Ingredients.id == models.RecipeIngredient.ingredient_id)
+        .where(models.RecipeIngredient.recipe_id == recipe_id)
+    )
+
+    totals = {
+        "calories": 0.0,
+        "protein": 0.0,
+        "carbs": 0.0,
+        "fats": 0.0,
+    }
+
+    for quantity, avg_calories, avg_protein, avg_carbs, avg_fat in rows_res.all():
+        qty = float(quantity or 1)
+        totals["calories"] += float(avg_calories or 0) * qty
+        totals["protein"] += float(avg_protein or 0) * qty
+        totals["carbs"] += float(avg_carbs or 0) * qty
+        totals["fats"] += float(avg_fat or 0) * qty
+
+    return totals
+
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
@@ -579,6 +631,10 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
             for row in ingredient_rows
         ]
         ingredients = [ri["ingredient_name"] for ri in recipe_ingredients]
+        nutrition = _build_nutrition_info(
+            await _calculate_recipe_nutrition_totals(db, r.recipe_id),
+            r.servings or 1,
+        )
 
         recipe_dict = {
             "title": r.recipe_name or "",
@@ -593,12 +649,7 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
             "ingredients": ingredients,
             "recipe_ingredients": recipe_ingredients,
             "steps": json.loads(r.instructions) if r.instructions else [],
-            "nutrition": schemas.NutritionInfo(
-                calories=r.calories or 0,
-                protein=f"{r.protien or 0}g",
-                carbs=f"{r.carbs or 0}g",
-                fats=f"{r.fat or 0}g"
-            ) if r.calories else None,
+            "nutrition": nutrition,
             "id": r.recipe_id,
         }
         recipe_responses.append(schemas.Recipe(**recipe_dict))
@@ -698,6 +749,13 @@ async def create_recipe(
 
     await db.commit()
 
+    totals = await _calculate_recipe_nutrition_totals(db, new_recipe.recipe_id)
+    new_recipe.calories = int(round(totals["calories"]))
+    new_recipe.protien = int(round(totals["protein"]))
+    new_recipe.carbs = int(round(totals["carbs"]))
+    new_recipe.fat = int(round(totals["fats"]))
+    await db.commit()
+
     recipe_ingredients = [
         {
             "ingredient_name": ingredient["ingredient_name"],
@@ -720,7 +778,7 @@ async def create_recipe(
         "ingredients": [ingredient["ingredient_name"] for ingredient in parsed_ingredients],
         "recipe_ingredients": recipe_ingredients,
         "steps": json.loads(steps_json),
-        "nutrition": None,
+        "nutrition": _build_nutrition_info(totals, servings),
         "id": new_recipe.recipe_id,
     }
 

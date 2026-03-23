@@ -6,5 +6,13 @@
 		"avg_carbs": 20,
 		"avg_fat": 5,
 		"avg_cost": 1.99
+	},
+	{
+		"ingredient_name": "test2",
+		"avg_calories": 1,
+		"avg_protein": 1,
+		"avg_carbs": 1,
+		"avg_fat": 1,
+		"avg_cost": 1
 	}
 ]
