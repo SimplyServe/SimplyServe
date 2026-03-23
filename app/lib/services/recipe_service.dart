@@ -99,6 +99,49 @@ class RecipeService {
     }
   }
 
+  Future<RecipeModel?> updateRecipe(
+      int id, RecipeModel recipe, XFile? imageFile) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      final Map<String, dynamic> dataMap = {
+        'title': recipe.title,
+        'summary': recipe.summary,
+        'prep_time': recipe.prepTime,
+        'cook_time': recipe.cookTime,
+        'total_time': recipe.totalTime,
+        'servings': recipe.servings,
+        'difficulty': recipe.difficulty,
+        'tags_json': jsonEncode(recipe.tags),
+        'ingredients_json': jsonEncode(
+            recipe.ingredients.map((item) => item.toJson()).toList()),
+        'steps_json': jsonEncode(recipe.steps),
+      };
+
+      if (imageFile != null) {
+        final fileName = imageFile.name;
+        final bytes = await imageFile.readAsBytes();
+        dataMap['image'] = MultipartFile.fromBytes(
+          bytes,
+          filename: fileName,
+          contentType: MediaType('image', fileName.split('.').last),
+        );
+      }
+
+      final formData = FormData.fromMap(dataMap);
+
+      final response = await _dio.put(
+        '/recipes/$id',
+        data: formData,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      return _fromJson(response.data);
+    } catch (e) {
+      print('Error updating recipe: $e');
+      return null;
+    }
+  }
+
   Future<bool> deleteRecipe(int id) async {
     try {
       await _dio.delete('/recipes/$id', options: await _getAuthOptions());

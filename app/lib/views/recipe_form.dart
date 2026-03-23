@@ -19,7 +19,9 @@ const List<String> _allowedUnits = [
 ];
 
 class RecipeFormView extends StatefulWidget {
-  const RecipeFormView({super.key});
+  final RecipeModel? existingRecipe;
+
+  const RecipeFormView({super.key, this.existingRecipe});
 
   @override
   State<RecipeFormView> createState() => _RecipeFormViewState();
@@ -42,6 +44,25 @@ class _RecipeFormViewState extends State<RecipeFormView> {
 
   final ImagePicker _picker = ImagePicker();
   final RecipeService _recipeService = RecipeService();
+
+  bool get _isEditMode => widget.existingRecipe?.id != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final recipe = widget.existingRecipe;
+    if (recipe == null) {
+      return;
+    }
+
+    _titleController.text = recipe.title;
+    _summaryController.text = recipe.summary;
+    _prepTimeController.text = recipe.prepTime;
+    _cookTimeController.text = recipe.cookTime;
+    _servingsController.text = recipe.servings.toString();
+    _stepsController.text = recipe.steps.join('\n');
+    _selectedIngredients.addAll(recipe.ingredients);
+  }
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
@@ -74,10 +95,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
         .where((s) => s.isNotEmpty)
         .toList();
 
-    final newRecipe = RecipeModel(
+    final recipePayload = RecipeModel(
       title: title,
       summary: summary,
-      imageUrl: '',
+      imageUrl: widget.existingRecipe?.imageUrl ?? '',
       prepTime: prepTime,
       cookTime: cookTime,
       totalTime: '$prepTime + $cookTime',
@@ -88,17 +109,30 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       ingredients: List<IngredientEntry>.from(_selectedIngredients),
       steps: steps,
       tags: const ['New'],
+      id: widget.existingRecipe?.id,
     );
 
-    final success = await _recipeService.createRecipe(newRecipe, _imageFile);
+    final RecipeModel? result;
+    if (_isEditMode) {
+      result = await _recipeService.updateRecipe(
+        widget.existingRecipe!.id!,
+        recipePayload,
+        _imageFile,
+      );
+    } else {
+      result = await _recipeService.createRecipe(recipePayload, _imageFile);
+    }
 
     if (mounted) {
       setState(() => _isLoading = false);
-      if (success != null) {
-        Navigator.of(context).pop(true);
+      if (result != null) {
+        Navigator.of(context).pop(result);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to post recipe')),
+          SnackBar(
+            content:
+                Text(_isEditMode ? 'Failed to update recipe' : 'Failed to post recipe'),
+          ),
         );
       }
     }
@@ -119,7 +153,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Recipe')),
+      appBar: AppBar(title: Text(_isEditMode ? 'Edit Recipe' : 'Create Recipe')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -255,13 +289,22 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                             title: Text(ingredient.name),
                             subtitle: Text(
                                 '${ingredient.quantity} ${ingredient.unit}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () {
-                                setState(() {
-                                  _selectedIngredients.removeAt(index);
-                                });
-                              },
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () => _editIngredient(index),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedIngredients.removeAt(index);
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -282,9 +325,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF74BC42)),
                         onPressed: _submit,
-                        child: const Text('Post Recipe',
-                            style:
-                                TextStyle(color: Colors.white, fontSize: 16)),
+                        child: Text(
+                          _isEditMode ? 'Save Changes' : 'Post Recipe',
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                        ),
                       ),
                     ),
                   ],
@@ -369,10 +413,36 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     });
   }
 
-  Future<IngredientEntry?> _showIngredientDetailDialog(String ingredientName) {
-    final quantityController = TextEditingController(text: '1');
+  Future<void> _editIngredient(int index) async {
+    final current = _selectedIngredients[index];
+    final IngredientEntry? updated = await _showIngredientDetailDialog(
+      current.name,
+      initialIngredient: current,
+    );
+    if (updated == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _selectedIngredients[index] = updated;
+    });
+  }
+
+  Future<IngredientEntry?> _showIngredientDetailDialog(
+    String ingredientName, {
+    IngredientEntry? initialIngredient,
+  }) {
+    final nameController = TextEditingController(
+      text: initialIngredient?.name ?? ingredientName,
+    );
+    final quantityController = TextEditingController(
+      text: (initialIngredient?.quantity ?? 1).toString(),
+    );
     final formKey = GlobalKey<FormState>();
-    String selectedUnit = _allowedUnits.first;
+    final initialUnit = (initialIngredient?.unit ?? _allowedUnits.first)
+        .toLowerCase();
+    String selectedUnit =
+        _allowedUnits.contains(initialUnit) ? initialUnit : _allowedUnits.first;
 
     return showDialog<IngredientEntry>(
       context: context,
@@ -380,12 +450,26 @@ class _RecipeFormViewState extends State<RecipeFormView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Add $ingredientName'),
+              title: Text(initialIngredient == null ? 'Add $ingredientName' : 'Edit Ingredient'),
               content: Form(
                 key: formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ingredient',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Enter an ingredient name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: quantityController,
                       keyboardType:
@@ -404,7 +488,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedUnit,
+                      initialValue: selectedUnit,
                       items: _allowedUnits
                           .map((unit) => DropdownMenuItem<String>(
                               value: unit, child: Text(unit)))
@@ -437,13 +521,13 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         double.parse(quantityController.text.trim());
                     Navigator.of(context).pop(
                       IngredientEntry(
-                        name: ingredientName,
+                        name: nameController.text.trim(),
                         quantity: quantity,
                         unit: selectedUnit,
                       ),
                     );
                   },
-                  child: const Text('Add'),
+                  child: Text(initialIngredient == null ? 'Add' : 'Save'),
                 ),
               ],
             );

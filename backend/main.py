@@ -782,6 +782,111 @@ async def create_recipe(
         "id": new_recipe.recipe_id,
     }
 
+
+@app.put("/recipes/{recipe_id}", response_model=schemas.Recipe)
+async def update_recipe(
+    recipe_id: int,
+    db: AsyncSession = Depends(database.get_db),
+    title: str = Form(...),
+    summary: str = Form(...),
+    prep_time: str = Form(""),
+    cook_time: str = Form(""),
+    total_time: str = Form(""),
+    servings: int = Form(1),
+    difficulty: str = Form(""),
+    tags_json: str = Form("[]"),
+    ingredients_json: str = Form("[]"),
+    steps_json: str = Form("[]"),
+    image: Optional[UploadFile] = File(None),
+):
+    recipe_res = await db.execute(
+        select(models.Recipe).where(models.Recipe.recipe_id == recipe_id)
+    )
+    recipe = recipe_res.scalars().first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    image_url = recipe.image_url
+    if image:
+        ext = image.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as buffer:
+            buffer.write(await image.read())
+        image_url = f"http://localhost:8000/uploads/{filename}"
+
+    recipe.recipe_name = title
+    recipe.summary = summary
+    recipe.prep_time = int(prep_time.split()[0]) if prep_time and prep_time.split()[0].isdigit() else 0
+    recipe.cook_time = int(cook_time.split()[0]) if cook_time and cook_time.split()[0].isdigit() else 0
+    recipe.servings = servings
+    recipe.image_url = image_url
+    recipe.instructions = steps_json
+
+    await db.execute(models.RecipeTag.__table__.delete().where(models.RecipeTag.recipe_id == recipe_id))
+    await db.execute(
+        models.RecipeIngredient.__table__.delete().where(models.RecipeIngredient.recipe_id == recipe_id)
+    )
+
+    tags = list(set(json.loads(tags_json)))
+    for tag_name in tags:
+        res = await db.execute(select(models.Tag).where(models.Tag.tag_name == tag_name))
+        tag = res.scalars().first()
+        if not tag:
+            tag = models.Tag(tag_name=tag_name)
+            db.add(tag)
+            await db.commit()
+            await db.refresh(tag)
+
+        db.add(models.RecipeTag(tag_id=tag.id, recipe_id=recipe_id))
+
+    parsed_ingredients = _parse_ingredient_payload(ingredients_json)
+    for ingredient in parsed_ingredients:
+        ing = await _find_or_create_ingredient(db, ingredient["ingredient_name"])
+        db.add(
+            models.RecipeIngredient(
+                ingredient_id=ing.id,
+                recipe_id=recipe_id,
+                quantity=ingredient["quantity"],
+                unit=ingredient["unit"],
+            )
+        )
+
+    await db.commit()
+
+    totals = await _calculate_recipe_nutrition_totals(db, recipe_id)
+    recipe.calories = int(round(totals["calories"]))
+    recipe.protien = int(round(totals["protein"]))
+    recipe.carbs = int(round(totals["carbs"]))
+    recipe.fat = int(round(totals["fats"]))
+    await db.commit()
+
+    recipe_ingredients = [
+        {
+            "ingredient_name": ingredient["ingredient_name"],
+            "quantity": ingredient["quantity"],
+            "unit": ingredient["unit"],
+        }
+        for ingredient in parsed_ingredients
+    ]
+
+    return {
+        "title": title,
+        "summary": summary,
+        "image_url": image_url,
+        "prep_time": prep_time,
+        "cook_time": cook_time,
+        "total_time": total_time,
+        "servings": servings,
+        "difficulty": difficulty,
+        "tags": tags,
+        "ingredients": [ingredient["ingredient_name"] for ingredient in parsed_ingredients],
+        "recipe_ingredients": recipe_ingredients,
+        "steps": json.loads(steps_json),
+        "nutrition": _build_nutrition_info(totals, servings),
+        "id": recipe_id,
+    }
+
 @app.delete("/recipes/{recipe_id}")
 async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_db)):
     res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_id == recipe_id))

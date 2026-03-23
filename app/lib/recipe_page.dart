@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
+import 'package:simplyserve/views/recipe_form.dart';
 
 class IngredientEntry {
   final String name;
@@ -96,11 +97,18 @@ class RecipePage extends StatefulWidget {
 
 class _RecipePageState extends State<RecipePage> {
   bool _isFavourited = false;
+  RecipeModel? _currentRecipe;
 
   static const Color _brand = Color(0xFF74BC42);
 
+  @override
+  void initState() {
+    super.initState();
+    _currentRecipe = widget.recipe;
+  }
+
   RecipeModel get _recipe =>
-      widget.recipe ??
+      _currentRecipe ??
       const RecipeModel(
         title: 'Spaghetti Bolognese',
         summary:
@@ -241,6 +249,31 @@ class _RecipePageState extends State<RecipePage> {
         ),
       ),
       actions: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: _CircleIconButton(
+            icon: Icons.edit_outlined,
+            iconColor: Colors.black87,
+            onTap: () async {
+              if (_recipe.id == null) {
+                return;
+              }
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (c) => RecipeFormView(existingRecipe: _recipe),
+                ),
+              );
+
+              if (updated is RecipeModel && mounted) {
+                setState(() {
+                  _currentRecipe = updated;
+                });
+              }
+            },
+            tooltip: 'Edit Recipe',
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: _CircleIconButton(
