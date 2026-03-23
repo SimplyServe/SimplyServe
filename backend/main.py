@@ -1,11 +1,14 @@
 from typing import Optional
+from fractions import Fraction
+import json
+import re
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import models, schemas, auth, database
 from database import engine
@@ -57,6 +60,168 @@ RECIPE_INGREDIENTS = {
     ],
 }
 
+VALID_UNITS = {unit.value for unit in schemas.UnitEnum}
+
+UNIT_ALIASES = {
+    "tsp": "tsp",
+    "teaspoon": "tsp",
+    "teaspoons": "tsp",
+    "tbsp": "tbsp",
+    "tablespoon": "tbsp",
+    "tablespoons": "tbsp",
+    "cup": "cup",
+    "cups": "cup",
+    "ml": "ml",
+    "milliliter": "ml",
+    "milliliters": "ml",
+    "millilitre": "ml",
+    "millilitres": "ml",
+    "l": "l",
+    "liter": "l",
+    "liters": "l",
+    "litre": "l",
+    "litres": "l",
+    "g": "g",
+    "gram": "g",
+    "grams": "g",
+    "kg": "kg",
+    "kilogram": "kg",
+    "kilograms": "kg",
+    "oz": "oz",
+    "ounce": "oz",
+    "ounces": "oz",
+    "lb": "lb",
+    "lbs": "lb",
+    "pound": "lb",
+    "pounds": "lb",
+    "pcs": "pcs",
+    "pc": "pcs",
+    "piece": "pcs",
+    "pieces": "pcs",
+    "ea": "pcs",
+}
+
+_LEADING_AMOUNT_PATTERN = re.compile(
+    r"^\s*(?P<qty>\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)\s*(?P<unit>[A-Za-z]+)?\s+(?P<name>.+)$"
+)
+
+
+def _parse_quantity(value: str) -> float:
+    cleaned = value.strip()
+    if " " in cleaned and "/" in cleaned:
+        whole, fraction = cleaned.split(" ", 1)
+        return float(int(whole) + Fraction(fraction))
+    if "/" in cleaned:
+        return float(Fraction(cleaned))
+    return float(cleaned)
+
+
+def _normalize_unit(value: Optional[str]) -> str:
+    unit = (value or "pcs").strip().lower()
+    canonical = UNIT_ALIASES.get(unit)
+    if canonical is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid unit '{unit}'. Allowed values: {', '.join(sorted(VALID_UNITS))}",
+        )
+    return canonical
+
+
+def _parse_ingredient_text(raw: str) -> dict:
+    text = raw.strip()
+    if not text:
+        return {"ingredient_name": "", "quantity": 1.0, "unit": "pcs", "parsed_prefix": False}
+
+    match = _LEADING_AMOUNT_PATTERN.match(text)
+    if not match:
+        return {
+            "ingredient_name": text,
+            "quantity": 1.0,
+            "unit": "pcs",
+            "parsed_prefix": False,
+        }
+
+    quantity = _parse_quantity(match.group("qty"))
+    unit_token = (match.group("unit") or "").lower()
+    name_tail = match.group("name").strip()
+    canonical_unit = UNIT_ALIASES.get(unit_token)
+
+    if canonical_unit:
+        ingredient_name = name_tail
+        unit = canonical_unit
+    else:
+        ingredient_name = f"{unit_token} {name_tail}".strip() if unit_token else name_tail
+        unit = "pcs"
+
+    return {
+        "ingredient_name": ingredient_name,
+        "quantity": quantity,
+        "unit": unit,
+        "parsed_prefix": True,
+    }
+
+
+async def _find_or_create_ingredient(db: AsyncSession, ingredient_name: str) -> models.Ingredients:
+    res = await db.execute(
+        select(models.Ingredients).where(models.Ingredients.ingredient_name == ingredient_name)
+    )
+    ingredient = res.scalars().first()
+    if ingredient:
+        return ingredient
+
+    ingredient = models.Ingredients(ingredient_name=ingredient_name)
+    db.add(ingredient)
+    await db.commit()
+    await db.refresh(ingredient)
+    return ingredient
+
+
+async def _normalize_existing_ingredient_data(db: AsyncSession) -> None:
+    rows_res = await db.execute(
+        select(models.RecipeIngredient, models.Ingredients)
+        .join(models.Ingredients, models.Ingredients.id == models.RecipeIngredient.ingredient_id)
+    )
+    rows = rows_res.all()
+
+    for recipe_ingredient, ingredient in rows:
+        parsed = _parse_ingredient_text(ingredient.ingredient_name or "")
+        if not parsed["parsed_prefix"]:
+            continue
+
+        target_name = parsed["ingredient_name"]
+        if not target_name:
+            continue
+
+        target_ingredient = await _find_or_create_ingredient(db, target_name)
+
+        if target_ingredient.id != recipe_ingredient.ingredient_id:
+            dup_res = await db.execute(
+                select(models.RecipeIngredient).where(
+                    models.RecipeIngredient.recipe_id == recipe_ingredient.recipe_id,
+                    models.RecipeIngredient.ingredient_id == target_ingredient.id,
+                )
+            )
+            duplicate = dup_res.scalars().first()
+            if duplicate:
+                duplicate_unit = (duplicate.unit or "pcs").lower()
+                if (duplicate.quantity is None or float(duplicate.quantity) == 1.0) and duplicate_unit in {
+                    "pcs",
+                    "ea",
+                    "piece",
+                    "pieces",
+                }:
+                    duplicate.quantity = parsed["quantity"]
+                    duplicate.unit = parsed["unit"]
+                await db.delete(recipe_ingredient)
+                continue
+
+            recipe_ingredient.ingredient_id = target_ingredient.id
+
+        recipe_ingredient.quantity = parsed["quantity"]
+        recipe_ingredient.unit = parsed["unit"]
+
+    await db.commit()
+
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
@@ -75,35 +240,22 @@ async def startup():
             if existing.scalars().first():
                 continue
 
-            for ing_name in ing_list:
-                res = await db.execute(select(models.Ingredients).where(models.Ingredients.ingredient_name == ing_name))
-                ing = res.scalars().first()
-                if not ing:
-                    ing = models.Ingredients(ingredient_name=ing_name)
-                    db.add(ing)
-                    await db.commit()
-                    await db.refresh(ing)
-                db.add(models.RecipeIngredient(ingredient_id=ing.id, recipe_id=recipe.recipe_id, quantity=1, unit="pcs"))
+            for raw_ingredient in ing_list:
+                parsed = _parse_ingredient_text(raw_ingredient)
+                ing = await _find_or_create_ingredient(db, parsed["ingredient_name"])
+                db.add(
+                    models.RecipeIngredient(
+                        ingredient_id=ing.id,
+                        recipe_id=recipe.recipe_id,
+                        quantity=parsed["quantity"],
+                        unit=parsed["unit"],
+                    )
+                )
 
         await db.commit()
 
-import json
-from datetime import datetime
-
-
-VALID_UNITS = {unit.value for unit in schemas.UnitEnum}
-
-
-def _normalize_unit(value: Optional[str]) -> str:
-    unit = (value or "pcs").strip().lower()
-    if unit in {"ea", "piece", "pieces"}:
-        unit = "pcs"
-    if unit not in VALID_UNITS:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid unit '{unit}'. Allowed values: {', '.join(sorted(VALID_UNITS))}",
-        )
-    return unit
+        # Correct legacy rows where amount/unit were embedded in ingredient_name.
+        await _normalize_existing_ingredient_data(db)
 
 
 def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
@@ -123,7 +275,10 @@ def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
         unit: str = "pcs"
 
         if isinstance(item, str):
-            name = item.strip()
+            parsed_item = _parse_ingredient_text(item)
+            name = parsed_item["ingredient_name"]
+            quantity = parsed_item["quantity"]
+            unit = parsed_item["unit"]
         elif isinstance(item, dict):
             name = str(item.get("ingredient_name") or item.get("name") or "").strip()
             quantity_value = item.get("quantity", 1)
@@ -393,13 +548,7 @@ async def create_recipe(
     parsed_ingredients = _parse_ingredient_payload(ingredients_json)
     for ingredient in parsed_ingredients:
         ing_name = ingredient["ingredient_name"]
-        res = await db.execute(select(models.Ingredients).where(models.Ingredients.ingredient_name == ing_name))
-        ing = res.scalars().first()
-        if not ing:
-            ing = models.Ingredients(ingredient_name=ing_name)
-            db.add(ing)
-            await db.commit()
-            await db.refresh(ing)
+        ing = await _find_or_create_ingredient(db, ing_name)
 
         ri = models.RecipeIngredient(
             ingredient_id=ing.id,
