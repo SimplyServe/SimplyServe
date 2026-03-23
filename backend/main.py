@@ -220,6 +220,32 @@ async def _normalize_existing_ingredient_data(db: AsyncSession) -> None:
         recipe_ingredient.quantity = parsed["quantity"]
         recipe_ingredient.unit = parsed["unit"]
 
+    all_ingredients_res = await db.execute(select(models.Ingredients))
+    all_ingredients = all_ingredients_res.scalars().all()
+    for ingredient in all_ingredients:
+        parsed = _parse_ingredient_text(ingredient.ingredient_name or "")
+        if not parsed["parsed_prefix"]:
+            continue
+
+        has_recipe_ref_res = await db.execute(
+            select(models.RecipeIngredient).where(models.RecipeIngredient.ingredient_id == ingredient.id)
+        )
+        has_shopping_ref_res = await db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.ingredient_id == ingredient.id
+            )
+        )
+        has_pantry_ref_res = await db.execute(
+            select(models.UserPantry).where(models.UserPantry.ingredient_id == ingredient.id)
+        )
+
+        if (
+            has_recipe_ref_res.scalars().first() is None
+            and has_shopping_ref_res.scalars().first() is None
+            and has_pantry_ref_res.scalars().first() is None
+        ):
+            await db.delete(ingredient)
+
     await db.commit()
 
 @app.on_event("startup")
