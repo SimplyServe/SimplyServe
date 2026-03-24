@@ -309,32 +309,44 @@ class _RecipePageState extends State<RecipePage> {
             bottomLeft: Radius.circular(24),
             bottomRight: Radius.circular(24),
           ),
-          child: Image.network(
-            _recipe.imageUrl,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: const Color(0xFFE8F5E9),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: _brand,
+          child: _recipe.imageUrl.startsWith('assets/')
+              ? Image.asset(
+                  _recipe.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: const Color(0xFFE8F5E9),
+                    child: const Center(
+                      child: Icon(Icons.broken_image_outlined,
+                          size: 64, color: Colors.grey),
+                    ),
+                  ),
+                )
+              : Image.network(
+                  _recipe.imageUrl,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: const Color(0xFFE8F5E9),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          color: _brand,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => Container(
+                    color: const Color(0xFFE8F5E9),
+                    child: const Center(
+                      child: Icon(Icons.broken_image_outlined,
+                          size: 64, color: Colors.grey),
+                    ),
                   ),
                 ),
-              );
-            },
-            errorBuilder: (_, __, ___) => Container(
-              color: const Color(0xFFE8F5E9),
-              child: const Center(
-                child: Icon(Icons.broken_image_outlined,
-                    size: 64, color: Colors.grey),
-              ),
-            ),
-          ),
         ),
       ),
     );
