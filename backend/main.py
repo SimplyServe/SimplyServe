@@ -9,6 +9,7 @@ from datetime import timedelta
 
 import models, schemas, auth, database
 from database import engine
+from recipe_ingredients import RECIPE_INGREDIENTS
 
 app = FastAPI()
 
@@ -19,43 +20,6 @@ app.add_middleware(
     allow_methods=["*"],  
     allow_headers=["*"],  
 )
-
-RECIPE_INGREDIENTS = {
-    "Tuscan Salmon": [
-        "2 salmon fillets",
-        "1 cup heavy cream",
-        "1 cup fresh spinach",
-        "1/2 cup sun-dried tomatoes",
-        "4 garlic cloves, minced",
-        "1 tbsp olive oil",
-        "1 tsp Italian seasoning",
-        "Salt and pepper to taste",
-        "Grated Parmesan cheese, to serve",
-    ],
-    "Carbonara": [
-        "400g spaghetti",
-        "200g pancetta or guanciale",
-        "4 large eggs",
-        "100g Pecorino Romano, grated",
-        "50g Parmesan, grated",
-        "2 garlic cloves",
-        "2 tbsp olive oil",
-        "Black pepper to taste",
-        "Salt for pasta water",
-    ],
-    "Chicken Tacos": [
-        "500g chicken breast, sliced",
-        "8 small flour tortillas",
-        "1 tsp cumin",
-        "1 tsp smoked paprika",
-        "1/2 tsp chilli powder",
-        "2 limes, juiced",
-        "1 cup fresh salsa",
-        "1/2 cup sour cream",
-        "1 avocado, sliced",
-        "Fresh coriander, to serve",
-    ],
-}
 
 @app.on_event("startup")
 async def startup():

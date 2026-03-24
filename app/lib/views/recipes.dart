@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
@@ -77,13 +79,79 @@ class _RecipesViewState extends State<RecipesView> {
     _fetchRecipes();
   }
 
+  // Fallback ingredients sourced from assets/data/recipe_ingredients.json
+  static const _wrapIngredientsFallback = [
+    '2 chicken breasts, grilled and sliced',
+    '4 large flour tortillas',
+    '1 cup romaine lettuce, shredded',
+    '1 tomato, diced',
+    '1/2 red onion, thinly sliced',
+    '1/2 cup cheddar cheese, shredded',
+    '1/4 cup ranch dressing',
+    '1 tbsp olive oil',
+    '1 tsp garlic powder',
+    'Salt and pepper to taste',
+  ];
+
+  Future<List<String>> _loadWrapIngredients() async {
+    try {
+      final jsonStr = await rootBundle
+          .loadString('assets/data/recipe_ingredients.json');
+      final Map<String, dynamic> data = json.decode(jsonStr);
+      final raw = data['American Grilled Chicken Wrap'];
+      if (raw != null) return List<String>.from(raw as List);
+    } catch (_) {}
+    return _wrapIngredientsFallback;
+  }
+
   Future<void> _fetchRecipes() async {
     setState(() => _isLoading = true);
-    final recipes = await _recipeService.getRecipes();
+
+    List<RecipeModel> apiRecipes = [];
+    try {
+      apiRecipes = await _recipeService.getRecipes();
+    } catch (_) {}
+
+    List<String> wrapIngredients = [];
+    try {
+      wrapIngredients = await _loadWrapIngredients();
+    } catch (_) {}
+
+    final wrapRecipe = RecipeModel(
+      title: 'American Grilled Chicken Wrap',
+      summary:
+          'A classic American-style wrap packed with juicy grilled chicken, crisp romaine, cheddar, and creamy ranch dressing — ready in under 30 minutes.',
+      imageUrl: 'assets/images/American Grilled Chicken Wrap.png',
+      prepTime: '10 mins',
+      cookTime: '15 mins',
+      totalTime: '25 mins',
+      servings: 4,
+      difficulty: 'Easy',
+      nutrition: const NutritionInfo(
+        calories: 480,
+        protein: '38g',
+        carbs: '34g',
+        fats: '18g',
+      ),
+      ingredients: wrapIngredients,
+      steps: [
+        'Season chicken breasts with garlic powder, salt, and pepper. Brush with olive oil.',
+        'Grill chicken over medium-high heat for 6–7 minutes per side until cooked through. Rest for 5 minutes, then slice.',
+        'Warm the flour tortillas in a dry pan or microwave for 20 seconds each.',
+        'Lay out each tortilla and drizzle with ranch dressing.',
+        'Top with shredded romaine, diced tomato, red onion, cheddar cheese, and sliced chicken.',
+        'Fold in the sides, then roll up tightly. Slice in half and serve immediately.',
+      ],
+      tags: ['High Protein'],
+    );
+
     if (mounted) {
       setState(() {
         _allRecipes.clear();
-        _allRecipes.addAll(recipes);
+        _allRecipes.addAll(apiRecipes);
+        if (!_allRecipes.any((r) => r.title == wrapRecipe.title)) {
+          _allRecipes.insert(0, wrapRecipe);
+        }
         _isLoading = false;
       });
     }
@@ -560,29 +628,41 @@ class _RecipeCard extends StatelessWidget {
             SizedBox(
               height: 180,
               width: double.infinity,
-              child: Image.network(
-                recipe.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    color: const Color(0xFFE8F5E9),
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF74BC42),
-                        strokeWidth: 2,
+              child: recipe.imageUrl.startsWith('assets/')
+                  ? Image.asset(
+                      recipe.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: const Color(0xFFE8F5E9),
+                        child: const Center(
+                          child: Icon(Icons.broken_image_outlined,
+                              size: 48, color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  : Image.network(
+                      recipe.imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          color: const Color(0xFFE8F5E9),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Color(0xFF74BC42),
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        color: const Color(0xFFE8F5E9),
+                        child: const Center(
+                          child: Icon(Icons.broken_image_outlined,
+                              size: 48, color: Colors.grey),
+                        ),
                       ),
                     ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Container(
-                  color: const Color(0xFFE8F5E9),
-                  child: const Center(
-                    child: Icon(Icons.broken_image_outlined,
-                        size: 48, color: Colors.grey),
-                  ),
-                ),
-              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
