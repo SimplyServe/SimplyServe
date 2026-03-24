@@ -1,6 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
+import 'package:simplyserve/views/recipe_form.dart';
+
+class IngredientEntry {
+  final String name;
+  final double quantity;
+  final String unit;
+
+  const IngredientEntry({
+    required this.name,
+    required this.quantity,
+    required this.unit,
+  });
+
+  String get displayLabel {
+    final quantityLabel = quantity == quantity.roundToDouble()
+        ? quantity.toStringAsFixed(0)
+        : quantity.toString();
+    return '$quantityLabel $unit $name';
+  }
+
+  Map<String, dynamic> toJson() => {
+        'ingredient_name': name,
+        'quantity': quantity,
+        'unit': unit,
+      };
+
+  factory IngredientEntry.fromJson(Map<String, dynamic> json) {
+    return IngredientEntry(
+      name: (json['ingredient_name'] ?? json['name'] ?? '').toString(),
+      quantity: (json['quantity'] as num?)?.toDouble() ?? 1,
+      unit: (json['unit'] ?? 'pcs').toString(),
+    );
+  }
+
+  factory IngredientEntry.fromLegacy(String ingredient) {
+    return IngredientEntry(name: ingredient, quantity: 1, unit: 'pcs');
+  }
+}
 
 class RecipeModel {
   final String title;
@@ -12,7 +50,7 @@ class RecipeModel {
   final int servings;
   final String difficulty;
   final NutritionInfo nutrition;
-  final List<String> ingredients;
+  final List<IngredientEntry> ingredients;
   final List<String> steps;
   final List<String> tags;
   final int? id;
@@ -59,11 +97,18 @@ class RecipePage extends StatefulWidget {
 
 class _RecipePageState extends State<RecipePage> {
   bool _isFavourited = false;
+  RecipeModel? _currentRecipe;
 
   static const Color _brand = Color(0xFF74BC42);
 
+  @override
+  void initState() {
+    super.initState();
+    _currentRecipe = widget.recipe;
+  }
+
   RecipeModel get _recipe =>
-      widget.recipe ??
+      _currentRecipe ??
       const RecipeModel(
         title: 'Spaghetti Bolognese',
         summary:
@@ -82,16 +127,22 @@ class _RecipePageState extends State<RecipePage> {
           fats: '20g',
         ),
         ingredients: [
-          '400g spaghetti',
-          '2 tbsp olive oil',
-          '1 onion, finely chopped',
-          '2 garlic cloves, minced',
-          '500g ground beef',
-          '400g canned tomatoes',
-          '2 tbsp tomato paste',
-          '1 tsp dried oregano',
-          'Salt and pepper to taste',
-          'Grated Parmesan cheese, to serve',
+          IngredientEntry(name: 'spaghetti', quantity: 400, unit: 'g'),
+          IngredientEntry(name: 'olive oil', quantity: 2, unit: 'tbsp'),
+          IngredientEntry(
+              name: 'onion, finely chopped', quantity: 1, unit: 'pcs'),
+          IngredientEntry(
+              name: 'garlic cloves, minced', quantity: 2, unit: 'pcs'),
+          IngredientEntry(name: 'ground beef', quantity: 500, unit: 'g'),
+          IngredientEntry(name: 'canned tomatoes', quantity: 400, unit: 'g'),
+          IngredientEntry(name: 'tomato paste', quantity: 2, unit: 'tbsp'),
+          IngredientEntry(name: 'dried oregano', quantity: 1, unit: 'tsp'),
+          IngredientEntry(
+              name: 'salt and pepper to taste', quantity: 1, unit: 'pcs'),
+          IngredientEntry(
+              name: 'grated Parmesan cheese, to serve',
+              quantity: 1,
+              unit: 'pcs'),
         ],
         steps: [
           'Cook spaghetti according to package instructions. Drain and set aside.',
@@ -111,7 +162,11 @@ class _RecipePageState extends State<RecipePage> {
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
           child: ElevatedButton.icon(
             onPressed: () {
-              ShoppingListService().addIngredients(_recipe.ingredients);
+              ShoppingListService().addIngredients(
+                _recipe.ingredients
+                    .map((ingredient) => ingredient.displayLabel)
+                    .toList(),
+              );
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Items added to shopping list successfully!'),
@@ -194,6 +249,31 @@ class _RecipePageState extends State<RecipePage> {
         ),
       ),
       actions: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: _CircleIconButton(
+            icon: Icons.edit_outlined,
+            iconColor: Colors.black87,
+            onTap: () async {
+              if (_recipe.id == null) {
+                return;
+              }
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (c) => RecipeFormView(existingRecipe: _recipe),
+                ),
+              );
+
+              if (updated is RecipeModel && mounted) {
+                setState(() {
+                  _currentRecipe = updated;
+                });
+              }
+            },
+            tooltip: 'Edit Recipe',
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: _CircleIconButton(
@@ -608,7 +688,7 @@ class _NutritionCard extends StatelessWidget {
 }
 
 class _IngredientsList extends StatelessWidget {
-  final List<String> ingredients;
+  final List<IngredientEntry> ingredients;
 
   const _IngredientsList({required this.ingredients});
 
@@ -653,7 +733,7 @@ class _IngredientsList extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    ingredients[index],
+                    ingredients[index].displayLabel,
                     style: const TextStyle(
                         fontSize: 14, height: 1.5, color: Color(0xFF333333)),
                   ),

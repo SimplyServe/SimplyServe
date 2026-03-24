@@ -209,11 +209,11 @@ class _RecipesViewState extends State<RecipesView> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF74BC42),
         onPressed: () async {
-          final added = await Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (c) => const RecipeFormView()),
           );
-          if (added == true) {
+          if (result is RecipeModel) {
             _fetchRecipes();
           }
         },

@@ -1,5 +1,19 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from enum import Enum
+
+
+class UnitEnum(str, Enum):
+    tsp = "tsp"
+    tbsp = "tbsp"
+    cup = "cup"
+    ml = "ml"
+    l = "l"
+    g = "g"
+    kg = "kg"
+    oz = "oz"
+    lb = "lb"
+    pcs = "pcs"
 
 class Token(BaseModel):
     access_token: str
@@ -30,6 +44,21 @@ class NutritionInfo(BaseModel):
     carbs: str
     fats: str
 
+
+class RecipeIngredientItem(BaseModel):
+    ingredient_name: str
+    quantity: float
+    unit: UnitEnum
+
+
+class IngredientSearchResult(BaseModel):
+    id: int
+    ingredient_name: str
+    is_base: bool = False
+
+    class Config:
+        from_attributes = True
+
 class RecipeBase(BaseModel):
     title: str
     summary: str
@@ -41,6 +70,7 @@ class RecipeBase(BaseModel):
     difficulty: str
     tags: list[str] = []
     ingredients: list[str] = []
+    recipe_ingredients: list[RecipeIngredientItem] = []
     steps: list[str] = []
     nutrition: Optional[NutritionInfo] = None
 

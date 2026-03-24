@@ -1,11 +1,16 @@
 from typing import Optional
+from fractions import Fraction
+import json
+import re
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import timedelta
+from sqlalchemy import text
+from datetime import timedelta, datetime
 
 import models, schemas, auth, database
 from database import engine
@@ -26,7 +31,11 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
 
+    await _ensure_ingredient_table_columns()
+
     async with database.AsyncSessionLocal() as db:
+        await _seed_base_ingredients_catalog(db)
+
         for recipe_name, ing_list in RECIPE_INGREDIENTS.items():
             res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_name == recipe_name))
             recipe = res.scalars().first()
@@ -39,20 +48,73 @@ async def startup():
             if existing.scalars().first():
                 continue
 
-            for ing_name in ing_list:
-                res = await db.execute(select(models.Ingredients).where(models.Ingredients.ingredient_name == ing_name))
-                ing = res.scalars().first()
-                if not ing:
-                    ing = models.Ingredients(ingredient_name=ing_name)
-                    db.add(ing)
-                    await db.commit()
-                    await db.refresh(ing)
-                db.add(models.RecipeIngredient(ingredient_id=ing.id, recipe_id=recipe.recipe_id, quantity=1, unit="ea"))
+            for raw_ingredient in ing_list:
+                parsed = _parse_ingredient_text(raw_ingredient)
+                ing = await _find_or_create_ingredient(db, parsed["ingredient_name"])
+                db.add(
+                    models.RecipeIngredient(
+                        ingredient_id=ing.id,
+                        recipe_id=recipe.recipe_id,
+                        quantity=parsed["quantity"],
+                        unit=parsed["unit"],
+                    )
+                )
 
         await db.commit()
 
-import json
-from datetime import datetime
+        # Correct legacy rows where amount/unit were embedded in ingredient_name.
+        await _normalize_existing_ingredient_data(db)
+
+
+def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
+    try:
+        payload = json.loads(ingredients_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=422, detail="ingredients_json must be valid JSON") from exc
+
+    if not isinstance(payload, list):
+        raise HTTPException(status_code=422, detail="ingredients_json must be a JSON array")
+
+    parsed: list[dict] = []
+    seen: set[str] = set()
+    for item in payload:
+        name: Optional[str] = None
+        quantity: float = 1.0
+        unit: str = "pcs"
+
+        if isinstance(item, str):
+            parsed_item = _parse_ingredient_text(item)
+            name = parsed_item["ingredient_name"]
+            quantity = parsed_item["quantity"]
+            unit = parsed_item["unit"]
+        elif isinstance(item, dict):
+            name = str(item.get("ingredient_name") or item.get("name") or "").strip()
+            quantity_value = item.get("quantity", 1)
+            try:
+                quantity = float(quantity_value)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(status_code=422, detail=f"Invalid quantity for ingredient '{name}'") from exc
+            unit = _normalize_unit(str(item.get("unit") or "pcs"))
+        else:
+            raise HTTPException(status_code=422, detail="Each ingredient must be a string or object")
+
+        if not name:
+            continue
+        if quantity <= 0:
+            raise HTTPException(status_code=422, detail=f"Quantity must be greater than 0 for ingredient '{name}'")
+
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+
+        parsed.append({
+            "ingredient_name": name,
+            "quantity": quantity,
+            "unit": unit,
+        })
+
+    return parsed
 
 async def seed_user_data(user_id: int, db: AsyncSession):
 
@@ -153,7 +215,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
-import json
 from fastapi import File, UploadFile, Form
 import os
 import uuid
@@ -175,9 +236,28 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
         tags = tag_result.scalars().all()
 
         ing_result = await db.execute(
-            select(models.Ingredients.ingredient_name).join(models.RecipeIngredient).where(models.RecipeIngredient.recipe_id == r.recipe_id)
+            select(
+                models.Ingredients.ingredient_name,
+                models.RecipeIngredient.quantity,
+                models.RecipeIngredient.unit,
+            )
+            .join(models.RecipeIngredient)
+            .where(models.RecipeIngredient.recipe_id == r.recipe_id)
         )
-        ingredients = ing_result.scalars().all()
+        ingredient_rows = ing_result.all()
+        recipe_ingredients = [
+            {
+                "ingredient_name": row[0],
+                "quantity": float(row[1] or 1),
+                "unit": _normalize_unit(row[2]),
+            }
+            for row in ingredient_rows
+        ]
+        ingredients = [ri["ingredient_name"] for ri in recipe_ingredients]
+        nutrition = _build_nutrition_info(
+            await _calculate_recipe_nutrition_totals(db, r.recipe_id),
+            r.servings or 1,
+        )
 
         recipe_dict = {
             "title": r.recipe_name or "",
@@ -190,17 +270,40 @@ async def list_recipes(db: AsyncSession = Depends(database.get_db)):
             "difficulty": "Medium", 
             "tags": tags,
             "ingredients": ingredients,
+            "recipe_ingredients": recipe_ingredients,
             "steps": json.loads(r.instructions) if r.instructions else [],
-            "nutrition": schemas.NutritionInfo(
-                calories=r.calories or 0,
-                protein=f"{r.protien or 0}g",
-                carbs=f"{r.carbs or 0}g",
-                fats=f"{r.fat or 0}g"
-            ) if r.calories else None,
+            "nutrition": nutrition,
             "id": r.recipe_id,
         }
         recipe_responses.append(schemas.Recipe(**recipe_dict))
     return recipe_responses
+
+
+@app.get("/ingredients", response_model=list[schemas.IngredientSearchResult])
+async def search_ingredients(
+    q: str = "",
+    limit: int = 20,
+    base_only: bool = False,
+    db: AsyncSession = Depends(database.get_db),
+):
+    trimmed_query = q.strip()
+    if limit < 1:
+        limit = 1
+    if limit > 50:
+        limit = 50
+
+    stmt = select(models.Ingredients)
+    if base_only:
+        stmt = stmt.where(models.Ingredients.is_base == True)
+    if trimmed_query:
+        stmt = stmt.where(models.Ingredients.ingredient_name.ilike(f"%{trimmed_query}%"))
+
+    stmt = stmt.order_by(models.Ingredients.is_base.desc(), models.Ingredients.ingredient_name.asc())
+    stmt = stmt.limit(limit)
+
+    result = await db.execute(stmt)
+    ingredients = result.scalars().all()
+    return ingredients
 
 @app.post("/recipes", response_model=schemas.Recipe)
 async def create_recipe(
@@ -254,20 +357,36 @@ async def create_recipe(
         rt = models.RecipeTag(tag_id=tag.id, recipe_id=new_recipe.recipe_id)
         db.add(rt)
 
-    ingredients = list(set(json.loads(ingredients_json)))
-    for ing_name in ingredients:
-        res = await db.execute(select(models.Ingredients).where(models.Ingredients.ingredient_name == ing_name))
-        ing = res.scalars().first()
-        if not ing:
-            ing = models.Ingredients(ingredient_name=ing_name)
-            db.add(ing)
-            await db.commit()
-            await db.refresh(ing)
+    parsed_ingredients = _parse_ingredient_payload(ingredients_json)
+    for ingredient in parsed_ingredients:
+        ing_name = ingredient["ingredient_name"]
+        ing = await _find_or_create_ingredient(db, ing_name)
 
-        ri = models.RecipeIngredient(ingredient_id=ing.id, recipe_id=new_recipe.recipe_id, quantity=1, unit="ea")
+        ri = models.RecipeIngredient(
+            ingredient_id=ing.id,
+            recipe_id=new_recipe.recipe_id,
+            quantity=ingredient["quantity"],
+            unit=ingredient["unit"],
+        )
         db.add(ri)
 
     await db.commit()
+
+    totals = await _calculate_recipe_nutrition_totals(db, new_recipe.recipe_id)
+    new_recipe.calories = int(round(totals["calories"]))
+    new_recipe.protien = int(round(totals["protein"]))
+    new_recipe.carbs = int(round(totals["carbs"]))
+    new_recipe.fat = int(round(totals["fats"]))
+    await db.commit()
+
+    recipe_ingredients = [
+        {
+            "ingredient_name": ingredient["ingredient_name"],
+            "quantity": ingredient["quantity"],
+            "unit": ingredient["unit"],
+        }
+        for ingredient in parsed_ingredients
+    ]
 
     return {
         "title": title,
@@ -279,10 +398,116 @@ async def create_recipe(
         "servings": servings,
         "difficulty": difficulty,
         "tags": tags,
-        "ingredients": ingredients,
+        "ingredients": [ingredient["ingredient_name"] for ingredient in parsed_ingredients],
+        "recipe_ingredients": recipe_ingredients,
         "steps": json.loads(steps_json),
-        "nutrition": None,
+        "nutrition": _build_nutrition_info(totals, servings),
         "id": new_recipe.recipe_id,
+    }
+
+
+@app.put("/recipes/{recipe_id}", response_model=schemas.Recipe)
+async def update_recipe(
+    recipe_id: int,
+    db: AsyncSession = Depends(database.get_db),
+    title: str = Form(...),
+    summary: str = Form(...),
+    prep_time: str = Form(""),
+    cook_time: str = Form(""),
+    total_time: str = Form(""),
+    servings: int = Form(1),
+    difficulty: str = Form(""),
+    tags_json: str = Form("[]"),
+    ingredients_json: str = Form("[]"),
+    steps_json: str = Form("[]"),
+    image: Optional[UploadFile] = File(None),
+):
+    recipe_res = await db.execute(
+        select(models.Recipe).where(models.Recipe.recipe_id == recipe_id)
+    )
+    recipe = recipe_res.scalars().first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    image_url = recipe.image_url
+    if image:
+        ext = image.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as buffer:
+            buffer.write(await image.read())
+        image_url = f"http://localhost:8000/uploads/{filename}"
+
+    recipe.recipe_name = title
+    recipe.summary = summary
+    recipe.prep_time = int(prep_time.split()[0]) if prep_time and prep_time.split()[0].isdigit() else 0
+    recipe.cook_time = int(cook_time.split()[0]) if cook_time and cook_time.split()[0].isdigit() else 0
+    recipe.servings = servings
+    recipe.image_url = image_url
+    recipe.instructions = steps_json
+
+    await db.execute(models.RecipeTag.__table__.delete().where(models.RecipeTag.recipe_id == recipe_id))
+    await db.execute(
+        models.RecipeIngredient.__table__.delete().where(models.RecipeIngredient.recipe_id == recipe_id)
+    )
+
+    tags = list(set(json.loads(tags_json)))
+    for tag_name in tags:
+        res = await db.execute(select(models.Tag).where(models.Tag.tag_name == tag_name))
+        tag = res.scalars().first()
+        if not tag:
+            tag = models.Tag(tag_name=tag_name)
+            db.add(tag)
+            await db.commit()
+            await db.refresh(tag)
+
+        db.add(models.RecipeTag(tag_id=tag.id, recipe_id=recipe_id))
+
+    parsed_ingredients = _parse_ingredient_payload(ingredients_json)
+    for ingredient in parsed_ingredients:
+        ing = await _find_or_create_ingredient(db, ingredient["ingredient_name"])
+        db.add(
+            models.RecipeIngredient(
+                ingredient_id=ing.id,
+                recipe_id=recipe_id,
+                quantity=ingredient["quantity"],
+                unit=ingredient["unit"],
+            )
+        )
+
+    await db.commit()
+
+    totals = await _calculate_recipe_nutrition_totals(db, recipe_id)
+    recipe.calories = int(round(totals["calories"]))
+    recipe.protien = int(round(totals["protein"]))
+    recipe.carbs = int(round(totals["carbs"]))
+    recipe.fat = int(round(totals["fats"]))
+    await db.commit()
+
+    recipe_ingredients = [
+        {
+            "ingredient_name": ingredient["ingredient_name"],
+            "quantity": ingredient["quantity"],
+            "unit": ingredient["unit"],
+        }
+        for ingredient in parsed_ingredients
+    ]
+
+    return {
+        "title": title,
+        "summary": summary,
+        "image_url": image_url,
+        "prep_time": prep_time,
+        "cook_time": cook_time,
+        "total_time": total_time,
+        "servings": servings,
+        "difficulty": difficulty,
+        "tags": tags,
+        "ingredients": [ingredient["ingredient_name"] for ingredient in parsed_ingredients],
+        "recipe_ingredients": recipe_ingredients,
+        "steps": json.loads(steps_json),
+        "nutrition": _build_nutrition_info(totals, servings),
+        "id": recipe_id,
     }
 
 @app.delete("/recipes/{recipe_id}")
