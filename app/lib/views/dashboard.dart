@@ -3,20 +3,20 @@ import 'package:simplyserve/widgets/navbar.dart';
 import 'package:simplyserve/widgets/spinning_wheel.dart';
 
 
-class DashboardView extends StatelessWidget {
-  const DashboardView({super.key});
+class SpinWheelView extends StatelessWidget {
+  const SpinWheelView({super.key});
 
   @override
   Widget build(BuildContext context) {
     return NavBarScaffold(
-      title: 'Dashboard',
+      title: 'Meal Spinner',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Welcome back!',
+              'Feeling indecisive?',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -24,7 +24,7 @@ class DashboardView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Here is your daily meal suggestion.',
+              'Let the wheel decide your next meal.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
