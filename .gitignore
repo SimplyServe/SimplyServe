@@ -49,3 +49,4 @@ app.*.map.json
 **/intermediates/
 **/outputs/apk/
 *.so
+.env
