@@ -164,7 +164,7 @@ class _RecipePageState extends State<RecipePage> {
             onPressed: () {
               ShoppingListService().addIngredients(
                 _recipe.ingredients
-                    .map((ingredient) => ingredient.displayLabel)
+                    .map((ingredient) => ingredient.name.trim())
                     .toList(),
               );
               ScaffoldMessenger.of(context).showSnackBar(

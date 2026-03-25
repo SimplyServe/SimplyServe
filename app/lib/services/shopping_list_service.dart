@@ -6,8 +6,7 @@ class ShoppingItem {
   String name;
   int quantity;
 
-  ShoppingItem({required this.name, this.quantity = 1})
-      : id = '${_counter++}';
+  ShoppingItem({required this.name, this.quantity = 1}) : id = '${_counter++}';
 }
 
 class ShoppingListService extends ChangeNotifier {
@@ -18,8 +17,23 @@ class ShoppingListService extends ChangeNotifier {
   final List<ShoppingItem> _items = [];
   List<ShoppingItem> get items => List.unmodifiable(_items);
 
+  String _normalizeName(String rawName) {
+    final trimmed = rawName.trim();
+    // Remove leading quantity/unit prefixes such as "1 pcs onion".
+    final withoutPrefix = trimmed.replaceFirst(
+      RegExp(r'^\d+(?:\.\d+)?\s+[A-Za-z]+\s+'),
+      '',
+    );
+    return withoutPrefix.trim();
+  }
+
   void addIngredients(List<String> ingredients) {
-    for (final name in ingredients) {
+    for (final rawName in ingredients) {
+      final name = _normalizeName(rawName);
+      if (name.isEmpty) {
+        continue;
+      }
+
       final index = _items.indexWhere(
         (i) => i.name.toLowerCase() == name.toLowerCase(),
       );
@@ -48,5 +62,4 @@ class ShoppingListService extends ChangeNotifier {
       notifyListeners();
     }
   }
-
 }
