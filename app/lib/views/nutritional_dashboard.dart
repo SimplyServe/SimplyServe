@@ -80,7 +80,7 @@ class DashboardView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _MacroLegendItem(color: Colors.blue,   label: 'Protein', value: '${_protein}g'),
+                _MacroLegendItem(color: Color(0xFF74BC42), label: 'Protein', value: '${_protein}g'),
                 _MacroLegendItem(color: Colors.orange, label: 'Carbs',   value: '${_carbs}g'),
                 _MacroLegendItem(color: Colors.red,    label: 'Fat',     value: '${_fat}g'),
               ],
@@ -96,7 +96,7 @@ class DashboardView extends StatelessWidget {
               ),
             ),
             SizedBox(height: 12),
-            _MacroCard(label: 'Protein', value: _protein, unit: 'g', color: Colors.blue),
+            _MacroCard(label: 'Protein', value: _protein, unit: 'g', color: Color(0xFF74BC42)),
             SizedBox(height: 8),
             _MacroCard(label: 'Carbohydrates', value: _carbs, unit: 'g', color: Colors.orange),
             SizedBox(height: 8),
