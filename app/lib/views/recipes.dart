@@ -159,9 +159,9 @@ class _RecipesViewState extends State<RecipesView> {
         if (!textMatch) return false;
       }
 
-      // Tag filter – recipe must have ALL selected tags
+      // Tag filter - recipe must have ANY of the selected tags
       if (_selectedTags.isNotEmpty &&
-          !_selectedTags.every((t) => r.tags.contains(t))) {
+          !_selectedTags.any((t) => r.tags.contains(t))) {
         return false;
       }
 
