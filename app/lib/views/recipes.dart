@@ -79,31 +79,6 @@ class _RecipesViewState extends State<RecipesView> {
     _fetchRecipes();
   }
 
-  // Fallback ingredients sourced from assets/data/recipe_ingredients.json
-  static const _wrapIngredientsFallback = [
-    '2 chicken breasts, grilled and sliced',
-    '4 large flour tortillas',
-    '1 cup romaine lettuce, shredded',
-    '1 tomato, diced',
-    '1/2 red onion, thinly sliced',
-    '1/2 cup cheddar cheese, shredded',
-    '1/4 cup ranch dressing',
-    '1 tbsp olive oil',
-    '1 tsp garlic powder',
-    'Salt and pepper to taste',
-  ];
-
-  Future<List<String>> _loadWrapIngredients() async {
-    try {
-      final jsonStr = await rootBundle
-          .loadString('assets/data/recipe_ingredients.json');
-      final Map<String, dynamic> data = json.decode(jsonStr);
-      final raw = data['American Grilled Chicken Wrap'];
-      if (raw != null) return List<String>.from(raw as List);
-    } catch (_) {}
-    return _wrapIngredientsFallback;
-  }
-
   Future<void> _fetchRecipes() async {
     setState(() => _isLoading = true);
 
@@ -112,45 +87,52 @@ class _RecipesViewState extends State<RecipesView> {
       apiRecipes = await _recipeService.getRecipes();
     } catch (_) {}
 
-    List<String> wrapIngredients = [];
+    List<RecipeModel> localRecipes = [];
     try {
-      wrapIngredients = await _loadWrapIngredients();
-    } catch (_) {}
+      final attrsJson = await rootBundle.loadString('assets/data/recipe_attributes.json');
+      final ingredientsJson = await rootBundle.loadString('assets/data/recipe_ingredients.json');
+      final stepsJson = await rootBundle.loadString('assets/data/recipe_steps.json');
 
-    final wrapRecipe = RecipeModel(
-      title: 'American Grilled Chicken Wrap',
-      summary:
-          'A classic American-style wrap packed with juicy grilled chicken, crisp romaine, cheddar, and creamy ranch dressing — ready in under 30 minutes.',
-      imageUrl: 'assets/images/American Grilled Chicken Wrap.png',
-      prepTime: '10 mins',
-      cookTime: '15 mins',
-      totalTime: '25 mins',
-      servings: 4,
-      difficulty: 'Easy',
-      nutrition: const NutritionInfo(
-        calories: 480,
-        protein: '38g',
-        carbs: '34g',
-        fats: '18g',
-      ),
-      ingredients: wrapIngredients,
-      steps: [
-        'Season chicken breasts with garlic powder, salt, and pepper. Brush with olive oil.',
-        'Grill chicken over medium-high heat for 6–7 minutes per side until cooked through. Rest for 5 minutes, then slice.',
-        'Warm the flour tortillas in a dry pan or microwave for 20 seconds each.',
-        'Lay out each tortilla and drizzle with ranch dressing.',
-        'Top with shredded romaine, diced tomato, red onion, cheddar cheese, and sliced chicken.',
-        'Fold in the sides, then roll up tightly. Slice in half and serve immediately.',
-      ],
-      tags: ['High Protein'],
-    );
+      final attrs = json.decode(attrsJson) as Map<String, dynamic>;
+      final ingredients = json.decode(ingredientsJson) as Map<String, dynamic>;
+      final steps = json.decode(stepsJson) as Map<String, dynamic>;
+
+      for (final entry in attrs.entries) {
+        final title = entry.key;
+        final a = entry.value as Map<String, dynamic>;
+        final n = a['nutrition'] as Map<String, dynamic>? ?? {};
+        localRecipes.add(RecipeModel(
+          title: title,
+          summary: a['summary'] ?? '',
+          imageUrl: a['imageUrl'] ?? '',
+          prepTime: a['prepTime'] ?? '',
+          cookTime: a['cookTime'] ?? '',
+          totalTime: a['totalTime'] ?? '',
+          servings: a['servings'] ?? 1,
+          difficulty: a['difficulty'] ?? 'Easy',
+          nutrition: NutritionInfo(
+            calories: n['calories'] ?? 0,
+            protein: n['protein'] ?? '0g',
+            carbs: n['carbs'] ?? '0g',
+            fats: n['fats'] ?? '0g',
+          ),
+          ingredients: List<String>.from(ingredients[title] ?? [])
+              .map(IngredientEntry.fromLegacy)
+              .toList(),
+          steps: List<String>.from(steps[title] ?? []),
+          tags: List<String>.from(a['tags'] ?? []),
+        ));
+      }
+    } catch (_) {}
 
     if (mounted) {
       setState(() {
         _allRecipes.clear();
         _allRecipes.addAll(apiRecipes);
-        if (!_allRecipes.any((r) => r.title == wrapRecipe.title)) {
-          _allRecipes.insert(0, wrapRecipe);
+        for (final local in localRecipes) {
+          if (!_allRecipes.any((r) => r.title == local.title)) {
+            _allRecipes.insert(0, local);
+          }
         }
         _isLoading = false;
       });
