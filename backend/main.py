@@ -26,6 +26,171 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 
+def _normalize_unit(unit: str) -> str:
+    unit = (unit or "").strip().lower()
+    mapping = {
+        "tablespoon": "tbsp", "tablespoons": "tbsp", "tbsps": "tbsp",
+        "teaspoon": "tsp", "teaspoons": "tsp", "tsps": "tsp",
+        "cup": "cup", "cups": "cup",
+        "gram": "g", "grams": "g", "gr": "g",
+        "kilogram": "kg", "kilograms": "kg",
+        "milliliter": "ml", "milliliters": "ml", "millilitre": "ml",
+        "liter": "l", "liters": "l", "litre": "l",
+        "ounce": "oz", "ounces": "oz",
+        "pound": "lb", "pounds": "lb",
+        "piece": "pcs", "pieces": "pcs", "pc": "pcs",
+    }
+    return mapping.get(unit, unit) if unit else "pcs"
+
+
+def _parse_ingredient_text(raw: str) -> dict:
+    raw = raw.strip()
+    quantity = 1.0
+    unit = "pcs"
+    ingredient_name = raw
+
+    known_units = {
+        "cup", "cups", "tbsp", "tsp", "tablespoon", "tablespoons",
+        "teaspoon", "teaspoons", "g", "kg", "ml", "l", "oz", "lb",
+        "gram", "grams", "piece", "pieces", "pcs", "pinch", "clove",
+        "cloves", "slice", "slices", "can", "bunch",
+    }
+
+    match = re.match(r'^([\d\s/]+)\s+([a-zA-Z]+)\s+(.+)$', raw)
+    if match:
+        qty_str, unit_str, name = match.groups()
+        try:
+            quantity = float(Fraction(qty_str.strip()))
+        except (ValueError, ZeroDivisionError):
+            quantity = 1.0
+        if unit_str.lower() in known_units:
+            unit = _normalize_unit(unit_str)
+            ingredient_name = name.split(",")[0].strip()
+        else:
+            ingredient_name = (unit_str + " " + name).split(",")[0].strip()
+    else:
+        match2 = re.match(r'^([\d/]+)\s+(.+)$', raw)
+        if match2:
+            qty_str, name = match2.groups()
+            try:
+                quantity = float(Fraction(qty_str.strip()))
+            except (ValueError, ZeroDivisionError):
+                quantity = 1.0
+            ingredient_name = name.split(",")[0].strip()
+        else:
+            ingredient_name = raw.split(",")[0].strip()
+
+    return {"ingredient_name": ingredient_name, "quantity": quantity, "unit": unit}
+
+
+async def _find_or_create_ingredient(db: AsyncSession, name: str) -> models.Ingredients:
+    normalized = name.strip().lower()
+    res = await db.execute(
+        select(models.Ingredients).where(models.Ingredients.normalized_name == normalized)
+    )
+    ing = res.scalars().first()
+    if not ing:
+        ing = models.Ingredients(
+            ingredient_name=name.strip(),
+            normalized_name=normalized,
+            is_base=False,
+        )
+        db.add(ing)
+        await db.flush()
+    return ing
+
+
+async def _seed_base_ingredients_catalog(db: AsyncSession):
+    base_file = Path(__file__).resolve().parent / "data" / "base_ingredients.json"
+    if not base_file.exists():
+        return
+    with base_file.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    for item in data:
+        name = item.get("ingredient_name", "").strip()
+        if not name:
+            continue
+        normalized = name.lower()
+        res = await db.execute(
+            select(models.Ingredients).where(models.Ingredients.normalized_name == normalized)
+        )
+        if res.scalars().first():
+            continue
+        db.add(models.Ingredients(
+            ingredient_name=name,
+            normalized_name=normalized,
+            is_base=True,
+            avg_calories=item.get("avg_calories"),
+            avg_protein=item.get("avg_protein"),
+            avg_carbs=item.get("avg_carbs"),
+            avg_fat=item.get("avg_fat"),
+            avg_cost=item.get("avg_cost"),
+        ))
+    await db.commit()
+
+
+async def _normalize_existing_ingredient_data(db: AsyncSession):
+    pass
+
+
+async def _ensure_ingredient_table_columns():
+    async with engine.begin() as conn:
+        for col, col_type in [("quantity", "REAL"), ("unit", "TEXT")]:
+            try:
+                await conn.execute(text(f"ALTER TABLE recipe_ingredient ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
+        for col, col_type in [
+            ("normalized_name", "TEXT"),
+            ("is_base", "INTEGER DEFAULT 0"),
+            ("avg_calories", "REAL"),
+            ("avg_protein", "REAL"),
+            ("avg_carbs", "REAL"),
+            ("avg_fat", "REAL"),
+            ("avg_cost", "REAL"),
+        ]:
+            try:
+                await conn.execute(text(f"ALTER TABLE ingredients ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
+        # Backfill normalized_name for any existing rows that have it null
+        await conn.execute(text(
+            "UPDATE ingredients SET normalized_name = LOWER(ingredient_name) WHERE normalized_name IS NULL"
+        ))
+
+
+async def _calculate_recipe_nutrition_totals(db: AsyncSession, recipe_id: int) -> dict:
+    result = await db.execute(
+        select(
+            models.Ingredients.avg_calories,
+            models.Ingredients.avg_protein,
+            models.Ingredients.avg_carbs,
+            models.Ingredients.avg_fat,
+            models.RecipeIngredient.quantity,
+        )
+        .join(models.RecipeIngredient, models.Ingredients.id == models.RecipeIngredient.ingredient_id)
+        .where(models.RecipeIngredient.recipe_id == recipe_id)
+    )
+    totals = {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fats": 0.0}
+    for cal, prot, carbs, fat, qty in result.all():
+        qty = qty or 1.0
+        if cal: totals["calories"] += cal * qty
+        if prot: totals["protein"] += prot * qty
+        if carbs: totals["carbs"] += carbs * qty
+        if fat: totals["fats"] += fat * qty
+    return totals
+
+
+def _build_nutrition_info(totals: dict, servings: int) -> dict:
+    s = max(servings, 1)
+    return {
+        "calories": int(round(totals["calories"] / s)),
+        "protein": f"{int(round(totals['protein'] / s))}g",
+        "carbs": f"{int(round(totals['carbs'] / s))}g",
+        "fats": f"{int(round(totals['fats'] / s))}g",
+    }
+
+
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
