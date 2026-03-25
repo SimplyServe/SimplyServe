@@ -1,0 +1,530 @@
+{
+  "Tuscan Salmon": {
+    "summary": "Seared salmon fillets in a rich, creamy garlic sauce with sun-dried tomatoes and fresh spinach — an Italian-inspired dinner ready in 35 minutes.",
+    "imageUrl": "assets/images/image.png",
+    "prepTime": "10 mins",
+    "cookTime": "25 mins",
+    "totalTime": "35 mins",
+    "servings": 2,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 520,
+      "protein": "38g",
+      "carbs": "8g",
+      "fats": "36g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Comfort Food"]
+  },
+  "Carbonara": {
+    "summary": "A classic Roman pasta dish with crispy pancetta, silky egg and Pecorino sauce, and plenty of black pepper — simple, indulgent, and deeply satisfying.",
+    "imageUrl": "assets/images/image.png",
+    "prepTime": "5 mins",
+    "cookTime": "20 mins",
+    "totalTime": "25 mins",
+    "servings": 4,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 680,
+      "protein": "28g",
+      "carbs": "72g",
+      "fats": "28g"
+    },
+    "tags": ["Comfort Food"]
+  },
+  "Chicken Tacos": {
+    "summary": "Smoky spiced chicken in warm flour tortillas with fresh salsa, creamy avocado, and sour cream — a crowd-pleasing weeknight favourite.",
+    "imageUrl": "assets/images/image.png",
+    "prepTime": "10 mins",
+    "cookTime": "15 mins",
+    "totalTime": "25 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 520,
+      "protein": "34g",
+      "carbs": "48g",
+      "fats": "18g"
+    },
+    "tags": ["High Protein"]
+  },
+  "American Grilled Chicken Wrap": {
+    "summary": "A classic American-style wrap packed with juicy grilled chicken, crisp romaine, cheddar, and creamy ranch dressing — ready in under 30 minutes.",
+    "imageUrl": "assets/images/American Grilled Chicken Wrap.png",
+    "prepTime": "10 mins",
+    "cookTime": "15 mins",
+    "totalTime": "25 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 480,
+      "protein": "38g",
+      "carbs": "34g",
+      "fats": "18g"
+    },
+    "tags": ["High Protein"]
+  },
+  "Argentinian Grilled Steak Salad": {
+    "summary": "Tender sliced flank steak over fresh salad greens with chimichurri dressing — a bold, protein-packed salad inspired by the asado tradition.",
+    "imageUrl": "assets/images/Argentinian Grilled Steak Salad.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "10 mins",
+    "totalTime": "20 mins",
+    "servings": 2,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 420,
+      "protein": "42g",
+      "carbs": "12g",
+      "fats": "22g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+  },
+  "Australian Avocado Toast with Egg": {
+    "summary": "Creamy smashed avocado on toasted sourdough topped with a fried egg, feta, and chilli flakes — the brunch staple done right.",
+    "imageUrl": "assets/images/Australian Avocado Toast with Egg.jpg",
+    "prepTime": "5 mins",
+    "cookTime": "10 mins",
+    "totalTime": "15 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "16g",
+      "carbs": "28g",
+      "fats": "24g"
+    },
+    "tags": ["High Fibre"]
+  },
+  "Brazilian Black Bean Bowl": {
+    "summary": "Hearty spiced black beans served over brown rice with fresh coriander and lime — a plant-based bowl full of flavour and fibre.",
+    "imageUrl": "assets/images/Brazilian Black Bean Bowl.jpg",
+    "prepTime": "5 mins",
+    "cookTime": "20 mins",
+    "totalTime": "25 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 420,
+      "protein": "14g",
+      "carbs": "68g",
+      "fats": "8g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "British Baked Salmon with Veg": {
+    "summary": "Flaky oven-baked salmon with lemon and dill alongside roasted seasonal vegetables — a wholesome, no-fuss traybake.",
+    "imageUrl": "assets/images/British Baked Salmon with Veg.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 460,
+      "protein": "36g",
+      "carbs": "28g",
+      "fats": "20g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+  },
+  "Chinese Stir Fry Vegetables": {
+    "summary": "A vibrant wok of crisp vegetables tossed in a savoury ginger and soy sauce — quick, light, and packed with colour.",
+    "imageUrl": "assets/images/Chinese Stir Fry Vegetables.png",
+    "prepTime": "10 mins",
+    "cookTime": "10 mins",
+    "totalTime": "20 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 220,
+      "protein": "8g",
+      "carbs": "28g",
+      "fats": "9g"
+    },
+    "tags": ["Vegan", "High Fibre", "Dairy Free"]
+  },
+  "Egyptian Ful Medames": {
+    "summary": "Slow-cooked fava beans mashed with garlic, lemon, and cumin — a nourishing Egyptian street food classic served with warm pita.",
+    "imageUrl": "assets/images/Egyptian Ful Medames.jpg",
+    "prepTime": "5 mins",
+    "cookTime": "15 mins",
+    "totalTime": "20 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 320,
+      "protein": "16g",
+      "carbs": "48g",
+      "fats": "8g"
+    },
+    "tags": ["Vegan", "High Fibre", "Dairy Free"]
+  },
+  "Ethiopian Lentil Stew": {
+    "summary": "Red lentils simmered in aromatic berbere spice with ginger and tomato — a warming, fibre-rich stew from the heart of East Africa.",
+    "imageUrl": "assets/images/Ethiopian Lentil Stew.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 340,
+      "protein": "18g",
+      "carbs": "52g",
+      "fats": "7g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "Filipino Chicken Tinola": {
+    "summary": "A light and restorative Filipino chicken soup with ginger, green papaya, and leafy greens in a clear savoury broth.",
+    "imageUrl": "assets/images/Filipino Chicken Tinola.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "35 mins",
+    "totalTime": "45 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 360,
+      "protein": "38g",
+      "carbs": "14g",
+      "fats": "12g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+  },
+  "French Ratatouille": {
+    "summary": "A rustic Provençal vegetable stew of aubergine, courgette, peppers, and tomatoes slow-cooked in olive oil and thyme.",
+    "imageUrl": "assets/images/French Ratatouille.jpg",
+    "prepTime": "15 mins",
+    "cookTime": "35 mins",
+    "totalTime": "50 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 180,
+      "protein": "4g",
+      "carbs": "22g",
+      "fats": "9g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "German Chicken Vegetable Soup": {
+    "summary": "A hearty, wholesome German-style chicken soup with root vegetables, leek, and fresh parsley — the ultimate comfort in a bowl.",
+    "imageUrl": "assets/images/German Chicken Vegetable Soup.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 320,
+      "protein": "32g",
+      "carbs": "24g",
+      "fats": "8g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Comfort Food"]
+  },
+  "Greek Chicken Salad": {
+    "summary": "Grilled chicken over crisp romaine with cucumber, olives, feta, and a lemony oregano dressing — a fresh Mediterranean classic.",
+    "imageUrl": "assets/images/Greek Chicken Salad.png",
+    "prepTime": "10 mins",
+    "cookTime": "15 mins",
+    "totalTime": "25 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 440,
+      "protein": "42g",
+      "carbs": "10g",
+      "fats": "24g"
+    },
+    "tags": ["High Protein", "Gluten Free"]
+  },
+  "Hawaiian Poke Bowl": {
+    "summary": "Fresh sushi-grade tuna marinated in soy and sesame over sushi rice with avocado, cucumber, and nori — a taste of the Pacific.",
+    "imageUrl": "assets/images/Hawaiian Poke Bowl.jpg",
+    "prepTime": "15 mins",
+    "cookTime": "15 mins",
+    "totalTime": "30 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 480,
+      "protein": "32g",
+      "carbs": "52g",
+      "fats": "14g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+  },
+  "Indian Lentil Dal": {
+    "summary": "Creamy red lentils cooked down with turmeric, cumin, garam masala, and tomatoes — a comforting and nourishing Indian staple.",
+    "imageUrl": "assets/images/Indian Lentil Dal.png",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 360,
+      "protein": "18g",
+      "carbs": "50g",
+      "fats": "9g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "Indonesian Gado Gado Salad": {
+    "summary": "Blanched vegetables, crispy tofu, and boiled eggs drizzled with a rich peanut and lime dressing — Indonesia's beloved salad.",
+    "imageUrl": "assets/images/Indonesian Gado Gado Salad.jpg",
+    "prepTime": "15 mins",
+    "cookTime": "15 mins",
+    "totalTime": "30 mins",
+    "servings": 2,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 380,
+      "protein": "20g",
+      "carbs": "26g",
+      "fats": "22g"
+    },
+    "tags": ["High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "Italian Caprese Salad": {
+    "summary": "Ripe tomatoes, fresh mozzarella, and fragrant basil drizzled with extra virgin olive oil and balsamic glaze — Italian simplicity at its finest.",
+    "imageUrl": "assets/images/Italian Caprese Salad.png",
+    "prepTime": "10 mins",
+    "cookTime": "0 mins",
+    "totalTime": "10 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 280,
+      "protein": "16g",
+      "carbs": "8g",
+      "fats": "20g"
+    },
+    "tags": ["Gluten Free"]
+  },
+  "Japanese Teriyaki Salmon": {
+    "summary": "Salmon fillets glazed in a sticky homemade teriyaki sauce and served over steamed rice — a quick, elegant Japanese-inspired dinner.",
+    "imageUrl": "assets/images/Japanese Teriyaki Salmon.png",
+    "prepTime": "5 mins",
+    "cookTime": "15 mins",
+    "totalTime": "20 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 440,
+      "protein": "36g",
+      "carbs": "24g",
+      "fats": "20g"
+    },
+    "tags": ["High Protein", "Dairy Free"]
+  },
+  "Jordanian Chicken Freekeh Bowl": {
+    "summary": "Spiced chicken and nutty freekeh grain simmered in chicken stock with warm allspice and cinnamon, topped with toasted almonds.",
+    "imageUrl": "assets/images/Jordanian Chicken Freekeh Bowl.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "35 mins",
+    "totalTime": "45 mins",
+    "servings": 4,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 480,
+      "protein": "36g",
+      "carbs": "52g",
+      "fats": "10g"
+    },
+    "tags": ["High Protein", "Dairy Free"]
+  },
+  "Korean Bibimbap": {
+    "summary": "A vibrant Korean rice bowl topped with seasoned vegetables, marinated beef, a fried egg, and spicy gochujang — mix it all together and enjoy.",
+    "imageUrl": "assets/images/Korean Bibimbap.png",
+    "prepTime": "20 mins",
+    "cookTime": "20 mins",
+    "totalTime": "40 mins",
+    "servings": 2,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 560,
+      "protein": "30g",
+      "carbs": "62g",
+      "fats": "18g"
+    },
+    "tags": ["High Protein", "Dairy Free"]
+  },
+  "Lebanese Fattoush Salad": {
+    "summary": "A tangy Lebanese salad of fresh herbs, crisp vegetables, and toasted pita chips dressed with lemon, olive oil, and sumac.",
+    "imageUrl": "assets/images/Lebanese Fattoush Salad.png",
+    "prepTime": "15 mins",
+    "cookTime": "10 mins",
+    "totalTime": "25 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 260,
+      "protein": "6g",
+      "carbs": "32g",
+      "fats": "12g"
+    },
+    "tags": ["Vegan", "High Fibre", "Dairy Free"]
+  },
+  "Mediterranean Chickpea Bowl": {
+    "summary": "Fluffy quinoa topped with chickpeas, feta, cucumber, cherry tomatoes, and olives with a bright lemon oregano dressing.",
+    "imageUrl": "assets/images/Mediterranean Chickpea Bowl.png",
+    "prepTime": "10 mins",
+    "cookTime": "15 mins",
+    "totalTime": "25 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 420,
+      "protein": "18g",
+      "carbs": "54g",
+      "fats": "14g"
+    },
+    "tags": ["High Fibre", "Gluten Free"]
+  },
+  "Mexican Chicken Burrito Bowl": {
+    "summary": "Seasoned grilled chicken over rice with black beans, corn, fresh salsa, avocado, and cheddar — everything you love about a burrito, in a bowl.",
+    "imageUrl": "assets/images/Mexican Chicken Burrito Bowl.png",
+    "prepTime": "10 mins",
+    "cookTime": "20 mins",
+    "totalTime": "30 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 560,
+      "protein": "42g",
+      "carbs": "58g",
+      "fats": "14g"
+    },
+    "tags": ["High Protein", "Gluten Free"]
+  },
+  "Moroccan Chickpea Tagine": {
+    "summary": "A fragrant North African stew of chickpeas, courgette, and carrot simmered with cumin, paprika, cinnamon, and raisins.",
+    "imageUrl": "assets/images/Moroccan Chickpea Tagine.png",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "14g",
+      "carbs": "58g",
+      "fats": "10g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "Nepalese Vegetable Curry": {
+    "summary": "A mild and comforting Nepalese curry of potato, cauliflower, peas, and carrot simmered in a fragrant turmeric and cumin broth.",
+    "imageUrl": "assets/images/Nepalese Vegetable Curry.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 280,
+      "protein": "8g",
+      "carbs": "46g",
+      "fats": "8g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "Peruvian Quinoa Bowl": {
+    "summary": "A nourishing Peruvian-inspired bowl of quinoa, roasted sweet potato, black beans, and avocado with a zesty lime dressing.",
+    "imageUrl": "assets/images/Peruvian Quinoa Bowl.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "30 mins",
+    "totalTime": "40 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 440,
+      "protein": "14g",
+      "carbs": "62g",
+      "fats": "14g"
+    },
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+  },
+  "Spanish Grilled Shrimp with Rice": {
+    "summary": "Juicy garlic and paprika shrimp served over saffron rice with roasted peppers — a vibrant taste of coastal Spain.",
+    "imageUrl": "assets/images/Spanish Grilled Shrimp with Rice.png",
+    "prepTime": "10 mins",
+    "cookTime": "25 mins",
+    "totalTime": "35 mins",
+    "servings": 2,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 420,
+      "protein": "32g",
+      "carbs": "46g",
+      "fats": "10g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+  },
+  "Swedish Salmon Salad": {
+    "summary": "Flaked salmon over mixed greens with baby potatoes, cucumber, and a fresh dill and yogurt dressing — light, elegant Scandinavian flavours.",
+    "imageUrl": "assets/images/Swedish Salmon Salad.jpg",
+    "prepTime": "10 mins",
+    "cookTime": "15 mins",
+    "totalTime": "25 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "28g",
+      "carbs": "18g",
+      "fats": "20g"
+    },
+    "tags": ["High Protein", "Gluten Free"]
+  },
+  "Thai Basil Chicken": {
+    "summary": "Minced chicken stir-fried with garlic, chilli, and fragrant Thai basil in a savoury oyster and fish sauce glaze — fast, fiery, and full of flavour.",
+    "imageUrl": "assets/images/Thai Basil Chicken.png",
+    "prepTime": "10 mins",
+    "cookTime": "15 mins",
+    "totalTime": "25 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "36g",
+      "carbs": "14g",
+      "fats": "16g"
+    },
+    "tags": ["High Protein", "Dairy Free"]
+  },
+  "Turkish Chicken Shish Kebab": {
+    "summary": "Marinated chicken skewers grilled until charred and juicy, served on flatbread with yogurt and salad — a classic Turkish street food.",
+    "imageUrl": "assets/images/Turkish Chicken Shish Kebab.png",
+    "prepTime": "15 mins",
+    "cookTime": "15 mins",
+    "totalTime": "30 mins",
+    "servings": 4,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 440,
+      "protein": "44g",
+      "carbs": "18g",
+      "fats": "18g"
+    },
+    "tags": ["High Protein"]
+  },
+  "Vietnamese Fresh Spring Rolls": {
+    "summary": "Delicate rice paper rolls filled with shrimp, vermicelli, fresh herbs, and crisp vegetables, served with a hoisin peanut dipping sauce.",
+    "imageUrl": "assets/images/Vietnamese Fresh Spring Rolls.png",
+    "prepTime": "20 mins",
+    "cookTime": "10 mins",
+    "totalTime": "30 mins",
+    "servings": 4,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 280,
+      "protein": "18g",
+      "carbs": "36g",
+      "fats": "6g"
+    },
+    "tags": ["Gluten Free", "Dairy Free", "High Fibre"]
+  }
+}
