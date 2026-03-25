@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:simplyserve/recipe_page.dart';
-import 'package:simplyserve/services/recipe_service.dart';
+import 'package:simplyserve/services/allergen_filter_service.dart';
+import 'package:simplyserve/services/allergy_service.dart';
+import 'package:simplyserve/services/recipe_catalog_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
@@ -84,10 +84,12 @@ int _parseMins(String t) =>
 
 class _RecipesViewState extends State<RecipesView> {
   final TextEditingController _searchController = TextEditingController();
-  final RecipeService _recipeService = RecipeService();
+  final AllergyService _allergyService = AllergyService();
+  final RecipeCatalogService _recipeCatalogService = RecipeCatalogService();
   String _query = '';
   bool _isLoading = true;
   final List<RecipeModel> _allRecipes = [];
+  List<String> _allergies = const [];
 
   final Set<String> _selectedTags = {};
   final Set<String> _selectedDifficulties = {};
@@ -119,58 +121,14 @@ class _RecipesViewState extends State<RecipesView> {
   Future<void> _fetchRecipes() async {
     setState(() => _isLoading = true);
 
-    List<RecipeModel> apiRecipes = [];
-    try {
-      apiRecipes = await _recipeService.getRecipes();
-    } catch (_) {}
-
-    List<RecipeModel> localRecipes = [];
-    try {
-      final attrsJson = await rootBundle.loadString('assets/data/recipe_attributes.json');
-      final ingredientsJson = await rootBundle.loadString('assets/data/recipe_ingredients.json');
-      final stepsJson = await rootBundle.loadString('assets/data/recipe_steps.json');
-
-      final attrs = json.decode(attrsJson) as Map<String, dynamic>;
-      final ingredients = json.decode(ingredientsJson) as Map<String, dynamic>;
-      final steps = json.decode(stepsJson) as Map<String, dynamic>;
-
-      for (final entry in attrs.entries) {
-        final title = entry.key;
-        final a = entry.value as Map<String, dynamic>;
-        final n = a['nutrition'] as Map<String, dynamic>? ?? {};
-        localRecipes.add(RecipeModel(
-          title: title,
-          summary: a['summary'] ?? '',
-          imageUrl: a['imageUrl'] ?? '',
-          prepTime: a['prepTime'] ?? '',
-          cookTime: a['cookTime'] ?? '',
-          totalTime: a['totalTime'] ?? '',
-          servings: a['servings'] ?? 1,
-          difficulty: a['difficulty'] ?? 'Easy',
-          nutrition: NutritionInfo(
-            calories: n['calories'] ?? 0,
-            protein: n['protein'] ?? '0g',
-            carbs: n['carbs'] ?? '0g',
-            fats: n['fats'] ?? '0g',
-          ),
-          ingredients: List<String>.from(ingredients[title] ?? [])
-              .map(IngredientEntry.fromLegacy)
-              .toList(),
-          steps: List<String>.from(steps[title] ?? []),
-          tags: List<String>.from(a['tags'] ?? []),
-        ));
-      }
-    } catch (_) {}
+    final recipes = await _recipeCatalogService.getAllRecipes();
+    final allergies = await _allergyService.loadAllergies();
 
     if (mounted) {
       setState(() {
+        _allergies = allergies;
         _allRecipes.clear();
-        _allRecipes.addAll(apiRecipes);
-        for (final local in localRecipes) {
-          if (!_allRecipes.any((r) => r.title == local.title)) {
-            _allRecipes.insert(0, local);
-          }
-        }
+        _allRecipes.addAll(recipes);
         _isLoading = false;
       });
     }
@@ -185,6 +143,10 @@ class _RecipesViewState extends State<RecipesView> {
   List<RecipeModel> get _filteredRecipes {
     final q = _query.trim().toLowerCase();
     return _allRecipes.where((r) {
+      if (AllergenFilterService.recipeContainsAnyAllergen(r, _allergies)) {
+        return false;
+      }
+
       // Text search
       if (q.isNotEmpty) {
         final title = r.title.toLowerCase();
