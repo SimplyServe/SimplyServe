@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http_parser/http_parser.dart';
 
 class RecipeService {
-  final String baseUrl = 'http://10.0.2.2:8000';
+  final String baseUrl = 'http://localhost:8000';
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
