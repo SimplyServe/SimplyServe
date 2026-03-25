@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/widgets/navbar.dart';
-import 'package:simplyserve/widgets/spinning_wheel.dart';
 
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
@@ -76,10 +75,6 @@ class DashboardView extends StatelessWidget {
               ),
             ),
             SizedBox(height: 12),
-
-            // ── Your SpinningWheelWidget ──────────────────────────────
-            Center(child: SpinningWheelWidget()),
-            SizedBox(height: 16),
 
             // ── Macro legend ──────────────────────────────────────────
             Row(
