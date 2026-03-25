@@ -98,6 +98,14 @@ class NavBarScaffold extends StatelessWidget {
               onTap: () => _navigate(context, '/'),
             ),
             ListTile(
+              leading: const Icon(Icons.casino_outlined),
+              title: const Text('Meal Spinner'),
+              selected: _isActiveRoute(context, '/spin'),
+              selectedTileColor: selectedTileColor,
+              selectedColor: themeColor,
+              onTap: () => _navigate(context, '/spin'),
+            ),
+            ListTile(
               leading: const Icon(Icons.restaurant_menu),
               title: const Text('Recipes'),
               selected: _isActiveRoute(context, '/recipes'),
