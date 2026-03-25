@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simplyserve/authorisation.dart';
 import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/views/dashboard.dart';
+import 'package:simplyserve/views/nutritional_dashboard.dart';
 import 'package:simplyserve/views/recipes.dart';
 import 'package:simplyserve/views/settings.dart';
 import 'package:simplyserve/views/profile.dart';
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/': (context) => const DashboardView(),
+        '/spin': (context) => const SpinWheelView(),
         '/recipes': (context) => const RecipesView(),
         '/recipe': (context) {
           final recipe =
