@@ -13,7 +13,7 @@
       "carbs": "8g",
       "fats": "36g"
     },
-    "tags": ["High Protein", "Gluten Free", "Comfort Food"]
+    "tags": ["High Protein", "Gluten Free", "Comfort Food", "European"]
   },
   "Carbonara": {
     "summary": "A classic Roman pasta dish with crispy pancetta, silky egg and Pecorino sauce, and plenty of black pepper — simple, indulgent, and deeply satisfying.",
@@ -29,7 +29,7 @@
       "carbs": "72g",
       "fats": "28g"
     },
-    "tags": ["Comfort Food"]
+    "tags": ["Comfort Food", "European"]
   },
   "Chicken Tacos": {
     "summary": "Smoky spiced chicken in warm flour tortillas with fresh salsa, creamy avocado, and sour cream — a crowd-pleasing weeknight favourite.",
@@ -45,7 +45,7 @@
       "carbs": "48g",
       "fats": "18g"
     },
-    "tags": ["High Protein"]
+    "tags": ["High Protein", "Latin American"]
   },
   "American Grilled Chicken Wrap": {
     "summary": "A classic American-style wrap packed with juicy grilled chicken, crisp romaine, cheddar, and creamy ranch dressing — ready in under 30 minutes.",
@@ -61,7 +61,7 @@
       "carbs": "34g",
       "fats": "18g"
     },
-    "tags": ["High Protein"]
+    "tags": ["High Protein", "American"]
   },
   "Argentinian Grilled Steak Salad": {
     "summary": "Tender sliced flank steak over fresh salad greens with chimichurri dressing — a bold, protein-packed salad inspired by the asado tradition.",
@@ -77,7 +77,7 @@
       "carbs": "12g",
       "fats": "22g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Latin American"]
   },
   "Australian Avocado Toast with Egg": {
     "summary": "Creamy smashed avocado on toasted sourdough topped with a fried egg, feta, and chilli flakes — the brunch staple done right.",
@@ -109,7 +109,7 @@
       "carbs": "68g",
       "fats": "8g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Latin American"]
   },
   "British Baked Salmon with Veg": {
     "summary": "Flaky oven-baked salmon with lemon and dill alongside roasted seasonal vegetables — a wholesome, no-fuss traybake.",
@@ -125,7 +125,7 @@
       "carbs": "28g",
       "fats": "20g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European"]
   },
   "Chinese Stir Fry Vegetables": {
     "summary": "A vibrant wok of crisp vegetables tossed in a savoury ginger and soy sauce — quick, light, and packed with colour.",
@@ -141,7 +141,7 @@
       "carbs": "28g",
       "fats": "9g"
     },
-    "tags": ["Vegan", "High Fibre", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Asian"]
   },
   "Egyptian Ful Medames": {
     "summary": "Slow-cooked fava beans mashed with garlic, lemon, and cumin — a nourishing Egyptian street food classic served with warm pita.",
@@ -157,7 +157,7 @@
       "carbs": "48g",
       "fats": "8g"
     },
-    "tags": ["Vegan", "High Fibre", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "African", "Middle Eastern"]
   },
   "Ethiopian Lentil Stew": {
     "summary": "Red lentils simmered in aromatic berbere spice with ginger and tomato — a warming, fibre-rich stew from the heart of East Africa.",
@@ -173,7 +173,7 @@
       "carbs": "52g",
       "fats": "7g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "African"]
   },
   "Filipino Chicken Tinola": {
     "summary": "A light and restorative Filipino chicken soup with ginger, green papaya, and leafy greens in a clear savoury broth.",
@@ -189,7 +189,7 @@
       "carbs": "14g",
       "fats": "12g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Asian"]
   },
   "French Ratatouille": {
     "summary": "A rustic Provençal vegetable stew of aubergine, courgette, peppers, and tomatoes slow-cooked in olive oil and thyme.",
@@ -205,7 +205,7 @@
       "carbs": "22g",
       "fats": "9g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "European", "Mediterranean"]
   },
   "German Chicken Vegetable Soup": {
     "summary": "A hearty, wholesome German-style chicken soup with root vegetables, leek, and fresh parsley — the ultimate comfort in a bowl.",
@@ -221,7 +221,7 @@
       "carbs": "24g",
       "fats": "8g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Comfort Food"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Comfort Food", "European"]
   },
   "Greek Chicken Salad": {
     "summary": "Grilled chicken over crisp romaine with cucumber, olives, feta, and a lemony oregano dressing — a fresh Mediterranean classic.",
@@ -237,7 +237,7 @@
       "carbs": "10g",
       "fats": "24g"
     },
-    "tags": ["High Protein", "Gluten Free"]
+    "tags": ["High Protein", "Gluten Free", "European", "Mediterranean"]
   },
   "Hawaiian Poke Bowl": {
     "summary": "Fresh sushi-grade tuna marinated in soy and sesame over sushi rice with avocado, cucumber, and nori — a taste of the Pacific.",
@@ -253,7 +253,7 @@
       "carbs": "52g",
       "fats": "14g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "American"]
   },
   "Indian Lentil Dal": {
     "summary": "Creamy red lentils cooked down with turmeric, cumin, garam masala, and tomatoes — a comforting and nourishing Indian staple.",
@@ -269,7 +269,7 @@
       "carbs": "50g",
       "fats": "9g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Asian"]
   },
   "Indonesian Gado Gado Salad": {
     "summary": "Blanched vegetables, crispy tofu, and boiled eggs drizzled with a rich peanut and lime dressing — Indonesia's beloved salad.",
@@ -285,7 +285,7 @@
       "carbs": "26g",
       "fats": "22g"
     },
-    "tags": ["High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["High Fibre", "Gluten Free", "Dairy Free", "Asian"]
   },
   "Italian Caprese Salad": {
     "summary": "Ripe tomatoes, fresh mozzarella, and fragrant basil drizzled with extra virgin olive oil and balsamic glaze — Italian simplicity at its finest.",
@@ -301,7 +301,7 @@
       "carbs": "8g",
       "fats": "20g"
     },
-    "tags": ["Gluten Free"]
+    "tags": ["Gluten Free", "European", "Mediterranean"]
   },
   "Japanese Teriyaki Salmon": {
     "summary": "Salmon fillets glazed in a sticky homemade teriyaki sauce and served over steamed rice — a quick, elegant Japanese-inspired dinner.",
@@ -317,7 +317,7 @@
       "carbs": "24g",
       "fats": "20g"
     },
-    "tags": ["High Protein", "Dairy Free"]
+    "tags": ["High Protein", "Dairy Free", "Asian"]
   },
   "Jordanian Chicken Freekeh Bowl": {
     "summary": "Spiced chicken and nutty freekeh grain simmered in chicken stock with warm allspice and cinnamon, topped with toasted almonds.",
@@ -333,7 +333,7 @@
       "carbs": "52g",
       "fats": "10g"
     },
-    "tags": ["High Protein", "Dairy Free"]
+    "tags": ["High Protein", "Dairy Free", "Middle Eastern"]
   },
   "Korean Bibimbap": {
     "summary": "A vibrant Korean rice bowl topped with seasoned vegetables, marinated beef, a fried egg, and spicy gochujang — mix it all together and enjoy.",
@@ -349,7 +349,7 @@
       "carbs": "62g",
       "fats": "18g"
     },
-    "tags": ["High Protein", "Dairy Free"]
+    "tags": ["High Protein", "Dairy Free", "Asian"]
   },
   "Lebanese Fattoush Salad": {
     "summary": "A tangy Lebanese salad of fresh herbs, crisp vegetables, and toasted pita chips dressed with lemon, olive oil, and sumac.",
@@ -365,7 +365,7 @@
       "carbs": "32g",
       "fats": "12g"
     },
-    "tags": ["Vegan", "High Fibre", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Middle Eastern", "Mediterranean"]
   },
   "Mediterranean Chickpea Bowl": {
     "summary": "Fluffy quinoa topped with chickpeas, feta, cucumber, cherry tomatoes, and olives with a bright lemon oregano dressing.",
@@ -381,7 +381,7 @@
       "carbs": "54g",
       "fats": "14g"
     },
-    "tags": ["High Fibre", "Gluten Free"]
+    "tags": ["High Fibre", "Gluten Free", "Mediterranean"]
   },
   "Mexican Chicken Burrito Bowl": {
     "summary": "Seasoned grilled chicken over rice with black beans, corn, fresh salsa, avocado, and cheddar — everything you love about a burrito, in a bowl.",
@@ -397,7 +397,7 @@
       "carbs": "58g",
       "fats": "14g"
     },
-    "tags": ["High Protein", "Gluten Free"]
+    "tags": ["High Protein", "Gluten Free", "Latin American"]
   },
   "Moroccan Chickpea Tagine": {
     "summary": "A fragrant North African stew of chickpeas, courgette, and carrot simmered with cumin, paprika, cinnamon, and raisins.",
@@ -413,7 +413,7 @@
       "carbs": "58g",
       "fats": "10g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "African", "Mediterranean"]
   },
   "Nepalese Vegetable Curry": {
     "summary": "A mild and comforting Nepalese curry of potato, cauliflower, peas, and carrot simmered in a fragrant turmeric and cumin broth.",
@@ -429,7 +429,7 @@
       "carbs": "46g",
       "fats": "8g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Asian"]
   },
   "Peruvian Quinoa Bowl": {
     "summary": "A nourishing Peruvian-inspired bowl of quinoa, roasted sweet potato, black beans, and avocado with a zesty lime dressing.",
@@ -445,7 +445,7 @@
       "carbs": "62g",
       "fats": "14g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Latin American"]
   },
   "Spanish Grilled Shrimp with Rice": {
     "summary": "Juicy garlic and paprika shrimp served over saffron rice with roasted peppers — a vibrant taste of coastal Spain.",
@@ -461,7 +461,7 @@
       "carbs": "46g",
       "fats": "10g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European", "Mediterranean"]
   },
   "Swedish Salmon Salad": {
     "summary": "Flaked salmon over mixed greens with baby potatoes, cucumber, and a fresh dill and yogurt dressing — light, elegant Scandinavian flavours.",
@@ -477,7 +477,7 @@
       "carbs": "18g",
       "fats": "20g"
     },
-    "tags": ["High Protein", "Gluten Free"]
+    "tags": ["High Protein", "Gluten Free", "European"]
   },
   "Thai Basil Chicken": {
     "summary": "Minced chicken stir-fried with garlic, chilli, and fragrant Thai basil in a savoury oyster and fish sauce glaze — fast, fiery, and full of flavour.",
@@ -493,7 +493,7 @@
       "carbs": "14g",
       "fats": "16g"
     },
-    "tags": ["High Protein", "Dairy Free"]
+    "tags": ["High Protein", "Dairy Free", "Asian"]
   },
   "Turkish Chicken Shish Kebab": {
     "summary": "Marinated chicken skewers grilled until charred and juicy, served on flatbread with yogurt and salad — a classic Turkish street food.",
@@ -509,7 +509,7 @@
       "carbs": "18g",
       "fats": "18g"
     },
-    "tags": ["High Protein"]
+    "tags": ["High Protein", "Middle Eastern", "Mediterranean"]
   },
   "Vietnamese Fresh Spring Rolls": {
     "summary": "Delicate rice paper rolls filled with shrimp, vermicelli, fresh herbs, and crisp vegetables, served with a hoisin peanut dipping sauce.",
@@ -525,6 +525,6 @@
       "carbs": "36g",
       "fats": "6g"
     },
-    "tags": ["Gluten Free", "Dairy Free", "High Fibre"]
+    "tags": ["Gluten Free", "Dairy Free", "High Fibre", "Asian"]
   }
 }

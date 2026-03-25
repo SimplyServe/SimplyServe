@@ -25,6 +25,29 @@ Color _tagColour(String tag) {
   }
 }
 
+Color _cuisineColour(String cuisine) {
+  switch (cuisine) {
+    case 'European':
+      return const Color(0xFF1565C0);
+    case 'Asian':
+      return const Color(0xFFAD1457);
+    case 'African':
+      return const Color(0xFFE65100);
+    case 'Middle Eastern':
+      return const Color(0xFF6A1B9A);
+    case 'American':
+      return const Color(0xFF2E7D32);
+    case 'Latin American':
+      return const Color(0xFFC62828);
+    case 'Caribbean':
+      return const Color(0xFF00838F);
+    case 'Mediterranean':
+      return const Color(0xFF0277BD);
+    default:
+      return const Color(0xFF757575);
+  }
+}
+
 class RecipesView extends StatefulWidget {
   const RecipesView({super.key});
 
@@ -44,6 +67,17 @@ const _kAllTags = [
 
 const _kAllDifficulties = ['Easy', 'Medium', 'Hard'];
 
+const _kAllCuisines = [
+  'European',
+  'Asian',
+  'African',
+  'Middle Eastern',
+  'American',
+  'Latin American',
+  'Caribbean',
+  'Mediterranean',
+];
+
 // Parse "30 min" → 30.  Returns 0 if unparseable.
 int _parseMins(String t) =>
     int.tryParse(t.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -57,18 +91,21 @@ class _RecipesViewState extends State<RecipesView> {
 
   final Set<String> _selectedTags = {};
   final Set<String> _selectedDifficulties = {};
+  final Set<String> _selectedCuisines = {};
   double _maxDuration = 120;
   bool _showAdvanced = false;
 
   int get _activeFilterCount =>
       _selectedTags.length +
       _selectedDifficulties.length +
+      _selectedCuisines.length +
       (_maxDuration < 120 ? 1 : 0);
 
   void _clearFilters() {
     setState(() {
       _selectedTags.clear();
       _selectedDifficulties.clear();
+      _selectedCuisines.clear();
       _maxDuration = 120;
     });
   }
@@ -162,6 +199,12 @@ class _RecipesViewState extends State<RecipesView> {
       // Tag filter - recipe must have ANY of the selected tags
       if (_selectedTags.isNotEmpty &&
           !_selectedTags.any((t) => r.tags.contains(t))) {
+        return false;
+      }
+
+      // Cuisine filter - recipe must match ANY of the selected cuisines
+      if (_selectedCuisines.isNotEmpty &&
+          !_selectedCuisines.any((c) => r.tags.contains(c))) {
         return false;
       }
 
@@ -315,6 +358,7 @@ class _RecipesViewState extends State<RecipesView> {
                 ? _AdvancedFilterPanel(
                     selectedTags: _selectedTags,
                     selectedDifficulties: _selectedDifficulties,
+                    selectedCuisines: _selectedCuisines,
                     maxDuration: _maxDuration,
                     onTagToggled: (tag) => setState(() =>
                         _selectedTags.contains(tag)
@@ -324,6 +368,10 @@ class _RecipesViewState extends State<RecipesView> {
                         _selectedDifficulties.contains(d)
                             ? _selectedDifficulties.remove(d)
                             : _selectedDifficulties.add(d)),
+                    onCuisineToggled: (c) => setState(() =>
+                        _selectedCuisines.contains(c)
+                            ? _selectedCuisines.remove(c)
+                            : _selectedCuisines.add(c)),
                     onDurationChanged: (v) => setState(() => _maxDuration = v),
                   )
                 : const SizedBox.shrink(),
@@ -387,17 +435,21 @@ class _RecipesViewState extends State<RecipesView> {
 class _AdvancedFilterPanel extends StatelessWidget {
   final Set<String> selectedTags;
   final Set<String> selectedDifficulties;
+  final Set<String> selectedCuisines;
   final double maxDuration;
   final ValueChanged<String> onTagToggled;
   final ValueChanged<String> onDifficultyToggled;
+  final ValueChanged<String> onCuisineToggled;
   final ValueChanged<double> onDurationChanged;
 
   const _AdvancedFilterPanel({
     required this.selectedTags,
     required this.selectedDifficulties,
+    required this.selectedCuisines,
     required this.maxDuration,
     required this.onTagToggled,
     required this.onDifficultyToggled,
+    required this.onCuisineToggled,
     required this.onDurationChanged,
   });
 
@@ -460,6 +512,59 @@ class _AdvancedFilterPanel extends StatelessWidget {
                   ),
                   child: Text(
                     tag,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? colour : const Color(0xFF666666),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          const SizedBox(height: 12),
+
+          // ── Cuisine ───────────────────────────────
+          const Text(
+            'Cuisine',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF333333),
+                letterSpacing: 0.4),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _kAllCuisines.map((cuisine) {
+              final selected = selectedCuisines.contains(cuisine);
+              final colour = _cuisineColour(cuisine);
+              return GestureDetector(
+                onTap: () => onCuisineToggled(cuisine),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: selected
+                        // ignore: deprecated_member_use
+                        ? colour.withOpacity(0.18)
+                        : const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: selected
+                          // ignore: deprecated_member_use
+                          ? colour.withOpacity(0.6)
+                          : const Color(0xFFDDDDDD),
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    cuisine,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
