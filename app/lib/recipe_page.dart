@@ -176,7 +176,7 @@ class _RecipePageState extends State<RecipePage> {
               );
             },
             icon: const Icon(Icons.add_shopping_cart_rounded),
-            label: const Text('Add Ingredients to Cart'),
+            label: const Text('Add Ingredients to Shopping List'),
             style: ElevatedButton.styleFrom(
               backgroundColor: _brand,
               foregroundColor: Colors.white,
