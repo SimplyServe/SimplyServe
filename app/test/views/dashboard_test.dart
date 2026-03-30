@@ -1,7 +1,6 @@
-/*
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:simplyserve/views/dashboard.dart';
+import 'package:simplyserve/views/nutritional_dashboard.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
 void main() {
@@ -21,11 +20,11 @@ void main() {
       expect(find.text('Dashboard'), findsOneWidget);
 
       // Verify main content
-      expect(find.text('Welcome'), findsOneWidget);
-      expect(find.text('Hello! This is the dashboard.'), findsOneWidget);
+      expect(find.text('Welcome back!'), findsOneWidget);
+      expect(find.text('Here is your daily nutritional summary.'), findsOneWidget);
     });
 
-    testWidgets('DashboardView displays nutrition info button',
+    testWidgets('DashboardView displays no data message by default',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -33,13 +32,12 @@ void main() {
         ),
       );
 
-      // Find the nutrition info button
-      expect(find.text('View Nutrition Information and Meal Plans'),
-          findsOneWidget);
-      expect(find.byType(ElevatedButton), findsOneWidget);
+      // Default state shows no data message
+      expect(find.text('No data to show yet'), findsOneWidget);
+      expect(find.text('Log what you ate in Meal Calendar, including servings, and your totals for today will appear here.'), findsOneWidget);
     });
 
-    testWidgets('Nutrition info button shows SnackBar when tapped',
+    testWidgets('Dashboard shows Log meals button when no data',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -47,15 +45,23 @@ void main() {
         ),
       );
 
-      // Tap the nutrition info button
-      await tester.tap(find.text('View Nutrition Information and Meal Plans'));
-      await tester.pump(); // Start SnackBar animation
+      // Verify the Log meals button exists
+      expect(find.text('Log meals in calendar'), findsOneWidget);
+      expect(find.byIcon(Icons.calendar_month), findsOneWidget);
+    });
 
-      // Verify SnackBar message
-      expect(
-        find.text('Here you can view nutrition information and meal plans!'),
-        findsOneWidget,
+    testWidgets('Dashboard always shows Browse Recipes button',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
       );
+
+      // Always shown at the bottom
+      expect(find.text('Looking for meal ideas?'), findsOneWidget);
+      expect(find.text('Browse Recipes'), findsOneWidget);
+      expect(find.byIcon(Icons.restaurant_menu), findsOneWidget);
     });
 
     testWidgets('DashboardView has drawer with navigation items',
@@ -77,13 +83,27 @@ void main() {
 
       // Verify navigation menu items
       expect(find.text('Dashboard'), findsAtLeastNWidgets(1));
-      expect(find.text('Recipes'), findsOneWidget);
-      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Recipes'), findsAtLeastNWidgets(1));
+      expect(find.text('Settings'), findsAtLeastNWidgets(1));
+    });
 
-      // Verify icons in drawer
-      expect(find.byIcon(Icons.dashboard), findsOneWidget);
-      expect(find.byIcon(Icons.restaurant_menu), findsOneWidget);
-      expect(find.byIcon(Icons.settings), findsOneWidget);
+    testWidgets('Dashboard drawer has navigation icons',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
+      );
+
+      // Open the drawer
+      final ScaffoldState state = tester.firstState(find.byType(Scaffold));
+      state.openDrawer();
+      await tester.pumpAndSettle();
+
+      // Verify icons in drawer (some icons may appear multiple times)
+      expect(find.byIcon(Icons.dashboard), findsWidgets);
+      expect(find.byIcon(Icons.restaurant_menu), findsWidgets);
+      expect(find.byIcon(Icons.settings), findsWidgets);
     });
 
     testWidgets('Dashboard is highlighted as active route in drawer',
@@ -114,26 +134,23 @@ void main() {
       expect(dashboardTiles.any((tile) => tile.selected == true), isTrue);
     });
 
-    testWidgets('DashboardView uses correct theme color',
+    testWidgets('DashboardView renders with proper styling',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: DashboardView(),
+        MaterialApp(
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF74BC42),
+            ),
+          ),
+          home: const DashboardView(),
         ),
       );
 
-      // Find the ElevatedButton
-      final buttonFinder = find.widgetWithText(
-          ElevatedButton, 'View Nutrition Information and Meal Plans');
-      expect(buttonFinder, findsOneWidget);
-
-      final button = tester.widget<ElevatedButton>(buttonFinder);
-
-      // Verify button uses the theme color (#74BC42)
-      final buttonColor = button.style?.backgroundColor?.resolve({});
-      expect(buttonColor, const Color(0xFF74BC42));
+      // Verify dashboard renders with cards and proper content
+      expect(find.text('Welcome back!'), findsOneWidget);
+      expect(find.byType(Card), findsAtLeastNWidgets(1));
+      expect(find.byIcon(Icons.insights_outlined), findsOneWidget);
     });
   });
 }
-
-*/
