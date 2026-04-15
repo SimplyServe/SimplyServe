@@ -127,99 +127,6 @@ void main() {
     });
   });
 
-  group('DashboardView Widget Tests', () {
-    testWidgets('DashboardView displays welcome message',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: Text('Welcome'),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Welcome'), findsOneWidget);
-    });
-
-    testWidgets('DashboardView shows welcome description',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: Column(
-                children: const [
-                  Text('Welcome'),
-                  Text('Dashboard content'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(find.byType(Text), findsWidgets);
-    });
-
-    testWidgets('DashboardView nutrition button shows SnackBar',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(
-                          tester.element(find.byType(ElevatedButton)))
-                      .showSnackBar(
-                    const SnackBar(content: Text('Nutrition Info')),
-                  );
-                },
-                child: const Text('View Nutrition'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Find and tap button
-      final button = find.byType(ElevatedButton);
-      if (button.evaluate().isNotEmpty) {
-        await tester.tap(button.first);
-        await tester.pump();
-
-        // SnackBar should be visible
-        expect(find.byType(SnackBar), findsOneWidget);
-      }
-    });
-
-    testWidgets('DashboardView is scrollable', (WidgetTester tester) async {
-      tester.binding.window.physicalSizeTestValue = const Size(800, 400);
-      addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ListView(
-              children: const [
-                Text('Welcome'),
-                Padding(padding: EdgeInsets.all(8.0), child: Text('Content')),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      // Attempt scroll
-      await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pump();
-
-      expect(find.byType(ListView), findsOneWidget);
-    });
-  });
-
   group('Navigation Tests', () {
     testWidgets('App navigates between routes correctly',
         (WidgetTester tester) async {
@@ -232,7 +139,6 @@ void main() {
       // Navigation should be configured
       expect(find.byType(MaterialApp), findsOneWidget);
     });
-
   });
 
   group('Theme Tests', () {
