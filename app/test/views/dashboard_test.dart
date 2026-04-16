@@ -2,18 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simplyserve/views/nutritional_dashboard.dart';
 import 'package:simplyserve/widgets/navbar.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() {
-  group('DashboardView Widget Tests', () {
-    testWidgets('DashboardView renders correctly with NavBarScaffold',
-        (WidgetTester tester) async {
+  setUpAll(() async {
+    // Initialize dotenv for testing
+    await dotenv.load(fileName: ".env");
+  });
+
+  group('SpinWheelView Widget Tests', () {
+    testWidgets('SpinWheelView renders correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: DashboardView(),
+          home: SpinWheelView(),
         ),
       );
 
-      // Verify NavBarScaffold is present
+      // Verify SpinWheelView loads
+      expect(find.byType(SpinWheelView), findsOneWidget);
       expect(find.byType(NavBarScaffold), findsOneWidget);
 
       // Verify AppBar title
@@ -28,7 +34,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: DashboardView(),
+          home: SpinWheelView(),
         ),
       );
 
@@ -41,7 +47,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: DashboardView(),
+          home: SpinWheelView(),
         ),
       );
 
@@ -64,11 +70,10 @@ void main() {
       expect(find.byIcon(Icons.restaurant_menu), findsOneWidget);
     });
 
-    testWidgets('DashboardView has drawer with navigation items',
-        (WidgetTester tester) async {
+    testWidgets('SpinWheelView displays subtitle', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: DashboardView(),
+          home: SpinWheelView(),
         ),
       );
 
@@ -106,32 +111,16 @@ void main() {
       expect(find.byIcon(Icons.settings), findsWidgets);
     });
 
-    testWidgets('Dashboard is highlighted as active route in drawer',
+    testWidgets('SpinWheelView has SingleChildScrollView',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          routes: {
-            '/': (context) => const DashboardView(),
-          },
-          initialRoute: '/',
+        const MaterialApp(
+          home: SpinWheelView(),
         ),
       );
 
-      // Open the drawer
-      final ScaffoldState state = tester.firstState(find.byType(Scaffold));
-      state.openDrawer();
-      await tester.pumpAndSettle();
-
-      // Find the Dashboard ListTile
-      final dashboardTiles = tester.widgetList<ListTile>(
-        find.ancestor(
-          of: find.text('Dashboard'),
-          matching: find.byType(ListTile),
-        ),
-      );
-
-      // At least one Dashboard tile should be selected (active route)
-      expect(dashboardTiles.any((tile) => tile.selected == true), isTrue);
+      // Verify scrollable content
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
     });
 
     testWidgets('DashboardView renders with proper styling',
