@@ -1,7 +1,7 @@
 {
   "Tuscan Salmon": {
     "summary": "Seared salmon fillets in a rich, creamy garlic sauce with sun-dried tomatoes and fresh spinach — an Italian-inspired dinner ready in 35 minutes.",
-    "imageUrl": "assets/images/image.png",
+    "imageUrl": "assets/images/Tuscan Salmon.png",
     "prepTime": "10 mins",
     "cookTime": "25 mins",
     "totalTime": "35 mins",
@@ -13,11 +13,11 @@
       "carbs": "8g",
       "fats": "36g"
     },
-    "tags": ["High Protein", "Gluten Free", "Comfort Food", "European"]
+    "tags": ["High Protein", "Gluten Free", "European", "Dinner"]
   },
   "Carbonara": {
     "summary": "A classic Roman pasta dish with crispy pancetta, silky egg and Pecorino sauce, and plenty of black pepper — simple, indulgent, and deeply satisfying.",
-    "imageUrl": "assets/images/image.png",
+    "imageUrl": "assets/images/Carbonara.png",
     "prepTime": "5 mins",
     "cookTime": "20 mins",
     "totalTime": "25 mins",
@@ -29,11 +29,11 @@
       "carbs": "72g",
       "fats": "28g"
     },
-    "tags": ["Comfort Food", "European"]
+    "tags": ["European", "Dinner"]
   },
   "Chicken Tacos": {
     "summary": "Smoky spiced chicken in warm flour tortillas with fresh salsa, creamy avocado, and sour cream — a crowd-pleasing weeknight favourite.",
-    "imageUrl": "assets/images/image.png",
+    "imageUrl": "assets/images/Chicken Tacos.png",
     "prepTime": "10 mins",
     "cookTime": "15 mins",
     "totalTime": "25 mins",
@@ -45,7 +45,7 @@
       "carbs": "48g",
       "fats": "18g"
     },
-    "tags": ["High Protein", "Latin American"]
+    "tags": ["High Protein", "Latin American", "Dinner"]
   },
   "American Grilled Chicken Wrap": {
     "summary": "A classic American-style wrap packed with juicy grilled chicken, crisp romaine, cheddar, and creamy ranch dressing — ready in under 30 minutes.",
@@ -61,7 +61,7 @@
       "carbs": "34g",
       "fats": "18g"
     },
-    "tags": ["High Protein", "American"]
+    "tags": ["High Protein", "American", "Lunch"]
   },
   "Argentinian Grilled Steak Salad": {
     "summary": "Tender sliced flank steak over fresh salad greens with chimichurri dressing — a bold, protein-packed salad inspired by the asado tradition.",
@@ -77,7 +77,7 @@
       "carbs": "12g",
       "fats": "22g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Latin American"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Latin American", "Dinner"]
   },
   "Australian Avocado Toast with Egg": {
     "summary": "Creamy smashed avocado on toasted sourdough topped with a fried egg, feta, and chilli flakes — the brunch staple done right.",
@@ -93,7 +93,7 @@
       "carbs": "28g",
       "fats": "24g"
     },
-    "tags": ["High Fibre"]
+    "tags": ["High Fibre", "Breakfast"]
   },
   "Brazilian Black Bean Bowl": {
     "summary": "Hearty spiced black beans served over brown rice with fresh coriander and lime — a plant-based bowl full of flavour and fibre.",
@@ -109,7 +109,7 @@
       "carbs": "68g",
       "fats": "8g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Latin American"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Latin American", "Dinner"]
   },
   "British Baked Salmon with Veg": {
     "summary": "Flaky oven-baked salmon with lemon and dill alongside roasted seasonal vegetables — a wholesome, no-fuss traybake.",
@@ -125,7 +125,7 @@
       "carbs": "28g",
       "fats": "20g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European", "Dinner"]
   },
   "Chinese Stir Fry Vegetables": {
     "summary": "A vibrant wok of crisp vegetables tossed in a savoury ginger and soy sauce — quick, light, and packed with colour.",
@@ -141,7 +141,7 @@
       "carbs": "28g",
       "fats": "9g"
     },
-    "tags": ["Vegan", "High Fibre", "Dairy Free", "Asian"]
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Asian", "Dinner"]
   },
   "Egyptian Ful Medames": {
     "summary": "Slow-cooked fava beans mashed with garlic, lemon, and cumin — a nourishing Egyptian street food classic served with warm pita.",
@@ -157,7 +157,7 @@
       "carbs": "48g",
       "fats": "8g"
     },
-    "tags": ["Vegan", "High Fibre", "Dairy Free", "African", "Middle Eastern"]
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "African", "Middle Eastern", "Lunch"]
   },
   "Ethiopian Lentil Stew": {
     "summary": "Red lentils simmered in aromatic berbere spice with ginger and tomato — a warming, fibre-rich stew from the heart of East Africa.",
@@ -173,7 +173,7 @@
       "carbs": "52g",
       "fats": "7g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "African"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "African", "Dinner"]
   },
   "Filipino Chicken Tinola": {
     "summary": "A light and restorative Filipino chicken soup with ginger, green papaya, and leafy greens in a clear savoury broth.",
@@ -189,7 +189,7 @@
       "carbs": "14g",
       "fats": "12g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Asian"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Asian", "Dinner"]
   },
   "French Ratatouille": {
     "summary": "A rustic Provençal vegetable stew of aubergine, courgette, peppers, and tomatoes slow-cooked in olive oil and thyme.",
@@ -205,7 +205,7 @@
       "carbs": "22g",
       "fats": "9g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "European", "Mediterranean"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "European", "Mediterranean", "Dinner"]
   },
   "German Chicken Vegetable Soup": {
     "summary": "A hearty, wholesome German-style chicken soup with root vegetables, leek, and fresh parsley — the ultimate comfort in a bowl.",
@@ -221,7 +221,7 @@
       "carbs": "24g",
       "fats": "8g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "Comfort Food", "European"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European", "Dinner"]
   },
   "Greek Chicken Salad": {
     "summary": "Grilled chicken over crisp romaine with cucumber, olives, feta, and a lemony oregano dressing — a fresh Mediterranean classic.",
@@ -237,7 +237,7 @@
       "carbs": "10g",
       "fats": "24g"
     },
-    "tags": ["High Protein", "Gluten Free", "European", "Mediterranean"]
+    "tags": ["High Protein", "Gluten Free", "European", "Mediterranean", "Lunch"]
   },
   "Hawaiian Poke Bowl": {
     "summary": "Fresh sushi-grade tuna marinated in soy and sesame over sushi rice with avocado, cucumber, and nori — a taste of the Pacific.",
@@ -253,7 +253,7 @@
       "carbs": "52g",
       "fats": "14g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "American"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "American", "Lunch"]
   },
   "Indian Lentil Dal": {
     "summary": "Creamy red lentils cooked down with turmeric, cumin, garam masala, and tomatoes — a comforting and nourishing Indian staple.",
@@ -269,7 +269,7 @@
       "carbs": "50g",
       "fats": "9g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Asian"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Asian", "Dinner"]
   },
   "Indonesian Gado Gado Salad": {
     "summary": "Blanched vegetables, crispy tofu, and boiled eggs drizzled with a rich peanut and lime dressing — Indonesia's beloved salad.",
@@ -285,7 +285,7 @@
       "carbs": "26g",
       "fats": "22g"
     },
-    "tags": ["High Fibre", "Gluten Free", "Dairy Free", "Asian"]
+    "tags": ["High Fibre", "Gluten Free", "Dairy Free", "Asian", "Lunch"]
   },
   "Italian Caprese Salad": {
     "summary": "Ripe tomatoes, fresh mozzarella, and fragrant basil drizzled with extra virgin olive oil and balsamic glaze — Italian simplicity at its finest.",
@@ -301,7 +301,7 @@
       "carbs": "8g",
       "fats": "20g"
     },
-    "tags": ["Gluten Free", "European", "Mediterranean"]
+    "tags": ["Gluten Free", "European", "Mediterranean", "Lunch"]
   },
   "Japanese Teriyaki Salmon": {
     "summary": "Salmon fillets glazed in a sticky homemade teriyaki sauce and served over steamed rice — a quick, elegant Japanese-inspired dinner.",
@@ -317,7 +317,7 @@
       "carbs": "24g",
       "fats": "20g"
     },
-    "tags": ["High Protein", "Dairy Free", "Asian"]
+    "tags": ["High Protein", "Dairy Free", "Asian", "Dinner"]
   },
   "Jordanian Chicken Freekeh Bowl": {
     "summary": "Spiced chicken and nutty freekeh grain simmered in chicken stock with warm allspice and cinnamon, topped with toasted almonds.",
@@ -333,7 +333,7 @@
       "carbs": "52g",
       "fats": "10g"
     },
-    "tags": ["High Protein", "Dairy Free", "Middle Eastern"]
+    "tags": ["High Protein", "Dairy Free", "Middle Eastern", "Dinner"]
   },
   "Korean Bibimbap": {
     "summary": "A vibrant Korean rice bowl topped with seasoned vegetables, marinated beef, a fried egg, and spicy gochujang — mix it all together and enjoy.",
@@ -349,7 +349,7 @@
       "carbs": "62g",
       "fats": "18g"
     },
-    "tags": ["High Protein", "Dairy Free", "Asian"]
+    "tags": ["High Protein", "Dairy Free", "Asian", "Dinner"]
   },
   "Lebanese Fattoush Salad": {
     "summary": "A tangy Lebanese salad of fresh herbs, crisp vegetables, and toasted pita chips dressed with lemon, olive oil, and sumac.",
@@ -365,7 +365,7 @@
       "carbs": "32g",
       "fats": "12g"
     },
-    "tags": ["Vegan", "High Fibre", "Dairy Free", "Middle Eastern", "Mediterranean"]
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Middle Eastern", "Mediterranean", "Lunch"]
   },
   "Mediterranean Chickpea Bowl": {
     "summary": "Fluffy quinoa topped with chickpeas, feta, cucumber, cherry tomatoes, and olives with a bright lemon oregano dressing.",
@@ -381,7 +381,7 @@
       "carbs": "54g",
       "fats": "14g"
     },
-    "tags": ["High Fibre", "Gluten Free", "Mediterranean"]
+    "tags": ["High Fibre", "Gluten Free", "Mediterranean", "Lunch"]
   },
   "Mexican Chicken Burrito Bowl": {
     "summary": "Seasoned grilled chicken over rice with black beans, corn, fresh salsa, avocado, and cheddar — everything you love about a burrito, in a bowl.",
@@ -397,7 +397,7 @@
       "carbs": "58g",
       "fats": "14g"
     },
-    "tags": ["High Protein", "Gluten Free", "Latin American"]
+    "tags": ["High Protein", "Gluten Free", "Latin American", "Dinner"]
   },
   "Moroccan Chickpea Tagine": {
     "summary": "A fragrant North African stew of chickpeas, courgette, and carrot simmered with cumin, paprika, cinnamon, and raisins.",
@@ -413,7 +413,7 @@
       "carbs": "58g",
       "fats": "10g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "African", "Mediterranean"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "African", "Mediterranean", "Dinner"]
   },
   "Nepalese Vegetable Curry": {
     "summary": "A mild and comforting Nepalese curry of potato, cauliflower, peas, and carrot simmered in a fragrant turmeric and cumin broth.",
@@ -429,7 +429,7 @@
       "carbs": "46g",
       "fats": "8g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Asian"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Asian", "Dinner"]
   },
   "Peruvian Quinoa Bowl": {
     "summary": "A nourishing Peruvian-inspired bowl of quinoa, roasted sweet potato, black beans, and avocado with a zesty lime dressing.",
@@ -445,7 +445,7 @@
       "carbs": "62g",
       "fats": "14g"
     },
-    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Latin American"]
+    "tags": ["Vegan", "High Fibre", "Gluten Free", "Dairy Free", "Latin American", "Dinner"]
   },
   "Spanish Grilled Shrimp with Rice": {
     "summary": "Juicy garlic and paprika shrimp served over saffron rice with roasted peppers — a vibrant taste of coastal Spain.",
@@ -461,7 +461,7 @@
       "carbs": "46g",
       "fats": "10g"
     },
-    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European", "Mediterranean"]
+    "tags": ["High Protein", "Gluten Free", "Dairy Free", "European", "Mediterranean", "Dinner"]
   },
   "Swedish Salmon Salad": {
     "summary": "Flaked salmon over mixed greens with baby potatoes, cucumber, and a fresh dill and yogurt dressing — light, elegant Scandinavian flavours.",
@@ -477,7 +477,7 @@
       "carbs": "18g",
       "fats": "20g"
     },
-    "tags": ["High Protein", "Gluten Free", "European"]
+    "tags": ["High Protein", "Gluten Free", "European", "Lunch"]
   },
   "Thai Basil Chicken": {
     "summary": "Minced chicken stir-fried with garlic, chilli, and fragrant Thai basil in a savoury oyster and fish sauce glaze — fast, fiery, and full of flavour.",
@@ -493,7 +493,7 @@
       "carbs": "14g",
       "fats": "16g"
     },
-    "tags": ["High Protein", "Dairy Free", "Asian"]
+    "tags": ["High Protein", "Dairy Free", "Asian", "Dinner"]
   },
   "Turkish Chicken Shish Kebab": {
     "summary": "Marinated chicken skewers grilled until charred and juicy, served on flatbread with yogurt and salad — a classic Turkish street food.",
@@ -509,7 +509,7 @@
       "carbs": "18g",
       "fats": "18g"
     },
-    "tags": ["High Protein", "Middle Eastern", "Mediterranean"]
+    "tags": ["High Protein", "Middle Eastern", "Mediterranean", "Dinner"]
   },
   "Vietnamese Fresh Spring Rolls": {
     "summary": "Delicate rice paper rolls filled with shrimp, vermicelli, fresh herbs, and crisp vegetables, served with a hoisin peanut dipping sauce.",
@@ -525,6 +525,374 @@
       "carbs": "36g",
       "fats": "6g"
     },
-    "tags": ["Gluten Free", "Dairy Free", "High Fibre", "Asian"]
+    "tags": ["Gluten Free", "Dairy Free", "High Fibre", "Asian", "Lunch"]
+  },
+  "Protein Pancakes": {
+    "summary": "Fluffy Greek yogurt-based pancakes packed with protein, a delicious and nutritious breakfast that keeps you full all morning.",
+    "imageUrl": "assets/images/Protein Pancake.png",
+    "prepTime": "5 mins",
+    "cookTime": "10 mins",
+    "totalTime": "15 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 330,
+      "protein": "22g",
+      "carbs": "42g",
+      "fats": "8g"
+    },
+    "tags": ["High Protein", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Protein French Toast": {
+    "summary": "Whole wheat bread dipped in a protein-rich cottage cheese and egg batter, cooked to golden perfection, a high-protein breakfast twist on a classic.",
+    "imageUrl": "assets/images/Protein French Toast.png",
+    "prepTime": "5 mins",
+    "cookTime": "5 mins",
+    "totalTime": "10 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 290,
+      "protein": "26g",
+      "carbs": "30g",
+      "fats": "10g"
+    },
+    "tags": ["High Protein", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Greek Yogurt Parfait": {
+    "summary": "Layers of thick Greek yogurt, crunchy granola, fresh berries, and a drizzle of honey, a high-protein snack that tastes like dessert.",
+    "imageUrl": "assets/images/Greek Yogurt Parfait.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 280,
+      "protein": "20g",
+      "carbs": "38g",
+      "fats": "6g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Quick & Easy", "Budget Friendly", "Snack"]
+  },
+  "Veggie Scrambled Eggs": {
+    "summary": "Fluffy scrambled eggs loaded with sautéed vegetables like bell peppers, spinach, and tomatoes, a nutritious start to your day.",
+    "imageUrl": "assets/images/Veggie Scrambled Eggs.png",
+    "prepTime": "5 mins",
+    "cookTime": "5 mins",
+    "totalTime": "10 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 300,
+      "protein": "20g",
+      "carbs": "12g",
+      "fats": "20g"
+    },
+    "tags": ["High Protein", "Gluten Free", "High Fibre", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Peanut Butter Banana Smoothie Bowl": {
+    "summary": "A thick and creamy smoothie bowl made with banana, peanut butter, and protein powder, topped with granola and fresh fruit, filling and energizing.",
+    "imageUrl": "assets/images/Peanut Butter Banana Smoothie Bowl.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "18g",
+      "carbs": "48g",
+      "fats": "14g"
+    },
+    "tags": ["High Protein", "High Fibre", "Quick & Easy", "Budget Friendly", "Snack"]
+  },
+  "Microwave Mug Omelette": {
+    "summary": "A fluffy single-serving omelette cooked in the microwave in under 5 minutes, perfect for busy mornings when you need a quick protein boost.",
+    "imageUrl": "assets/images/Microwave Mug Omelette.png",
+    "prepTime": "2 mins",
+    "cookTime": "3 mins",
+    "totalTime": "5 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 280,
+      "protein": "22g",
+      "carbs": "6g",
+      "fats": "18g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Chickpea Salad Sandwich": {
+    "summary": "Mashed chickpeas mixed with creamy mayo, crunchy celery, and tangy mustard, served in a sandwich or wrap, a satisfying plant-based protein option.",
+    "imageUrl": "assets/images/Chickpea Salad Sandwich.png",
+    "prepTime": "10 mins",
+    "cookTime": "0 mins",
+    "totalTime": "10 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "14g",
+      "carbs": "54g",
+      "fats": "12g"
+    },
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Quick & Easy", "Budget Friendly", "Lunch"]
+  },
+  "Tuna Pasta Salad": {
+    "summary": "A refreshing cold pasta salad with canned tuna, cherry tomatoes, cucumber, and a zesty lemon dressing, meal-prep friendly and packed with protein.",
+    "imageUrl": "assets/images/Tuna Pasta Salad.png",
+    "prepTime": "15 mins",
+    "cookTime": "0 mins",
+    "totalTime": "15 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 420,
+      "protein": "28g",
+      "carbs": "48g",
+      "fats": "12g"
+    },
+    "tags": ["High Protein", "Dairy Free", "Quick & Easy", "Budget Friendly", "Lunch"]
+  },
+  "Hummus Veggie Wrap": {
+    "summary": "A colorful wrap filled with creamy hummus, crunchy fresh vegetables, and leafy greens, a light, nutritious, and plant-based meal ready in 5 minutes.",
+    "imageUrl": "assets/images/Hummus Veggie Wrap.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 320,
+      "protein": "12g",
+      "carbs": "48g",
+      "fats": "10g"
+    },
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Quick & Easy", "Budget Friendly", "Lunch"]
+  },
+  "Caprese Sandwich": {
+    "summary": "Fresh mozzarella, ripe tomatoes, and fragrant basil layered on crusty bread with a drizzle of balsamic glaze, an Italian-inspired no-cook classic.",
+    "imageUrl": "assets/images/Caprese Sandwich.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 350,
+      "protein": "16g",
+      "carbs": "36g",
+      "fats": "16g"
+    },
+    "tags": ["High Fibre", "Quick & Easy", "Budget Friendly", "Mediterranean", "Lunch"]
+  },
+  "Cottage Cheese Bowl": {
+    "summary": "Creamy cottage cheese topped with fresh fruit, nuts, and a drizzle of honey, an incredibly high-protein snack or breakfast ready in 3 minutes.",
+    "imageUrl": "assets/images/Cottage Cheese Bowl.png",
+    "prepTime": "3 mins",
+    "cookTime": "0 mins",
+    "totalTime": "3 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 320,
+      "protein": "28g",
+      "carbs": "32g",
+      "fats": "8g"
+    },
+    "tags": ["High Protein", "Gluten Free", "High Fibre", "Quick & Easy", "Budget Friendly", "Snack"]
+  },
+  "Quick Veggie Stir Fry with Noodles": {
+    "summary": "A vibrant and customizable stir fry with crisp vegetables and noodles tossed in a savory soy-ginger sauce, ready in just 15 minutes.",
+    "imageUrl": "assets/images/Quick Veggie Stir Fry with Noodles.png",
+    "prepTime": "5 mins",
+    "cookTime": "10 mins",
+    "totalTime": "15 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 400,
+      "protein": "12g",
+      "carbs": "62g",
+      "fats": "12g"
+    },
+    "tags": ["Vegan", "High Fibre", "Dairy Free", "Quick & Easy", "Budget Friendly", "Asian", "Dinner"]
+  },
+  "Quick Fried Rice": {
+    "summary": "A classic fried rice using leftover rice, scrambled eggs, and mixed vegetables tossed in a savory sauce, a budget-friendly meal that beats takeout.",
+    "imageUrl": "assets/images/Quick Fried Rice.png",
+    "prepTime": "5 mins",
+    "cookTime": "10 mins",
+    "totalTime": "15 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 420,
+      "protein": "14g",
+      "carbs": "64g",
+      "fats": "12g"
+    },
+    "tags": ["High Fibre", "Dairy Free", "Quick & Easy", "Budget Friendly", "Asian", "Dinner"]
+  },
+  "Loaded Baked Sweet Potato": {
+    "summary": "A microwave-baked sweet potato topped with black beans, avocado, cheese, and salsa, a hearty and nutritious meal in 10 minutes.",
+    "imageUrl": "assets/images/Loaded Baked Sweet Potato.png",
+    "prepTime": "5 mins",
+    "cookTime": "5 mins",
+    "totalTime": "10 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 380,
+      "protein": "14g",
+      "carbs": "58g",
+      "fats": "12g"
+    },
+    "tags": ["High Fibre", "Gluten Free", "Quick & Easy", "Budget Friendly", "Dinner"]
+  },
+  "Turkey & Cheese Roll-Ups": {
+    "summary": "Simple deli turkey slices rolled with cheese, lettuce, and mustard, a high-protein, low-carb snack ready in under 5 minutes.",
+    "imageUrl": "assets/images/Turkey & Cheese Roll-Ups.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 2,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 300,
+      "protein": "32g",
+      "carbs": "8g",
+      "fats": "16g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Quick & Easy", "Budget Friendly", "Snack"]
+  },
+  "Protein Pudding": {
+    "summary": "Ultra-simple protein-packed pudding made with just protein powder and Greek yogurt, a creamy, high-protein snack ready in 3 minutes.",
+    "imageUrl": "assets/images/Protein Pudding.png",
+    "prepTime": "3 mins",
+    "cookTime": "0 mins",
+    "totalTime": "3 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 220,
+      "protein": "42g",
+      "carbs": "10g",
+      "fats": "2g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Quick & Easy", "Budget Friendly", "Snack"]
+  },
+  "Banana Protein Cookies": {
+    "summary": "Healthy three-ingredient cookies made with banana, oats, and protein powder, a guilt-free snack baked in under 20 minutes.",
+    "imageUrl": "assets/images/Banana Protein Cookies.png",
+    "prepTime": "5 mins",
+    "cookTime": "10 mins",
+    "totalTime": "15 mins",
+    "servings": 10,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 62,
+      "protein": "5g",
+      "carbs": "11g",
+      "fats": "1g"
+    },
+    "tags": ["High Protein", "High Fibre", "Quick & Easy", "Budget Friendly", "Snack"]
+  },
+  "Protein Cheesecake": {
+    "summary": "A creamy, high-protein cheesecake made with Greek yogurt and cream cheese, a guilt-free dessert that doubles as a macro-friendly snack.",
+    "imageUrl": "assets/images/Protein Cheesecake.png",
+    "prepTime": "10 mins",
+    "cookTime": "50 mins",
+    "totalTime": "60 mins",
+    "servings": 8,
+    "difficulty": "Medium",
+    "nutrition": {
+      "calories": 86,
+      "protein": "12g",
+      "carbs": "8g",
+      "fats": "2g"
+    },
+    "tags": ["High Protein", "Gluten Free", "Budget Friendly", "Snack"]
+  },
+  "Protein Smoothie": {
+    "summary": "A quick and energizing protein smoothie blended with banana, milk, protein powder, and peanut butter. Perfect for busy mornings.",
+    "imageUrl": "assets/images/Protein Smoothie.png",
+    "prepTime": "3 mins",
+    "cookTime": "0 mins",
+    "totalTime": "3 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 350,
+      "protein": "30g",
+      "carbs": "40g",
+      "fats": "12g"
+    },
+    "tags": ["High Protein", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Peanut Butter Banana Toast": {
+    "summary": "Whole grain toast spread with creamy peanut butter and topped with fresh banana slices. A simple, energizing breakfast in 5 minutes.",
+    "imageUrl": "assets/images/Peanut Butter Banana Toast.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 1,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 375,
+      "protein": "13g",
+      "carbs": "42g",
+      "fats": "16g"
+    },
+    "tags": ["High Fibre", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Overnight Chilled Chia": {
+    "summary": "A make-ahead breakfast of oats, chia seeds, honey, and milk soaked overnight. Grab and go in the morning for a nutritious start.",
+    "imageUrl": "assets/images/Overnight Chilled Chia.png",
+    "prepTime": "5 mins",
+    "cookTime": "0 mins",
+    "totalTime": "5 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 350,
+      "protein": "13g",
+      "carbs": "52g",
+      "fats": "9g"
+    },
+    "tags": ["High Fibre", "Quick & Easy", "Budget Friendly", "Breakfast"]
+  },
+  "Breakfast Burrito": {
+    "summary": "A hearty breakfast burrito filled with scrambled eggs, cheese, refried beans, and fresh tomatillo salsa. Satisfying and portable.",
+    "imageUrl": "assets/images/Breakfast Burrito.png",
+    "prepTime": "10 mins",
+    "cookTime": "25 mins",
+    "totalTime": "35 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 485,
+      "protein": "22g",
+      "carbs": "48g",
+      "fats": "20g"
+    },
+    "tags": ["High Protein", "Budget Friendly", "Breakfast"]
+  },
+  "Sweet Potato Kale Frittata": {
+    "summary": "A wholesome baked frittata with sweet potatoes, kale, and goat cheese. Perfect for meal prep or a nutritious brunch.",
+    "imageUrl": "assets/images/Sweet Potato Kale Frittata.png",
+    "prepTime": "10 mins",
+    "cookTime": "20 mins",
+    "totalTime": "30 mins",
+    "servings": 4,
+    "difficulty": "Easy",
+    "nutrition": {
+      "calories": 325,
+      "protein": "18g",
+      "carbs": "24g",
+      "fats": "18g"
+    },
+    "tags": ["High Protein", "Gluten Free", "High Fibre", "Budget Friendly", "Breakfast"]
   }
 }
