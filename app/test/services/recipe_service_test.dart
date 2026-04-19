@@ -288,6 +288,41 @@ void main() {
         expect(ingredient.displayLabel, contains('tbsp'));
       });
 
+      test('IngredientEntry displayLabel handles legacy ingredients correctly',
+          () {
+        final legacyIngredient = IngredientEntry.fromLegacy('2 salmon fillets');
+
+        // Should show just the name, not "1 pcs 2 salmon fillets"
+        expect(legacyIngredient.displayLabel, equals('2 salmon fillets'));
+        expect(legacyIngredient.quantity, equals(1));
+        expect(legacyIngredient.unit, equals('pcs'));
+      });
+
+      test(
+          'IngredientEntry displayLabel shows quantity/unit for structured ingredients',
+          () {
+        const structuredIngredient = IngredientEntry(
+          name: 'salmon fillets',
+          quantity: 2,
+          unit: 'pcs',
+        );
+
+        // Should format properly when explicitly structured
+        expect(
+            structuredIngredient.displayLabel, equals('2 pcs salmon fillets'));
+      });
+
+      test('IngredientEntry displayLabel handles non-default units', () {
+        const ingredient = IngredientEntry(
+          name: 'heavy cream',
+          quantity: 1,
+          unit: 'cup',
+        );
+
+        // Even with quantity of 1, should show unit if it's not 'pcs'
+        expect(ingredient.displayLabel, equals('1 cup heavy cream'));
+      });
+
       test('IngredientEntry converts to JSON', () {
         const ingredient = IngredientEntry(
           name: 'Eggs',

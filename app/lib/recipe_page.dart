@@ -15,6 +15,13 @@ class IngredientEntry {
   });
 
   String get displayLabel {
+    // For legacy ingredients with default values, just show the name
+    // since it already contains quantity/unit (e.g., "2 salmon fillets")
+    if (quantity == 1 && unit == 'pcs') {
+      return name;
+    }
+
+    // For properly structured ingredients, format with quantity and unit
     final quantityLabel = quantity == quantity.roundToDouble()
         ? quantity.toStringAsFixed(0)
         : quantity.toString();
@@ -211,15 +218,15 @@ class _RecipePageState extends State<RecipePage> {
                       const SizedBox(height: 28),
                       _MetadataRow(recipe: _recipe),
                       const SizedBox(height: 28),
-                      _SectionHeader(title: 'Nutrition per Serving'),
+                      const _SectionHeader(title: 'Nutrition per Serving'),
                       const SizedBox(height: 16),
                       _NutritionGrid(nutrition: _recipe.nutrition),
                       const SizedBox(height: 28),
-                      _SectionHeader(title: 'Ingredients'),
+                      const _SectionHeader(title: 'Ingredients'),
                       const SizedBox(height: 16),
                       _IngredientsList(ingredients: _recipe.ingredients),
                       const SizedBox(height: 28),
-                      _SectionHeader(title: 'Instructions'),
+                      const _SectionHeader(title: 'Instructions'),
                       const SizedBox(height: 16),
                       _InstructionsList(steps: _recipe.steps),
                       const SizedBox(height: 48),
@@ -381,6 +388,7 @@ class _CircleIconButton extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
+                // ignore: deprecated_member_use
                 color: Colors.black.withOpacity(0.12),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
@@ -527,6 +535,7 @@ class _MetaChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -632,6 +641,7 @@ class _NutritionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -646,6 +656,7 @@ class _NutritionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
+              // ignore: deprecated_member_use
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -700,6 +711,7 @@ class _IngredientsList extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
@@ -779,6 +791,7 @@ class _StepCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),

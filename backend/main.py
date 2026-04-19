@@ -281,67 +281,6 @@ def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
 
     return parsed
 
-async def seed_user_data(user_id: int, db: AsyncSession):
-
-    res = await db.execute(select(models.Recipe))
-    recipes = res.scalars().all()
-    if not recipes:
-        r1 = models.Recipe(
-            recipe_name="Tuscan Salmon", 
-            summary="Delicious creamy salmon with spinach and sun-dried tomatoes.", 
-            instructions=json.dumps(["Season salmon.", "Pan fry for 5 mins.", "Make cream sauce."]), 
-            prep_time=10, 
-            cook_time=20, 
-            servings=2, 
-            image_url="https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800"
-        )
-        r2 = models.Recipe(
-            recipe_name="Carbonara", 
-            summary="Classic Italian pasta dish with eggs, cheese, pancetta and pepper.", 
-            instructions=json.dumps(["Boil pasta.", "Fry pancetta.", "Mix eggs and cheese.", "Combine."]), 
-            prep_time=10, 
-            cook_time=15, 
-            servings=4, 
-            image_url="https://images.unsplash.com/photo-1612874742237-6526221588e3?w=800"
-        )
-        r3 = models.Recipe(
-            recipe_name="Chicken Tacos", 
-            summary="Spicy, zesty chicken tacos with fresh salsa.", 
-            instructions=json.dumps(["Marinate chicken.", "Grill chicken.", "Assemble tacos."]), 
-            prep_time=20, 
-            cook_time=15, 
-            servings=3, 
-            image_url="https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800"
-        )
-        db.add_all([r1, r2, r3])
-        await db.commit()
-        await db.refresh(r1)
-        await db.refresh(r2)
-        await db.refresh(r3)
-        recipes = [r1, r2, r3]
-
-    for r in recipes[:3]:
-
-        rid = r.recipe_id
-        rname = r.recipe_name
-
-        existing_res = await db.execute(select(models.SavedRecipe).where(
-            models.SavedRecipe.user_id == user_id, 
-            models.SavedRecipe.recipe_id == rid
-        ))
-        if not existing_res.scalars().first():
-            sr = models.SavedRecipe(
-                user_id=user_id,
-                recipe_id=rid,
-                recipe_name=rname,
-                user_notes="Recommended by SimplyServe"
-            )
-            db.add(sr)
-
-    sl = models.ShoppingList(user_id=user_id, created_at=datetime.now().isoformat())
-    db.add(sl)
-
-    await db.commit()
 
 @app.post("/register", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(database.get_db)):

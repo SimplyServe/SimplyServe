@@ -18,8 +18,14 @@ Color _tagColour(String tag) {
       return const Color(0xFFFF8F00);
     case 'Dairy Free':
       return const Color(0xFF00ACC1);
-    case 'Comfort Food':
-      return const Color(0xFFE53935);
+    case 'Breakfast':
+      return const Color(0xFFFFA726);
+    case 'Lunch':
+      return const Color(0xFF66BB6A);
+    case 'Dinner':
+      return const Color(0xFF5C6BC0);
+    case 'Snack':
+      return const Color(0xFFEC407A);
     default:
       return const Color(0xFF757575);
   }
@@ -62,7 +68,10 @@ const _kAllTags = [
   'High Fibre',
   'Gluten Free',
   'Dairy Free',
-  'Comfort Food',
+  'Breakfast',
+  'Lunch',
+  'Dinner',
+  'Snack',
 ];
 
 const _kAllDifficulties = ['Easy', 'Medium', 'Hard'];
@@ -631,11 +640,11 @@ class _AdvancedFilterPanel extends StatelessWidget {
               onChanged: onDurationChanged,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text('10 min',
                     style: TextStyle(fontSize: 10, color: Color(0xFFAAAAAA))),
                 Text('Any',
@@ -664,6 +673,7 @@ class _RecipeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
+              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.07),
               blurRadius: 12,
               offset: const Offset(0, 4),
@@ -801,9 +811,11 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: colour.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
+          // ignore: deprecated_member_use
           color: colour.withOpacity(0.4),
         ),
       ),
