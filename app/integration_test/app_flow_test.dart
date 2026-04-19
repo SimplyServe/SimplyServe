@@ -115,7 +115,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Change to landscape
+      // ignore: deprecated_member_use
       tester.binding.window.physicalSizeTestValue = const Size(1000, 600);
+      // ignore: deprecated_member_use
       addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
 
       await tester.pumpAndSettle();

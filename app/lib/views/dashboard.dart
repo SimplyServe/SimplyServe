@@ -8,34 +8,34 @@ class SpinWheelView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NavBarScaffold(
+    return const NavBarScaffold(
       title: 'Meal Spinner',
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Feeling indecisive?',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Let the wheel decide your next meal.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
               ),
             ),
-            const SizedBox(height: 24),
-            const SpinningWheelWidget(),
-            const SizedBox(height: 24),
+            SizedBox(height: 24),
+            SpinningWheelWidget(),
+            SizedBox(height: 24),
 
             // Meal Calendar navigation moved into the app drawer.
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
           ],
         ),
       ),

@@ -124,6 +124,7 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
+                        // ignore: deprecated_member_use
                         color: Colors.black.withOpacity(0.05),
                         blurRadius: 24,
                         offset: const Offset(0, 12),
@@ -184,7 +185,7 @@ class _LoginPageState extends State<LoginPage> {
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Password',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -250,6 +251,7 @@ class _LoginPageState extends State<LoginPage> {
                         children: [
                           Expanded(
                             child: Divider(
+                              // ignore: deprecated_member_use
                               color: Colors.grey.withOpacity(0.4),
                             ),
                           ),
@@ -264,6 +266,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           Expanded(
                             child: Divider(
+                              // ignore: deprecated_member_use
                               color: Colors.grey.withOpacity(0.4),
                             ),
                           ),

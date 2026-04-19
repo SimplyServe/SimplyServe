@@ -33,6 +33,7 @@ class NavBarScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const themeColor = Color(0xFF74BC42);
+    // ignore: deprecated_member_use
     final selectedTileColor = themeColor.withOpacity(0.1);
 
     return Scaffold(

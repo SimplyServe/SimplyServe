@@ -54,8 +54,8 @@ class DashboardView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: const [
+                          const Row(
+                            children: [
                               Icon(Icons.insights_outlined,
                                   color: Color(0xFF74BC42)),
                               SizedBox(width: 8),

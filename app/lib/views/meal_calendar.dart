@@ -528,6 +528,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
+                        // ignore: deprecated_member_use
                         color: Colors.black.withOpacity(0.03),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
