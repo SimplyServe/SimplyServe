@@ -10,16 +10,16 @@ void main() {
     await dotenv.load(fileName: ".env");
   });
 
-  group('SpinWheelView Widget Tests', () {
-    testWidgets('SpinWheelView renders correctly', (WidgetTester tester) async {
+  group('DashboardView Widget Tests', () {
+    testWidgets('DashboardView renders correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: SpinWheelView(),
+          home: DashboardView(),
         ),
       );
 
-      // Verify SpinWheelView loads
-      expect(find.byType(SpinWheelView), findsOneWidget);
+      // Verify DashboardView loads
+      expect(find.byType(DashboardView), findsOneWidget);
       expect(find.byType(NavBarScaffold), findsOneWidget);
 
       // Verify AppBar title
@@ -34,7 +34,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: SpinWheelView(),
+          home: DashboardView(),
         ),
       );
 
@@ -47,7 +47,7 @@ void main() {
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: SpinWheelView(),
+          home: DashboardView(),
         ),
       );
 
@@ -70,10 +70,10 @@ void main() {
       expect(find.byIcon(Icons.restaurant_menu), findsOneWidget);
     });
 
-    testWidgets('SpinWheelView displays subtitle', (WidgetTester tester) async {
+    testWidgets('DashboardView displays drawer navigation', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: SpinWheelView(),
+          home: DashboardView(),
         ),
       );
 
@@ -111,11 +111,11 @@ void main() {
       expect(find.byIcon(Icons.settings), findsWidgets);
     });
 
-    testWidgets('SpinWheelView has SingleChildScrollView',
+    testWidgets('DashboardView has SingleChildScrollView',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: SpinWheelView(),
+          home: DashboardView(),
         ),
       );
 
