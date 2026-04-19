@@ -15,6 +15,13 @@ class IngredientEntry {
   });
 
   String get displayLabel {
+    // For legacy ingredients with default values, just show the name
+    // since it already contains quantity/unit (e.g., "2 salmon fillets")
+    if (quantity == 1 && unit == 'pcs') {
+      return name;
+    }
+
+    // For properly structured ingredients, format with quantity and unit
     final quantityLabel = quantity == quantity.roundToDouble()
         ? quantity.toStringAsFixed(0)
         : quantity.toString();
