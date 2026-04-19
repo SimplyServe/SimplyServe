@@ -191,6 +191,8 @@ class DashboardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const _RecipeLinkButton(),
+                const SizedBox(height: 8),
+                const _SpinnerLinkButton(),
                 const SizedBox(height: 24),
               ],
             ),
@@ -288,6 +290,22 @@ class _RecipeLinkButton extends StatelessWidget {
         onPressed: () => Navigator.pushNamed(context, '/recipes'),
         icon: const Icon(Icons.restaurant_menu),
         label: const Text('Browse Recipes'),
+      ),
+    );
+  }
+}
+
+class _SpinnerLinkButton extends StatelessWidget {
+  const _SpinnerLinkButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () => Navigator.pushNamed(context, '/spin'),
+        icon: const Icon(Icons.casino),
+        label: const Text('Meal Spinner'),
       ),
     );
   }
