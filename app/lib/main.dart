@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simplyserve/authorisation.dart';
 import 'package:simplyserve/recipe_page.dart';
-import 'package:simplyserve/views/dashboard.dart';
+import 'package:simplyserve/views/meal_spinner_page.dart';
 import 'package:simplyserve/views/nutritional_dashboard.dart';
 import 'package:simplyserve/views/recipes.dart';
 import 'package:simplyserve/views/settings.dart';
