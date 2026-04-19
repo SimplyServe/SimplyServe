@@ -640,11 +640,11 @@ class _AdvancedFilterPanel extends StatelessWidget {
               onChanged: onDurationChanged,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text('10 min',
                     style: TextStyle(fontSize: 10, color: Color(0xFFAAAAAA))),
                 Text('Any',
@@ -673,6 +673,7 @@ class _RecipeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
+              // ignore: deprecated_member_use
               color: Colors.black.withOpacity(0.07),
               blurRadius: 12,
               offset: const Offset(0, 4),
@@ -810,9 +811,11 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: colour.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
+          // ignore: deprecated_member_use
           color: colour.withOpacity(0.4),
         ),
       ),
