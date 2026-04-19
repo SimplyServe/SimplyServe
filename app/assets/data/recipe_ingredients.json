@@ -383,5 +383,233 @@
     "1/2 cup fresh coriander",
     "1/4 cup hoisin dipping sauce",
     "2 tbsp crushed peanuts, to serve"
+  ],
+  "Protein Pancakes": [
+    "1 cup Greek yogurt",
+    "2 large eggs",
+    "1 tsp vanilla extract",
+    "1.5 tbsp honey",
+    "3/4 cup all-purpose flour",
+    "1 tsp baking powder",
+    "1/4 tsp baking soda",
+    "Pinch of salt",
+    "Pinch of cinnamon",
+    "Cooking spray for griddle"
+  ],
+  "Protein French Toast": [
+    "2 large eggs",
+    "3 tbsp low-fat cottage cheese",
+    "1/4 tsp cinnamon",
+    "1 tsp sweetener (sugar or stevia)",
+    "1/2 tsp vanilla extract",
+    "Pinch of salt",
+    "3 slices thin-sliced whole wheat bread",
+    "Cooking spray",
+    "Greek yogurt, berries, or maple syrup to serve (optional)"
+  ],
+  "Greek Yogurt Parfait": [
+    "1 cup Greek yogurt (plain or vanilla)",
+    "1/4 cup granola",
+    "1/2 cup mixed fresh berries (strawberries, blueberries, raspberries)",
+    "1 tbsp honey or maple syrup",
+    "1 tbsp sliced almonds or walnuts",
+    "1 tsp chia seeds (optional)"
+  ],
+  "Veggie Scrambled Eggs": [
+    "4 large eggs",
+    "2 tbsp milk",
+    "1 tbsp olive oil or butter",
+    "1/2 bell pepper, diced",
+    "1 cup fresh spinach",
+    "1/4 cup cherry tomatoes, halved",
+    "1/4 cup shredded cheese (optional)",
+    "Salt and pepper to taste",
+    "Fresh herbs for garnish"
+  ],
+  "Peanut Butter Banana Smoothie Bowl": [
+    "1 large frozen banana",
+    "2 tbsp peanut butter",
+    "1/2 cup milk (dairy or plant-based)",
+    "1 scoop protein powder (optional)",
+    "1 tbsp chia seeds",
+    "1/4 cup granola",
+    "1/4 cup sliced fresh banana",
+    "1 tbsp honey or maple syrup",
+    "Pinch of cinnamon"
+  ],
+  "Microwave Mug Omelette": [
+    "2 large eggs",
+    "2 tbsp milk",
+    "2 tbsp shredded cheese",
+    "2 tbsp diced bell pepper",
+    "2 tbsp diced tomato",
+    "1 tbsp diced onion",
+    "Salt and pepper to taste",
+    "Cooking spray"
+  ],
+  "Chickpea Salad Sandwich": [
+    "1 can (400g) chickpeas, drained and rinsed",
+    "3 tbsp vegan mayo or Greek yogurt",
+    "1 tsp Dijon mustard",
+    "1 tsp lemon juice",
+    "2 tbsp diced celery",
+    "2 tbsp diced red onion",
+    "1/4 tsp garlic powder",
+    "Salt and pepper to taste",
+    "4 slices whole-grain bread",
+    "Lettuce and tomato for serving"
+  ],
+  "Tuna Pasta Salad": [
+    "200g cooked pasta (cooled)",
+    "1 can (150g) tuna in water, drained",
+    "1 cup cherry tomatoes, halved",
+    "1/2 cucumber, diced",
+    "1/4 red onion, thinly sliced",
+    "2 tbsp olive oil",
+    "1 tbsp lemon juice",
+    "1 tsp Dijon mustard",
+    "Salt and pepper to taste",
+    "Fresh parsley or basil for garnish"
+  ],
+  "Hummus Veggie Wrap": [
+    "1 large whole-wheat tortilla or wrap",
+    "1/4 cup hummus",
+    "1/2 cup mixed salad greens",
+    "1/4 cucumber, sliced",
+    "1/4 bell pepper, sliced",
+    "1/4 carrot, shredded",
+    "2 tbsp red cabbage, shredded",
+    "1 tbsp sunflower seeds or pumpkin seeds",
+    "Salt and pepper to taste"
+  ],
+  "Caprese Sandwich": [
+    "4 slices crusty bread or ciabatta",
+    "150g fresh mozzarella cheese, sliced",
+    "2 ripe tomatoes, sliced",
+    "Fresh basil leaves",
+    "2 tbsp balsamic glaze",
+    "1 tbsp olive oil",
+    "Salt and pepper to taste"
+  ],
+  "Cottage Cheese Bowl": [
+    "1 cup cottage cheese",
+    "1/2 cup fresh berries or sliced fruit",
+    "2 tbsp granola or muesli",
+    "1 tbsp chopped walnuts or almonds",
+    "1 tbsp honey or maple syrup",
+    "1 tsp chia seeds",
+    "Pinch of cinnamon"
+  ],
+  "Quick Veggie Stir Fry with Noodles": [
+    "200g noodles (rice, egg, or ramen)",
+    "2 tbsp vegetable oil",
+    "1 bell pepper, sliced",
+    "1 cup broccoli florets",
+    "1 carrot, julienned",
+    "1 cup snap peas or green beans",
+    "2 garlic cloves, minced",
+    "1 tsp ginger, grated",
+    "3 tbsp soy sauce",
+    "1 tbsp sesame oil",
+    "1 tsp honey or maple syrup",
+    "Sesame seeds for garnish",
+    "Green onions for garnish"
+  ],
+  "Quick Fried Rice": [
+    "2 cups cooked rice (preferably day-old)",
+    "2 eggs, beaten",
+    "2 tbsp vegetable oil",
+    "1/2 cup frozen mixed vegetables",
+    "1/4 cup diced onion",
+    "2 garlic cloves, minced",
+    "3 tbsp soy sauce",
+    "1 tsp sesame oil",
+    "2 green onions, sliced",
+    "Salt and pepper to taste"
+  ],
+  "Loaded Baked Sweet Potato": [
+    "2 medium sweet potatoes",
+    "1/2 cup canned black beans, drained and rinsed",
+    "1/4 cup shredded cheese",
+    "1/2 avocado, sliced",
+    "1/4 cup salsa",
+    "2 tbsp Greek yogurt or sour cream",
+    "Fresh coriander for garnish",
+    "Salt and pepper to taste"
+  ],
+  "Turkey & Cheese Roll-Ups": [
+    "8 slices deli turkey breast",
+    "4 slices cheese (cheddar, Swiss, or provolone)",
+    "4 large lettuce leaves",
+    "2 tbsp Dijon mustard or mayo",
+    "1/4 cucumber, sliced into sticks",
+    "1/4 bell pepper, sliced into sticks",
+    "Salt and pepper to taste"
+  ],
+  "Protein Pudding": [
+    "1 scoop protein powder",
+    "1 container (6 oz) low-fat Greek yogurt",
+    "1 tbsp cocoa powder (optional)",
+    "Fresh fruit for topping (optional)"
+  ],
+  "Banana Protein Cookies": [
+    "2 ripe bananas",
+    "3/4 cup (70g) rolled oats",
+    "1.5 scoops (45g) protein powder",
+    "Optional: chocolate chips, nuts, or dried fruit"
+  ],
+  "Protein Cheesecake": [
+    "2 cups Greek yogurt (2% or nonfat)",
+    "8 oz fat-free cream cheese",
+    "3 large eggs at room temperature",
+    "1/2 cup granular sweetener (monk fruit or erythritol)",
+    "3 tbsp cornstarch",
+    "1 tsp vanilla extract",
+    "Pinch of sea salt",
+    "Fresh strawberries and sugar-free jam for topping (optional)"
+  ],
+  "Protein Smoothie": [
+    "1 banana",
+    "1 cup milk (dairy or plant-based)",
+    "1 scoop protein powder",
+    "2 tbsp peanut butter",
+    "Ice cubes (optional)"
+  ],
+  "Peanut Butter Banana Toast": [
+    "2 slices whole grain bread",
+    "2 tbsp peanut butter",
+    "1 banana, sliced",
+    "Honey for drizzle (optional)"
+  ],
+  "Overnight Chilled Chia": [
+    "2 cups old-fashioned oats",
+    "4 tbsp chia seeds",
+    "4 tbsp honey",
+    "2.5 cups milk or unsweetened plant-based milk"
+  ],
+  "Breakfast Burrito": [
+    "1/2 lb tomatillos, husked and halved",
+    "1 jalapeño, halved and seeded",
+    "1/2 small onion, cut into wedges",
+    "2 tbsp fresh lime juice",
+    "1/3 cup packed cilantro",
+    "6 large eggs",
+    "1 tsp olive oil",
+    "1 cup shredded pepper jack or cheddar cheese",
+    "1 cup fat-free refried beans",
+    "4 large tortillas",
+    "Salt to taste"
+  ],
+  "Sweet Potato Kale Frittata": [
+    "6 large eggs",
+    "1 cup half-and-half",
+    "1 tsp kosher salt",
+    "1/2 tsp freshly ground pepper",
+    "2 cups 1/2-inch cubed sweet potatoes",
+    "2 tbsp olive oil, divided",
+    "2 cups firmly packed chopped kale",
+    "1/2 small red onion, chopped",
+    "2 garlic cloves, minced",
+    "3 oz goat cheese, crumbled"
   ]
 }
