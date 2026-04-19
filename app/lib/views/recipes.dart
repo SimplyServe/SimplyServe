@@ -18,8 +18,14 @@ Color _tagColour(String tag) {
       return const Color(0xFFFF8F00);
     case 'Dairy Free':
       return const Color(0xFF00ACC1);
-    case 'Comfort Food':
-      return const Color(0xFFE53935);
+    case 'Breakfast':
+      return const Color(0xFFFFA726);
+    case 'Lunch':
+      return const Color(0xFF66BB6A);
+    case 'Dinner':
+      return const Color(0xFF5C6BC0);
+    case 'Snack':
+      return const Color(0xFFEC407A);
     default:
       return const Color(0xFF757575);
   }
@@ -62,7 +68,10 @@ const _kAllTags = [
   'High Fibre',
   'Gluten Free',
   'Dairy Free',
-  'Comfort Food',
+  'Breakfast',
+  'Lunch',
+  'Dinner',
+  'Snack',
 ];
 
 const _kAllDifficulties = ['Easy', 'Medium', 'Hard'];
