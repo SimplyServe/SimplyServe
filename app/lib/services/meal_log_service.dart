@@ -132,6 +132,46 @@ class MealLogService extends ChangeNotifier {
     }
   }
 
+  void removeMeal(DateTime date, String recipeTitle) {
+    final key = dayKey(date);
+    final meals =
+        List<LoggedMeal>.from(_mealsByDay[key] ?? const <LoggedMeal>[]);
+    final index = meals.indexWhere((meal) => meal.recipeTitle == recipeTitle);
+
+    if (index == -1) {
+      return;
+    }
+
+    meals.removeAt(index);
+
+    if (meals.isEmpty) {
+      _mealsByDay.remove(key);
+    } else {
+      _mealsByDay[key] = meals;
+    }
+
+    notifyListeners();
+  }
+
+  void addMeal({required DateTime date, required LoggedMeal meal}) {
+    final key = dayKey(date);
+    final meals =
+        List<LoggedMeal>.from(_mealsByDay[key] ?? const <LoggedMeal>[]);
+    final index =
+        meals.indexWhere((m) => m.recipeTitle == meal.recipeTitle);
+
+    if (index >= 0) {
+      meals[index] = meals[index].copyWith(
+        servings: meals[index].servings + meal.servings,
+      );
+    } else {
+      meals.add(meal);
+    }
+
+    _mealsByDay[key] = meals;
+    notifyListeners();
+  }
+
   DailyNutritionTotals totalsForDay(DateTime date) {
     final meals = mealsForDay(date);
     var totalServings = 0;

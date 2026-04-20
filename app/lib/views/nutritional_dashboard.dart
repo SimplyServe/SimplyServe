@@ -24,6 +24,7 @@ class DashboardView extends StatelessWidget {
         animation: mealLogService,
         builder: (context, _) {
           final totals = mealLogService.totalsForDay(DateTime.now());
+          final meals = mealLogService.mealsForDay(DateTime.now());
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -46,6 +47,76 @@ class DashboardView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // ── Macro Counter (always visible) ──────────────────────
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Text('🔥', style: TextStyle(fontSize: 20)),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Calories Today',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '${_formatNumber(totals.calories)} kcal',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _MacroLegendItem(
+                              icon: '🍗',
+                              label: 'Protein',
+                              value: '${_formatNumber(totals.protein)}g',
+                            ),
+                            _MacroLegendItem(
+                              icon: '🍞',
+                              label: 'Carbs',
+                              value: '${_formatNumber(totals.carbs)}g',
+                            ),
+                            _MacroLegendItem(
+                              icon: '🥑',
+                              label: 'Fat',
+                              value: '${_formatNumber(totals.fats)}g',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Today's Meals ───────────────────────────────────────
+                const Text(
+                  "Today's Meals",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 if (!totals.hasData) ...[
                   Card(
                     elevation: 1,
@@ -54,23 +125,8 @@ class DashboardView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.insights_outlined,
-                                  color: Color(0xFF74BC42)),
-                              SizedBox(width: 8),
-                              Text(
-                                'No data to show yet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
                           const Text(
-                            'Log what you ate in Meal Calendar, including servings, and your totals for today will appear here.',
+                            'No meals logged yet. Log meals from the Meal Calendar or Shopping List.',
                             style: TextStyle(color: Colors.grey),
                           ),
                           const SizedBox(height: 12),
@@ -91,97 +147,19 @@ class DashboardView extends StatelessWidget {
                     ),
                   ),
                 ] else ...[
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Calories Today',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            '${_formatNumber(totals.calories)} kcal',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                  ...meals.map(
+                    (meal) => _LoggedMealTile(
+                      meal: meal,
+                      onRemove: () {
+                        mealLogService.removeMeal(
+                            DateTime.now(), meal.recipeTitle);
+                      },
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '${totals.totalServings} serving(s) across ${totals.totalRecipes} recipe(s) logged for today',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Macronutrients',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _MacroLegendItem(
-                        color: const Color(0xFF74BC42),
-                        label: 'Protein',
-                        value: '${_formatNumber(totals.protein)}g',
-                      ),
-                      _MacroLegendItem(
-                        color: Colors.orange,
-                        label: 'Carbs',
-                        value: '${_formatNumber(totals.carbs)}g',
-                      ),
-                      _MacroLegendItem(
-                        color: Colors.red,
-                        label: 'Fat',
-                        value: '${_formatNumber(totals.fats)}g',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Breakdown',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _MacroCard(
-                    label: 'Protein',
-                    valueLabel: _formatNumber(totals.protein),
-                    unit: 'g',
-                    color: const Color(0xFF74BC42),
-                  ),
-                  const SizedBox(height: 8),
-                  _MacroCard(
-                    label: 'Carbohydrates',
-                    valueLabel: _formatNumber(totals.carbs),
-                    unit: 'g',
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(height: 8),
-                  _MacroCard(
-                    label: 'Fat',
-                    valueLabel: _formatNumber(totals.fats),
-                    unit: 'g',
-                    color: Colors.red,
-                  ),
-                  const SizedBox(height: 24),
                 ],
+                const SizedBox(height: 24),
+
+                // ── Action Buttons ──────────────────────────────────────
                 const Text(
                   'Looking for meal ideas?',
                   style: TextStyle(
@@ -206,12 +184,12 @@ class DashboardView extends StatelessWidget {
 // ── Private helper widgets ────────────────────────────────────────────────────
 
 class _MacroLegendItem extends StatelessWidget {
-  final Color color;
+  final String icon;
   final String label;
   final String value;
 
   const _MacroLegendItem({
-    required this.color,
+    required this.icon,
     required this.label,
     required this.value,
   });
@@ -220,7 +198,7 @@ class _MacroLegendItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        CircleAvatar(backgroundColor: color, radius: 7),
+        Text(icon, style: const TextStyle(fontSize: 24)),
         const SizedBox(height: 4),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -229,48 +207,57 @@ class _MacroLegendItem extends StatelessWidget {
   }
 }
 
-class _MacroCard extends StatelessWidget {
-  final String label;
-  final String valueLabel;
-  final String unit;
-  final Color color;
+class _LoggedMealTile extends StatelessWidget {
+  final LoggedMeal meal;
+  final VoidCallback onRemove;
 
-  const _MacroCard({
-    required this.label,
-    required this.valueLabel,
-    required this.unit,
-    required this.color,
-  });
+  const _LoggedMealTile({required this.meal, required this.onRemove});
+
+  static String _formatNumber(double value) {
+    final isWhole = (value - value.roundToDouble()).abs() < 0.001;
+    if (isWhole) {
+      return value.round().toString();
+    }
+    return value.toStringAsFixed(1);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final totalCalories = meal.caloriesPerServing * meal.servings;
+
     return Card(
       elevation: 1,
+      margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            Container(
-              width: 4,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.recipeTitle,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${meal.servings} serving(s) \u2022 ${_formatNumber(totalCalories.toDouble())} kcal',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
             ),
-            Text(
-              '$valueLabel$unit',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              onPressed: onRemove,
+              tooltip: 'Remove meal',
             ),
           ],
         ),

@@ -9,6 +9,22 @@ class ShoppingItem {
   ShoppingItem({required this.name, this.quantity = 1}) : id = '${_counter++}';
 }
 
+class ShoppingRecipeEntry {
+  final String recipeTitle;
+  final int caloriesPerServing;
+  final double proteinPerServing;
+  final double carbsPerServing;
+  final double fatsPerServing;
+
+  const ShoppingRecipeEntry({
+    required this.recipeTitle,
+    required this.caloriesPerServing,
+    required this.proteinPerServing,
+    required this.carbsPerServing,
+    required this.fatsPerServing,
+  });
+}
+
 class ShoppingListService extends ChangeNotifier {
   static final ShoppingListService _instance = ShoppingListService._internal();
   factory ShoppingListService() => _instance;
@@ -16,6 +32,9 @@ class ShoppingListService extends ChangeNotifier {
 
   final List<ShoppingItem> _items = [];
   List<ShoppingItem> get items => List.unmodifiable(_items);
+
+  final List<ShoppingRecipeEntry> _recipes = [];
+  List<ShoppingRecipeEntry> get recipes => List.unmodifiable(_recipes);
 
   String _normalizeName(String rawName) {
     final trimmed = rawName.trim();
@@ -59,6 +78,23 @@ class ShoppingListService extends ChangeNotifier {
     final index = _items.indexWhere((i) => i.id == id);
     if (index != -1) {
       _items[index].quantity = quantity;
+      notifyListeners();
+    }
+  }
+
+  void addRecipe(ShoppingRecipeEntry entry) {
+    final exists = _recipes.any(
+      (r) => r.recipeTitle.toLowerCase() == entry.recipeTitle.toLowerCase(),
+    );
+    if (!exists) {
+      _recipes.add(entry);
+      notifyListeners();
+    }
+  }
+
+  void clearRecipes() {
+    if (_recipes.isNotEmpty) {
+      _recipes.clear();
       notifyListeners();
     }
   }
