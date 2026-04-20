@@ -26,7 +26,22 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
   bool _isSpinning = false;
 
   final Map<String, RecipeModel> _recipeMap = {};
-  List<String> get _meals => _recipeMap.keys.toList();
+
+  static const List<String> _kMealTypes = [
+    'Breakfast',
+    'Lunch',
+    'Dinner',
+    'Snack',
+  ];
+  String? _activeMealFilter;
+
+  List<String> get _meals {
+    if (_activeMealFilter == null) return _recipeMap.keys.toList();
+    return _recipeMap.entries
+        .where((e) => e.value.tags.contains(_activeMealFilter))
+        .map((e) => e.key)
+        .toList();
+  }
 
   String _selectedMeal = '';
 
@@ -152,6 +167,66 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
     }
   }
 
+  void _onFilterChanged(String? mealType) {
+    if (_isSpinning) return;
+    setState(() {
+      _activeMealFilter = (_activeMealFilter == mealType) ? null : mealType;
+      _selectedMeal = '';
+      _scrollController.dispose();
+      _scrollController = FixedExtentScrollController();
+      if (_meals.isNotEmpty) {
+        _currentIndex = (_virtualMultiplier ~/ 2) * _meals.length;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpToItem(_currentIndex);
+          }
+        });
+      }
+    });
+  }
+
+  Widget _buildMealFilterRow() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _kMealTypes.map((type) {
+          final isSelected = _activeMealFilter == type;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => _onFilterChanged(type),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF74BC42)
+                      : const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? const Color(0xFF74BC42)
+                        : const Color(0xFFDDDDDD),
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  type,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : const Color(0xFF666666),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -174,7 +249,9 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
             'What to eat?',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          _buildMealFilterRow(),
+          const SizedBox(height: 12),
           _buildSlotMachine(),
           const SizedBox(height: 16),
           SizedBox(
@@ -278,11 +355,15 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
     }
 
     if (_meals.isEmpty) {
-      return const SizedBox(
+      return SizedBox(
         height: 160,
         child: Center(
-          child: Text('No recipes available',
-              style: TextStyle(color: Colors.grey, fontSize: 16)),
+          child: Text(
+            _activeMealFilter != null
+                ? 'No $_activeMealFilter recipes available'
+                : 'No recipes available',
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
+          ),
         ),
       );
     }
