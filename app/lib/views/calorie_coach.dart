@@ -34,7 +34,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _startConversation();
   }
 
-  void _startConversation() {
+  // startConversation is async so bot messages can be sent with typing delay
+  Future<void> _startConversation() async {
     _messages.clear();
     _step = 0;
     _age = null;
@@ -42,22 +43,35 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _weight = null;
     _gender = 'Male';
     _activity = 'Sedentary';
-    _pushBot('Hi — I\'m your Calorie Coach. Let\'s figure out your daily needs. How old are you? (years)');
+    setState(() {});
+    await _sendBot('Hi — I\'m your Calorie Coach. Let\'s figure out your daily needs. How old are you? (years)');
   }
 
-  void _pushBot(String text) {
-    setState(() {
-      _messages.add(_ChatMessage(text: text, fromUser: false));
-    });
-  }
-
+  // Adds a user message immediately
   void _pushUser(String text) {
     setState(() {
       _messages.add(_ChatMessage(text: text, fromUser: true));
     });
   }
 
-  void _handleSubmitText() {
+  // Sends bot message with typing indicator ("…") and optional delay
+  Future<void> _sendBot(String text, {int delayMs = 800}) async {
+    // add typing indicator
+    setState(() {
+      _messages.add(_ChatMessage(text: '…', fromUser: false, isTyping: true));
+    });
+
+    await Future.delayed(Duration(milliseconds: delayMs));
+
+    // remove the typing indicator (last typing message) and add real message
+    setState(() {
+      final idx = _messages.lastIndexWhere((m) => m.isTyping == true);
+      if (idx != -1) _messages.removeAt(idx);
+      _messages.add(_ChatMessage(text: text, fromUser: false));
+    });
+  }
+
+  Future<void> _handleSubmitText() async {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
 
@@ -68,56 +82,56 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       case 0:
         final n = int.tryParse(text);
         if (n == null || n < 10 || n > 120) {
-          _pushBot('Please enter a valid age (10–120).');
+          await _sendBot('Please enter a valid age (10–120).');
           return;
         }
         _age = n;
         _step = 1;
-        _pushBot('Great. What is your height in cm?');
+        await _sendBot('Great. What is your height in cm?');
         break;
       case 1:
         final n = double.tryParse(text);
         if (n == null || n < 50 || n > 300) {
-          _pushBot('Please enter a realistic height in cm (e.g. 170).');
+          await _sendBot('Please enter a realistic height in cm (e.g. 170).');
           return;
         }
         _height = n;
         _step = 2;
-        _pushBot('Nice. What is your weight in kg?');
+        await _sendBot('Nice. What is your weight in kg?');
         break;
       case 2:
         final n = double.tryParse(text);
         if (n == null || n < 20 || n > 700) {
-          _pushBot('Please enter a realistic weight in kg (e.g. 70).');
+          await _sendBot('Please enter a realistic weight in kg (e.g. 70).');
           return;
         }
         _weight = n;
         _step = 3;
-        _pushBot('Which gender should I use? Tap a button:');
+        await _sendBot('Which gender should I use? Tap a button:');
         break;
       default:
         break;
     }
   }
 
-  void _selectGender(String g) {
+  Future<void> _selectGender(String g) async {
     _pushUser(g);
     _gender = g;
     _step = 4;
-    _pushBot('Thanks. Now choose your typical activity level:');
+    await _sendBot('Thanks. Now choose your typical activity level:');
     setState(() {});
   }
 
-  void _selectActivity(String a) {
+  Future<void> _selectActivity(String a) async {
     _pushUser(a);
     _activity = a;
     _step = 5;
-    _calculateAndShowResults();
+    await _calculateAndShowResults();
   }
 
-  void _calculateAndShowResults() {
+  Future<void> _calculateAndShowResults() async {
     if (_age == null || _height == null || _weight == null) {
-      _pushBot('Missing information. Please restart.');
+      await _sendBot('Missing information. Please restart.');
       return;
     }
 
@@ -131,10 +145,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     final multiplier = _activityMultipliers[_activity] ?? 1.2;
     final tdee = bmr * multiplier;
 
-    _pushBot('Here are your results:');
-    _pushBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day');
-    _pushBot('Estimated daily needs (TDEE): ${tdee.round()} kcal/day (activity: $_activity)');
-    _pushBot('Tap "Restart" to run again or adjust values from the drawer.');
+    await _sendBot('Here are your results:');
+    await _sendBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day', delayMs: 600);
+    await _sendBot('Estimated daily needs (TDEE): ${tdee.round()} kcal/day (activity: $_activity)', delayMs: 600);
+    await _sendBot('Tap "Restart" to run again or adjust values from the drawer.', delayMs: 500);
     setState(() {});
   }
 
@@ -148,6 +162,23 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     final align = m.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final color = m.fromUser ? Colors.green[100] : Colors.grey[200];
     final textColor = Colors.black;
+
+    // Slightly different styling for typing indicator
+    final textWidget = m.isTyping
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 8),
+              Text('…'),
+            ],
+          )
+        : Text(m.text, style: TextStyle(color: textColor));
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: Column(
@@ -159,7 +190,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
               borderRadius: BorderRadius.circular(12),
             ),
             padding: const EdgeInsets.all(12),
-            child: Text(m.text, style: TextStyle(color: textColor)),
+            child: textWidget,
           ),
         ],
       ),
@@ -296,5 +327,6 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 class _ChatMessage {
   final String text;
   final bool fromUser;
-  _ChatMessage({required this.text, required this.fromUser});
+  final bool isTyping;
+  _ChatMessage({required this.text, required this.fromUser, this.isTyping = false});
 }
