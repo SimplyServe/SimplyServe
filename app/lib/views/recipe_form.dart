@@ -7,6 +7,27 @@ import 'dart:io' show File;
 
 const List<String> _kMealTypeTags = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
+const List<String> _kDietaryAndNutritionTags = [
+  'Vegan',
+  'High Protein',
+  'High Fibre',
+  'Gluten Free',
+  'Dairy Free',
+  'Quick & Easy',
+  'Budget Friendly',
+];
+
+const List<String> _kCuisineTags = [
+  'European',
+  'Asian',
+  'African',
+  'Middle Eastern',
+  'American',
+  'Latin American',
+  'Caribbean',
+  'Mediterranean',
+];
+
 const List<String> _allowedUnits = [
   'tsp',
   'tbsp',
@@ -39,7 +60,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   final _ingredientSearchController = TextEditingController();
   final _stepsController = TextEditingController();
   XFile? _imageFile;
-  final List<String> _selectedTags = [];
+  final Set<String> _selectedTags = {};
   bool _isLoading = false;
   bool _isSearchingIngredients = false;
   List<String> _ingredientSuggestions = [];
@@ -65,7 +86,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     _servingsController.text = recipe.servings.toString();
     _stepsController.text = recipe.steps.join('\n');
     _selectedIngredients.addAll(recipe.ingredients);
-    _selectedTags.addAll(recipe.tags.where(_kMealTypeTags.contains));
+    _selectedTags.addAll(recipe.tags);
   }
 
   Future<void> _pickImage() async {
@@ -112,7 +133,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
           calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
       ingredients: List<IngredientEntry>.from(_selectedIngredients),
       steps: steps,
-      tags: _selectedTags.isEmpty ? const ['New'] : List.from(_selectedTags),
+      tags: _selectedTags.isEmpty ? const ['New'] : _selectedTags.toList(),
       id: widget.existingRecipe?.id,
     );
 
@@ -134,8 +155,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text(_isEditMode ? 'Failed to update recipe' : 'Failed to post recipe'),
+            content: Text(_isEditMode
+                ? 'Failed to update recipe'
+                : 'Failed to post recipe'),
           ),
         );
       }
@@ -157,7 +179,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditMode ? 'Edit Recipe' : 'Create Recipe')),
+      appBar:
+          AppBar(title: Text(_isEditMode ? 'Edit Recipe' : 'Create Recipe')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -232,37 +255,22 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Meal Type',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                    _buildTagSection(
+                      context: context,
+                      title: 'Meal Type',
+                      options: _kMealTypeTags,
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: _kMealTypeTags.map((tag) {
-                        final selected = _selectedTags.contains(tag);
-                        return FilterChip(
-                          label: Text(tag),
-                          selected: selected,
-                          onSelected: (val) {
-                            setState(() {
-                              if (val) {
-                                _selectedTags.add(tag);
-                              } else {
-                                _selectedTags.remove(tag);
-                              }
-                            });
-                          },
-                          selectedColor: const Color(0xFF74BC42),
-                          checkmarkColor: Colors.white,
-                          labelStyle: TextStyle(
-                            color: selected ? Colors.white : null,
-                          ),
-                        );
-                      }).toList(),
+                    const SizedBox(height: 12),
+                    _buildTagSection(
+                      context: context,
+                      title: 'Dietary & Nutrition',
+                      options: _kDietaryAndNutritionTags,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTagSection(
+                      context: context,
+                      title: 'Cuisine',
+                      options: _kCuisineTags,
                     ),
                     const SizedBox(height: 16),
                     Align(
@@ -364,7 +372,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         onPressed: _submit,
                         child: Text(
                           _isEditMode ? 'Save Changes' : 'Post Recipe',
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 16),
                         ),
                       ),
                     ),
@@ -372,6 +381,50 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildTagSection({
+    required BuildContext context,
+    required String title,
+    required List<String> options,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map(_buildTagChip).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTagChip(String tag) {
+    final selected = _selectedTags.contains(tag);
+    return FilterChip(
+      label: Text(tag),
+      selected: selected,
+      onSelected: (val) {
+        setState(() {
+          if (val) {
+            _selectedTags.add(tag);
+          } else {
+            _selectedTags.remove(tag);
+          }
+        });
+      },
+      selectedColor: const Color(0xFF74BC42),
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : null,
+      ),
     );
   }
 
@@ -476,8 +529,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       text: (initialIngredient?.quantity ?? 1).toString(),
     );
     final formKey = GlobalKey<FormState>();
-    final initialUnit = (initialIngredient?.unit ?? _allowedUnits.first)
-        .toLowerCase();
+    final initialUnit =
+        (initialIngredient?.unit ?? _allowedUnits.first).toLowerCase();
     String selectedUnit =
         _allowedUnits.contains(initialUnit) ? initialUnit : _allowedUnits.first;
 
@@ -487,7 +540,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(initialIngredient == null ? 'Add $ingredientName' : 'Edit Ingredient'),
+              title: Text(initialIngredient == null
+                  ? 'Add $ingredientName'
+                  : 'Edit Ingredient'),
               content: Form(
                 key: formKey,
                 child: Column(
