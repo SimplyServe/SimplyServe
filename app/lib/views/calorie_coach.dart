@@ -21,8 +21,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   int? _age;
   double? _height; // cm
   double? _weight; // kg
-  String _gender = 'Male';
-  String _activity = 'Sedentary';
+  String? _gender; // start unselected
+  String? _activity; // start unselected
 
   // store results for summary
   double? _bmr;
@@ -80,8 +80,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _age = prefs.getInt(_kAge);
       _height = prefs.getDouble(_kHeight);
       _weight = prefs.getDouble(_kWeight);
-      _gender = prefs.getString(_kGender) ?? 'Male';
-      _activity = prefs.getString(_kActivity) ?? 'Sedentary';
+      _gender = prefs.getString(_kGender);
+      _activity = prefs.getString(_kActivity);
       _bmr = prefs.getDouble(_kBmr);
       _tdee = prefs.getDouble(_kTdee);
       _step = 5; // mark as done so UI shows Restart/Done
@@ -108,8 +108,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     if (_age != null) prefs.setInt(_kAge, _age!);
     if (_height != null) prefs.setDouble(_kHeight, _height!);
     if (_weight != null) prefs.setDouble(_kWeight, _weight!);
-    prefs.setString(_kGender, _gender);
-    prefs.setString(_kActivity, _activity);
+    if (_gender != null) prefs.setString(_kGender, _gender!);
+    if (_activity != null) prefs.setString(_kActivity, _activity!);
     if (_bmr != null) prefs.setDouble(_kBmr, _bmr!);
     if (_tdee != null) prefs.setDouble(_kTdee, _tdee!);
   }
@@ -135,8 +135,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _age = null;
     _height = null;
     _weight = null;
-    _gender = 'Male';
-    _activity = 'Sedentary';
+    _gender = null;
+    _activity = null;
     _bmr = null;
     _tdee = null;
     setState(() {});
