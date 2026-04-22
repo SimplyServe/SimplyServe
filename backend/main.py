@@ -154,6 +154,10 @@ async def _ensure_ingredient_table_columns():
             ))
         except Exception:
             pass
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN name TEXT"))
+        except Exception:
+            pass
         for col, col_type in [("quantity", "REAL"), ("unit", "TEXT")]:
             try:
                 await conn.execute(text(f"ALTER TABLE recipe_ingredient ADD COLUMN {col} {col_type}"))
@@ -313,7 +317,7 @@ async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(datab
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_password = auth.get_password_hash(user.password)
-    new_user = models.User(email=user.email, hashed_password=hashed_password)
+    new_user = models.User(email=user.email, name=user.name, hashed_password=hashed_password)
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
@@ -340,6 +344,23 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+
+@app.put("/users/me", response_model=schemas.User)
+async def update_users_me(
+    payload: schemas.UserNameUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    trimmed_name = payload.name.strip()
+    if not trimmed_name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+
+    current_user.name = trimmed_name
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
     return current_user
 
 from fastapi import File, UploadFile, Form
