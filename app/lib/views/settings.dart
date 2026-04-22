@@ -162,6 +162,12 @@ class _SettingsViewState extends State<SettingsView>
               },
             ),
             _buildSettingsTile(
+              icon: Icons.delete_outline,
+              title: 'Deleted Recipes',
+              subtitle: 'View and restore deleted recipes',
+              onTap: () => Navigator.pushNamed(context, '/deleted-recipes'),
+            ),
+            _buildSettingsTile(
               icon: Icons.lock,
               title: 'Privacy',
               subtitle: 'Control your privacy settings',

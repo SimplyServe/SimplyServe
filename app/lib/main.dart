@@ -8,6 +8,7 @@ import 'package:simplyserve/views/recipes.dart';
 import 'package:simplyserve/views/settings.dart';
 import 'package:simplyserve/views/profile.dart';
 import 'package:simplyserve/views/shopping_list.dart';
+import 'package:simplyserve/views/deleted_recipes.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
@@ -43,6 +44,7 @@ class MyApp extends StatelessWidget {
         '/settings': (context) => const SettingsView(),
         '/profile': (context) => const ProfileView(),
         '/shopping-list': (context) => const ShoppingListView(),
+        '/deleted-recipes': (context) => const DeletedRecipesView(),
       },
     );
   }

@@ -60,10 +60,12 @@ class RecipeCatalogService {
       }
     } catch (_) {}
 
-    final merged = <RecipeModel>[...apiRecipes];
-    for (final localRecipe in localRecipes) {
-      if (!merged.any((recipe) => recipe.title == localRecipe.title)) {
-        merged.insert(0, localRecipe);
+    // Local JSON recipes take precedence — seeded DB copies of the same title
+    // are excluded so they don't appear as user-created recipes.
+    final merged = <RecipeModel>[...localRecipes];
+    for (final apiRecipe in apiRecipes) {
+      if (!merged.any((recipe) => recipe.title == apiRecipe.title)) {
+        merged.add(apiRecipe);
       }
     }
 

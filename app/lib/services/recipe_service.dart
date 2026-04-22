@@ -153,6 +153,33 @@ class RecipeService {
     }
   }
 
+  Future<List<RecipeModel>> getDeletedRecipes() async {
+    try {
+      final response = await _dio.get(
+        '/recipes/deleted',
+        options: await _getAuthOptions(),
+      );
+      final List<dynamic> data = response.data;
+      return data.map((json) => _fromJson(json)).toList();
+    } catch (e) {
+      print('Error fetching deleted recipes: $e');
+      return [];
+    }
+  }
+
+  Future<bool> restoreRecipe(int id) async {
+    try {
+      await _dio.post(
+        '/recipes/$id/restore',
+        options: await _getAuthOptions(),
+      );
+      return true;
+    } catch (e) {
+      print('Error restoring recipe: $e');
+      return false;
+    }
+  }
+
   RecipeModel _fromJson(Map<String, dynamic> json) {
     final List<IngredientEntry> structuredIngredients =
         (json['recipe_ingredients'] as List<dynamic>? ?? [])

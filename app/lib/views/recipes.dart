@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/allergen_filter_service.dart';
 import 'package:simplyserve/services/allergy_service.dart';
+import 'package:simplyserve/services/favourites_service.dart';
 import 'package:simplyserve/services/recipe_catalog_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 import 'package:simplyserve/widgets/navbar.dart';
@@ -91,13 +92,17 @@ const _kAllCuisines = [
 int _parseMins(String t) =>
     int.tryParse(t.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
-class _RecipesViewState extends State<RecipesView> {
+class _RecipesViewState extends State<RecipesView>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final AllergyService _allergyService = AllergyService();
   final RecipeCatalogService _recipeCatalogService = RecipeCatalogService();
+  final FavouritesService _favouritesService = FavouritesService();
   String _query = '';
   bool _isLoading = true;
-  final List<RecipeModel> _allRecipes = [];
+  final List<RecipeModel> _localRecipes = [];
+  final List<RecipeModel> _userRecipes = [];
   List<String> _allergies = const [];
 
   final Set<String> _selectedTags = {};
@@ -124,20 +129,43 @@ class _RecipesViewState extends State<RecipesView> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchRecipes();
   }
 
   Future<void> _fetchRecipes() async {
     setState(() => _isLoading = true);
 
-    final recipes = await _recipeCatalogService.getAllRecipes();
-    final allergies = await _allergyService.loadAllergies();
+    final results = await Future.wait([
+      _recipeCatalogService.getAllRecipes(),
+      _allergyService.loadAllergies(),
+      _favouritesService.loadFavourites(),
+    ]);
 
     if (mounted) {
+      final recipes = results[0] as List<RecipeModel>;
+      final allergies = results[1] as List<String>;
+      final favourites = results[2] as Set<String>;
+
+      final local = recipes.where((r) => r.id == null).toList();
+      final user = recipes.where((r) => r.id != null).toList();
+
+      // Favourited local recipes also appear in My Recipes
+      for (final r in local) {
+        if (favourites.contains(r.title) &&
+            !user.any((u) => u.title == r.title)) {
+          user.add(r);
+        }
+      }
+
       setState(() {
         _allergies = allergies;
-        _allRecipes.clear();
-        _allRecipes.addAll(recipes);
+        _localRecipes
+          ..clear()
+          ..addAll(local);
+        _userRecipes
+          ..clear()
+          ..addAll(user);
         _isLoading = false;
       });
     }
@@ -145,13 +173,14 @@ class _RecipesViewState extends State<RecipesView> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  List<RecipeModel> get _filteredRecipes {
+  List<RecipeModel> _filteredFrom(List<RecipeModel> source) {
     final q = _query.trim().toLowerCase();
-    return _allRecipes.where((r) {
+    return source.where((r) {
       if (AllergenFilterService.recipeContainsAnyAllergen(r, _allergies)) {
         return false;
       }
@@ -195,9 +224,55 @@ class _RecipesViewState extends State<RecipesView> {
     }).toList();
   }
 
+  Widget _buildRecipeList(List<RecipeModel> source) {
+    final results = _filteredFrom(source);
+    return _isLoading
+        ? const Center(
+            child: CircularProgressIndicator(color: Color(0xFF74BC42)))
+        : results.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.search_off_rounded,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(
+                        _query.isNotEmpty
+                            ? 'No recipes found for "$_query".'
+                            : 'No recipes match the selected filters.',
+                        textAlign: TextAlign.center,
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _fetchRecipes,
+                child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: results.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _RecipeCard(
+                        recipe: results[index],
+                        onReturn: _fetchRecipes,
+                      ),
+                    );
+                  },
+                ),
+              );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final results = _filteredRecipes;
     final hasFilters = _activeFilterCount > 0;
 
     return NavBarScaffold(
@@ -348,50 +423,27 @@ class _RecipesViewState extends State<RecipesView> {
                 : const SizedBox.shrink(),
           ),
 
-          const SizedBox(height: 8),
+          // ── Tabs ────────────────────────────────────
+          TabBar(
+            controller: _tabController,
+            labelColor: const Color(0xFF74BC42),
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: const Color(0xFF74BC42),
+            tabs: const [
+              Tab(text: 'Recipes'),
+              Tab(text: 'My Recipes'),
+            ],
+          ),
 
-          // ── Results list ────────────────────────────
+          // ── Tab content ─────────────────────────────
           Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF74BC42)))
-                : results.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.search_off_rounded,
-                                  size: 48, color: Colors.grey),
-                              const SizedBox(height: 12),
-                              Text(
-                                _query.isNotEmpty
-                                    ? 'No recipes found for "$_query".'
-                                    : 'No recipes match the selected filters.',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _fetchRecipes,
-                        child: ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          itemCount: results.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: _RecipeCard(recipe: results[index]),
-                            );
-                          },
-                        ),
-                      ),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildRecipeList(_localRecipes),
+                _buildRecipeList(_userRecipes),
+              ],
+            ),
           ),
         ],
       ),
@@ -660,13 +712,15 @@ class _AdvancedFilterPanel extends StatelessWidget {
 
 class _RecipeCard extends StatelessWidget {
   final RecipeModel recipe;
+  final VoidCallback? onReturn;
 
-  const _RecipeCard({required this.recipe});
+  const _RecipeCard({required this.recipe, this.onReturn});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/recipe', arguments: recipe),
+      onTap: () => Navigator.pushNamed(context, '/recipe', arguments: recipe)
+          .then((_) => onReturn?.call()),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
