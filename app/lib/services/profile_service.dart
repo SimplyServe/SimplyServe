@@ -32,4 +32,23 @@ class ProfileService {
       return null;
     }
   }
+
+  Future<void> updateUserName(String name) async {
+    final token = await _storage.read(key: 'token');
+    if (token == null) throw Exception('Not authenticated');
+
+    final response = await _dio.patch(
+      '/users/me',
+      data: {'name': name},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update name');
+    }
+  }
 }
