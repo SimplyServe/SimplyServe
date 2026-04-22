@@ -39,8 +39,14 @@ def _normalize_unit(unit: str) -> str:
         "ounce": "oz", "ounces": "oz",
         "pound": "lb", "pounds": "lb",
         "piece": "pcs", "pieces": "pcs", "pc": "pcs",
+        "pinch": "pcs", "clove": "pcs", "cloves": "pcs",
+        "bunch": "pcs", "slice": "pcs", "slices": "pcs",
+        "can": "pcs", "cans": "pcs",
     }
-    return mapping.get(unit, unit) if unit else "pcs"
+    normalized = mapping.get(unit, unit)
+    # If still not a valid UnitEnum value, fall back to pcs
+    valid = {"tsp", "tbsp", "cup", "ml", "l", "g", "kg", "oz", "lb", "pcs"}
+    return normalized if normalized in valid else "pcs"
 
 
 def _parse_ingredient_text(raw: str) -> dict:
@@ -130,7 +136,14 @@ async def _seed_base_ingredients_catalog(db: AsyncSession):
 
 
 async def _normalize_existing_ingredient_data(db: AsyncSession):
-    pass
+    valid = {"tsp", "tbsp", "cup", "ml", "l", "g", "kg", "oz", "lb", "pcs"}
+    result = await db.execute(select(models.RecipeIngredient))
+    rows = result.scalars().all()
+    for row in rows:
+        normalized = _normalize_unit(row.unit or "")
+        if normalized != row.unit:
+            row.unit = normalized
+    await db.commit()
 
 
 async def _ensure_ingredient_table_columns():

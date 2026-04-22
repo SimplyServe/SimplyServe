@@ -5,6 +5,8 @@ import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 import 'dart:io' show File;
 
+const List<String> _kMealTypeTags = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
 const List<String> _allowedUnits = [
   'tsp',
   'tbsp',
@@ -37,6 +39,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   final _ingredientSearchController = TextEditingController();
   final _stepsController = TextEditingController();
   XFile? _imageFile;
+  final List<String> _selectedTags = [];
   bool _isLoading = false;
   bool _isSearchingIngredients = false;
   List<String> _ingredientSuggestions = [];
@@ -62,6 +65,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     _servingsController.text = recipe.servings.toString();
     _stepsController.text = recipe.steps.join('\n');
     _selectedIngredients.addAll(recipe.ingredients);
+    _selectedTags.addAll(recipe.tags.where(_kMealTypeTags.contains));
   }
 
   Future<void> _pickImage() async {
@@ -108,7 +112,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
           calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
       ingredients: List<IngredientEntry>.from(_selectedIngredients),
       steps: steps,
-      tags: const ['New'],
+      tags: _selectedTags.isEmpty ? const ['New'] : List.from(_selectedTags),
       id: widget.existingRecipe?.id,
     );
 
@@ -226,6 +230,39 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       decoration: const InputDecoration(
                           labelText: 'Servings', border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Meal Type',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _kMealTypeTags.map((tag) {
+                        final selected = _selectedTags.contains(tag);
+                        return FilterChip(
+                          label: Text(tag),
+                          selected: selected,
+                          onSelected: (val) {
+                            setState(() {
+                              if (val) {
+                                _selectedTags.add(tag);
+                              } else {
+                                _selectedTags.remove(tag);
+                              }
+                            });
+                          },
+                          selectedColor: const Color(0xFF74BC42),
+                          checkmarkColor: Colors.white,
+                          labelStyle: TextStyle(
+                            color: selected ? Colors.white : null,
+                          ),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 16),
                     Align(
