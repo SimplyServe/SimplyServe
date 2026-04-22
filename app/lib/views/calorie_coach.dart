@@ -26,8 +26,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   double? _tdee;
 
   // Optional: replace these with your asset paths if you add avatar images to assets.
-  // e.g. put files under assets/images/user.png and assets/images/bot.png and add them to pubspec.yaml.
-  final String? _botAvatarAsset = null; // 'assets/images/bot.png';
+  // Put the attached image file.png under assets/images/image.png
+  final String? _botAvatarAsset = 'assets/images/image.png'; // use attached image
   final String? _userAvatarAsset = null; // 'assets/images/user.png';
 
   static const Map<String, double> _activityMultipliers = {
@@ -314,24 +314,62 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   // Modified: show profile avatar on left for bot and right for user
   Widget _buildMessage(_ChatMessage m) {
     // avatar widget builder: uses asset if provided, otherwise fallback to Icon
+    // larger avatar for better visibility
+    final double _avatarSize = 56;
+
     Widget _avatar(bool isUser) {
       final asset = isUser ? _userAvatarAsset : _botAvatarAsset;
       if (asset != null) {
-        return CircleAvatar(
-          radius: 18,
-          backgroundImage: AssetImage(asset),
-          backgroundColor: Colors.transparent,
+        return Container(
+          width: _avatarSize,
+          height: _avatarSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            image: DecorationImage(
+              image: AssetImage(asset),
+              fit: BoxFit.cover, // center-crop
+              alignment: Alignment.center,
+            ),
+          ),
+          // keep Image.asset underneath to provide errorBuilder fallback
+          child: ClipOval(
+            child: Image.asset(
+              asset,
+              width: _avatarSize,
+              height: _avatarSize,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+              errorBuilder: (_, __, ___) {
+                if (isUser) {
+                  return Container(
+                    width: _avatarSize,
+                    height: _avatarSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.green[300],
+                    ),
+                    child: Icon(Icons.person, color: Colors.white, size: _avatarSize * 0.45),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
         );
       }
-      // default icons
+
+      // fallback avatars
+      if (isUser) {
+        return CircleAvatar(
+          radius: _avatarSize / 2,
+          backgroundColor: Colors.green[300],
+          child: Icon(Icons.person, color: Colors.white, size: _avatarSize * 0.45),
+        );
+      }
+
       return CircleAvatar(
-        radius: 18,
-        backgroundColor: isUser ? Colors.green[300] : Colors.grey[400],
-        child: Icon(
-          isUser ? Icons.person : Icons.smart_toy,
-          color: Colors.white,
-          size: 18,
-        ),
+        radius: _avatarSize / 2,
+        backgroundColor: Colors.transparent,
       );
     }
 
