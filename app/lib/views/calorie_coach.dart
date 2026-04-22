@@ -128,7 +128,24 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _bmr = null;
     _tdee = null;
     setState(() {});
-    await _sendBot('Hi — I\'m your Calorie Coach. Let\'s figure out your daily needs. How old are you? (years)');
+
+    // Full intro text before asking questions
+    await _sendBot(
+      'Welcome to Calorie Coach — your simple assistant for estimating daily calorie needs.',
+      delayMs: 900,
+    );
+    await _sendBot(
+      'I will ask a few quick questions (age, height, weight, gender, activity level) and use the Mifflin–St Jeor equation to estimate your Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE).',
+      delayMs: 900,
+    );
+    await _sendBot(
+      'Your answers are stored locally on this device so you can return later and see your results again. Data stays on your device only.',
+      delayMs: 900,
+    );
+    await _sendBot(
+      'This will only take a moment. First question — how old are you? (years)',
+      delayMs: 700,
+    );
   }
 
   // Adds a user message immediately
