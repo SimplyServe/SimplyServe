@@ -87,19 +87,19 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _step = 5; // mark as done so UI shows Restart/Done
     });
 
-    // show restored conversation/messages
+    // show restored conversation/messages immediately (no typing delay)
     _messages.clear();
-    await _sendBot('Welcome back — I loaded your previous Calorie Coach results.');
-    await _sendBot('Age: ${_age ?? 'N/A'}');
-    await _sendBot('Height: ${_height != null ? _height!.toStringAsFixed(1) + " cm" : 'N/A'}');
-    await _sendBot('Weight: ${_weight != null ? _weight!.toStringAsFixed(1) + " kg" : 'N/A'}');
-    await _sendBot('Gender: $_gender');
-    await _sendBot('Activity: $_activity');
+    _pushBot('Welcome back — I loaded your previous Calorie Coach results.');
+    _pushBot('Age: ${_age ?? 'N/A'}');
+    _pushBot('Height: ${_height != null ? _height!.toStringAsFixed(1) + " cm" : 'N/A'}');
+    _pushBot('Weight: ${_weight != null ? _weight!.toStringAsFixed(1) + " kg" : 'N/A'}');
+    _pushBot('Gender: $_gender');
+    _pushBot('Activity: $_activity');
     if (_bmr != null && _tdee != null) {
-      await _sendBot('BMR: ${_bmr!.round()} kcal/day', delayMs: 600);
-      await _sendBot('Estimated needs (TDEE): ${_tdee!.round()} kcal/day', delayMs: 600);
+      _pushBot('BMR: ${_bmr!.round()} kcal/day');
+      _pushBot('Estimated needs (TDEE): ${_tdee!.round()} kcal/day');
     } else {
-      await _sendBot('No calculated results found. You can restart to run again.');
+      _pushBot('No calculated results found. You can restart to run again.');
     }
   }
 
@@ -141,29 +141,25 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _tdee = null;
     setState(() {});
 
-    // Full intro text before asking questions
-    await _sendBot(
-      'Welcome to Calorie Coach — your simple assistant for estimating daily calorie needs.',
-      delayMs: 900,
-    );
-    await _sendBot(
-      'I will ask a few quick questions (age, height, weight, gender, activity level) and use the Mifflin–St Jeor equation to estimate your Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE).',
-      delayMs: 900,
-    );
-    await _sendBot(
-      'Your answers are stored locally on this device so you can return later and see your results again. Data stays on your device only.',
-      delayMs: 900,
-    );
-    await _sendBot(
-      'This will only take a moment. First question — how old are you? (years)',
-      delayMs: 700,
-    );
+    // Full intro text shown immediately (no typing indicator / delay)
+    _pushBot('Welcome to Calorie Coach — your simple assistant for estimating daily calorie needs.');
+    _pushBot('I will ask a few quick questions (age, height, weight, gender, activity level) and use the Mifflin–St Jeor equation to estimate your Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE).');
+    _pushBot('Your answers are stored locally on this device so you can return later and see your results again. Data stays on your device only.');
+    _pushBot('This will only take a moment. First question — how old are you? (years)');
   }
 
   // Adds a user message immediately
   void _pushUser(String text) {
     setState(() {
       _messages.add(_ChatMessage(text: text, fromUser: true));
+    });
+    _scrollToBottom();
+  }
+
+  // Adds a bot message immediately (no typing indicator / delay)
+  void _pushBot(String text) {
+    setState(() {
+      _messages.add(_ChatMessage(text: text, fromUser: false));
     });
     _scrollToBottom();
   }
