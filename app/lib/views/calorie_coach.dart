@@ -20,6 +20,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   String _gender = 'Male';
   String _activity = 'Sedentary';
 
+  // Optional: replace these with your asset paths if you add avatar images to assets.
+  // e.g. put files under assets/images/user.png and assets/images/bot.png and add them to pubspec.yaml.
+  final String? _botAvatarAsset = null; // 'assets/images/bot.png';
+  final String? _userAvatarAsset = null; // 'assets/images/user.png';
+
   static const Map<String, double> _activityMultipliers = {
     'Sedentary': 1.2,
     'Lightly active': 1.375,
@@ -158,43 +163,83 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     super.dispose();
   }
 
+  // Modified: show profile avatar on left for bot and right for user
   Widget _buildMessage(_ChatMessage m) {
-    final align = m.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final color = m.fromUser ? Colors.green[100] : Colors.grey[200];
-    final textColor = Colors.black;
+    // avatar widget builder: uses asset if provided, otherwise fallback to Icon
+    Widget _avatar(bool isUser) {
+      final asset = isUser ? _userAvatarAsset : _botAvatarAsset;
+      if (asset != null) {
+        return CircleAvatar(
+          radius: 18,
+          backgroundImage: AssetImage(asset),
+          backgroundColor: Colors.transparent,
+        );
+      }
+      // default icons
+      return CircleAvatar(
+        radius: 18,
+        backgroundColor: isUser ? Colors.green[300] : Colors.grey[400],
+        child: Icon(
+          isUser ? Icons.person : Icons.smart_toy,
+          color: Colors.white,
+          size: 18,
+        ),
+      );
+    }
 
-    // Slightly different styling for typing indicator
-    final textWidget = m.isTyping
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: 8),
-              Text('…'),
-            ],
-          )
-        : Text(m.text, style: TextStyle(color: textColor));
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      child: Column(
-        crossAxisAlignment: align,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: textWidget,
-          ),
-        ],
+    final bubble = ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+      child: Container(
+        decoration: BoxDecoration(
+          color: m.fromUser ? Colors.green[100] : Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: m.isTyping
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text('…'),
+                ],
+              )
+            : Text(m.text, style: const TextStyle(color: Colors.black)),
       ),
     );
+
+    if (m.fromUser) {
+      // user: bubble on left of avatar, align to right
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Flexible(child: bubble),
+            const SizedBox(width: 8),
+            _avatar(true),
+          ],
+        ),
+      );
+    } else {
+      // bot: avatar on left of bubble, align to left
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _avatar(false),
+            const SizedBox(width: 8),
+            Flexible(child: bubble),
+          ],
+        ),
+      );
+    }
   }
 
   @override
