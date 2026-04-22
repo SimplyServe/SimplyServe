@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:simplyserve/recipe_page.dart';
+import 'package:simplyserve/services/allergen_filter_service.dart';
+import 'package:simplyserve/services/allergy_service.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 
 /// Stays fast for a long time, then dramatically creeps to a stop —
@@ -22,6 +24,7 @@ class SpinningWheelWidget extends StatefulWidget {
 
 class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
   final RecipeService _recipeService = RecipeService();
+  final AllergyService _allergyService = AllergyService();
   bool _isLoading = true;
   bool _isSpinning = false;
 
@@ -103,14 +106,20 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
       }
     } catch (_) {}
 
+    final allergies = await _allergyService.loadAllergies();
+
     if (mounted) {
       setState(() {
         _recipeMap.clear();
         for (final r in apiRecipes) {
-          _recipeMap[r.title] = r;
+          if (!AllergenFilterService.recipeContainsAnyAllergen(r, allergies)) {
+            _recipeMap[r.title] = r;
+          }
         }
         for (final r in localRecipes) {
-          _recipeMap.putIfAbsent(r.title, () => r);
+          if (!AllergenFilterService.recipeContainsAnyAllergen(r, allergies)) {
+            _recipeMap.putIfAbsent(r.title, () => r);
+          }
         }
         _isLoading = false;
         if (_meals.isNotEmpty) {

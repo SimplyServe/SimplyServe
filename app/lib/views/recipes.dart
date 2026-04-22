@@ -104,6 +104,7 @@ class _RecipesViewState extends State<RecipesView>
   final List<RecipeModel> _localRecipes = [];
   final List<RecipeModel> _userRecipes = [];
   List<String> _allergies = const [];
+  Set<String> _favourites = {};
 
   final Set<String> _selectedTags = {};
   final Set<String> _selectedDifficulties = {};
@@ -147,7 +148,9 @@ class _RecipesViewState extends State<RecipesView>
       final allergies = results[1] as List<String>;
       final favourites = results[2] as Set<String>;
 
-      final local = recipes.where((r) => r.id == null).toList();
+      final local = recipes.where((r) => r.id == null).toList()
+        ..sort((a, b) => a.title.compareTo(b.title));
+
       final user = recipes.where((r) => r.id != null).toList();
 
       // Favourited local recipes also appear in My Recipes
@@ -158,8 +161,17 @@ class _RecipesViewState extends State<RecipesView>
         }
       }
 
+      // Favourites first (alphabetical), then rest (alphabetical)
+      user.sort((a, b) {
+        final aFav = favourites.contains(a.title);
+        final bFav = favourites.contains(b.title);
+        if (aFav != bFav) return aFav ? -1 : 1;
+        return a.title.compareTo(b.title);
+      });
+
       setState(() {
         _allergies = allergies;
+        _favourites = favourites;
         _localRecipes
           ..clear()
           ..addAll(local);
@@ -259,10 +271,12 @@ class _RecipesViewState extends State<RecipesView>
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: results.length,
                   itemBuilder: (context, index) {
+                    final recipe = results[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: _RecipeCard(
-                        recipe: results[index],
+                        recipe: recipe,
+                        isFavourited: _favourites.contains(recipe.title),
                         onReturn: _fetchRecipes,
                       ),
                     );
@@ -712,9 +726,14 @@ class _AdvancedFilterPanel extends StatelessWidget {
 
 class _RecipeCard extends StatelessWidget {
   final RecipeModel recipe;
+  final bool isFavourited;
   final VoidCallback? onReturn;
 
-  const _RecipeCard({required this.recipe, this.onReturn});
+  const _RecipeCard({
+    required this.recipe,
+    this.isFavourited = false,
+    this.onReturn,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -738,44 +757,72 @@ class _RecipeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: recipe.imageUrl.startsWith('assets/')
-                  ? Image.asset(
-                      recipe.imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFE8F5E9),
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              size: 48, color: Colors.grey),
-                        ),
-                      ),
-                    )
-                  : Image.network(
-                      recipe.imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(
-                          color: const Color(0xFFE8F5E9),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Color(0xFF74BC42),
-                              strokeWidth: 2,
+            Stack(
+              children: [
+                SizedBox(
+                  height: 180,
+                  width: double.infinity,
+                  child: recipe.imageUrl.startsWith('assets/')
+                      ? Image.asset(
+                          recipe.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: const Color(0xFFE8F5E9),
+                            child: const Center(
+                              child: Icon(Icons.broken_image_outlined,
+                                  size: 48, color: Colors.grey),
                             ),
                           ),
-                        );
-                      },
-                      errorBuilder: (_, __, ___) => Container(
-                        color: const Color(0xFFE8F5E9),
-                        child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              size: 48, color: Colors.grey),
+                        )
+                      : Image.network(
+                          recipe.imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              color: const Color(0xFFE8F5E9),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF74BC42),
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            color: const Color(0xFFE8F5E9),
+                            child: const Center(
+                              child: Icon(Icons.broken_image_outlined,
+                                  size: 48, color: Colors.grey),
+                            ),
+                          ),
                         ),
+                ),
+                if (isFavourited)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Colors.redAccent,
+                        size: 16,
                       ),
                     ),
+                  ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
