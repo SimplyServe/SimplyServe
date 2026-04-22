@@ -20,6 +20,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   String _gender = 'Male';
   String _activity = 'Sedentary';
 
+  // store results for summary
+  double? _bmr;
+  double? _tdee;
+
   // Optional: replace these with your asset paths if you add avatar images to assets.
   // e.g. put files under assets/images/user.png and assets/images/bot.png and add them to pubspec.yaml.
   final String? _botAvatarAsset = null; // 'assets/images/bot.png';
@@ -48,6 +52,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _weight = null;
     _gender = 'Male';
     _activity = 'Sedentary';
+    _bmr = null;
+    _tdee = null;
     setState(() {});
     await _sendBot('Hi — I\'m your Calorie Coach. Let\'s figure out your daily needs. How old are you? (years)');
   }
@@ -150,11 +156,62 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     final multiplier = _activityMultipliers[_activity] ?? 1.2;
     final tdee = bmr * multiplier;
 
+    // store results for summary dialog
+    setState(() {
+      _bmr = bmr;
+      _tdee = tdee;
+    });
+
     await _sendBot('Here are your results:');
     await _sendBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day', delayMs: 600);
     await _sendBot('Estimated daily needs (TDEE): ${tdee.round()} kcal/day (activity: $_activity)', delayMs: 600);
-    await _sendBot('Tap "Restart" to run again or adjust values from the drawer.', delayMs: 500);
+    await _sendBot('Tap "Restart" to run again or press "Done" to see a summary.', delayMs: 500);
     setState(() {});
+  }
+
+  // show summary dialog when Done is pressed
+  void _showSummaryDialog() {
+    final age = _age?.toString() ?? 'N/A';
+    final height = _height != null ? '${_height!.toStringAsFixed(1)} cm' : 'N/A';
+    final weight = _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : 'N/A';
+    final gender = _gender;
+    final activity = _activity;
+    final bmr = _bmr != null ? '${_bmr!.round()} kcal/day' : 'N/A';
+    final tdee = _tdee != null ? '${_tdee!.round()} kcal/day' : 'N/A';
+
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Summary'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Age: $age'),
+            Text('Height: $height'),
+            Text('Weight: $weight'),
+            Text('Gender: $gender'),
+            Text('Activity: $activity'),
+            const SizedBox(height: 8),
+            Text('BMR: $bmr'),
+            Text('Estimated daily needs (TDEE): $tdee'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _startConversation();
+            },
+            child: const Text('Restart'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -353,8 +410,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          // optionally navigate back to adjust via drawer
-                          Navigator.of(context).maybePop();
+                          // show summary dialog instead of just popping
+                          _showSummaryDialog();
                         },
                         child: const Text('Done'),
                       ),
