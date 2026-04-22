@@ -295,7 +295,7 @@ async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(datab
     await db.commit()
     await db.refresh(new_user)
 
-    await seed_user_data(new_user.id, db)
+    # await seed_user_data(new_user.id, db)
 
     return new_user
 
