@@ -169,11 +169,31 @@ class _RecipePageState extends State<RecipePage> {
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
           child: ElevatedButton.icon(
             onPressed: () {
-              ShoppingListService().addIngredients(
+              final service = ShoppingListService();
+              service.addIngredients(
                 _recipe.ingredients
                     .map((ingredient) => ingredient.name.trim())
                     .toList(),
               );
+              service.addRecipe(ShoppingRecipeEntry(
+                recipeTitle: _recipe.title,
+                caloriesPerServing: _recipe.nutrition.calories,
+                proteinPerServing: double.tryParse(
+                      _recipe.nutrition.protein
+                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                    ) ??
+                    0,
+                carbsPerServing: double.tryParse(
+                      _recipe.nutrition.carbs
+                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                    ) ??
+                    0,
+                fatsPerServing: double.tryParse(
+                      _recipe.nutrition.fats
+                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                    ) ??
+                    0,
+              ));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Items added to shopping list successfully!'),

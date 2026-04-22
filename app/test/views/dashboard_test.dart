@@ -31,7 +31,7 @@ void main() {
       expect(find.text('Here is your daily nutritional summary.'), findsOneWidget);
     });
 
-    testWidgets('DashboardView displays no data message by default',
+    testWidgets('DashboardView displays macro counter and no meals message by default',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -39,9 +39,13 @@ void main() {
         ),
       );
 
-      // Default state shows no data message
-      expect(find.text('No data to show yet'), findsOneWidget);
-      expect(find.text('Log what you ate in Meal Calendar, including servings, and your totals for today will appear here.'), findsOneWidget);
+      // Default state shows macro counter with zeros
+      expect(find.text('Calories Today'), findsOneWidget);
+      expect(find.text('0 kcal'), findsOneWidget);
+
+      // Shows "Today's Meals" section with empty message
+      expect(find.text("Today's Meals"), findsOneWidget);
+      expect(find.text('No meals logged yet. Log meals from the Meal Calendar or Shopping List.'), findsOneWidget);
     });
 
     testWidgets('Dashboard shows Log meals button when no data',
@@ -140,7 +144,6 @@ void main() {
       // Verify dashboard renders with cards and proper content
       expect(find.text('Welcome back!'), findsOneWidget);
       expect(find.byType(Card), findsAtLeastNWidgets(1));
-      expect(find.byIcon(Icons.insights_outlined), findsOneWidget);
     });
   });
 }
