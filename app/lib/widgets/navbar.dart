@@ -152,7 +152,8 @@ class NavBarScaffold extends StatelessWidget {
               selectedColor: themeColor,
               onTap: () {
                 final currentRoute = ModalRoute.of(context)?.settings.name;
-                Navigator.of(context).maybePop();
+                // close the drawer first
+                Navigator.pop(context);
                 if (currentRoute != '/calorie-coach') {
                   Navigator.pushReplacement(
                     context,

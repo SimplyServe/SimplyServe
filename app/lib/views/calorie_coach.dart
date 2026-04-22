@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:simplyserve/widgets/navbar.dart'; // added import
+import 'package:simplyserve/widgets/navbar.dart';
 
 class CalorieCoachView extends StatefulWidget {
   const CalorieCoachView({super.key});
@@ -10,16 +10,15 @@ class CalorieCoachView extends StatefulWidget {
 }
 
 class _CalorieCoachViewState extends State<CalorieCoachView> {
-  final _formKey = GlobalKey<FormState>();
-  final _ageCtrl = TextEditingController();
-  final _heightCtrl = TextEditingController(); // cm
-  final _weightCtrl = TextEditingController(); // kg
+  final _inputCtrl = TextEditingController();
+  final List<_ChatMessage> _messages = [];
+  int _step = 0; // 0: age, 1: height, 2: weight, 3: gender, 4: activity, 5: done
 
+  int? _age;
+  double? _height; // cm
+  double? _weight; // kg
   String _gender = 'Male';
   String _activity = 'Sedentary';
-
-  double? _bmr;
-  double? _tdee;
 
   static const Map<String, double> _activityMultipliers = {
     'Sedentary': 1.2,
@@ -30,213 +29,272 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   };
 
   @override
-  void dispose() {
-    _ageCtrl.dispose();
-    _heightCtrl.dispose();
-    _weightCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _startConversation();
   }
 
-  void _calculate() {
-    if (!_formKey.currentState!.validate()) return;
+  void _startConversation() {
+    _messages.clear();
+    _step = 0;
+    _age = null;
+    _height = null;
+    _weight = null;
+    _gender = 'Male';
+    _activity = 'Sedentary';
+    _pushBot('Hi — I\'m your Calorie Coach. Let\'s figure out your daily needs. How old are you? (years)');
+  }
 
-    final age = int.tryParse(_ageCtrl.text.trim()) ?? 0;
-    final height = double.tryParse(_heightCtrl.text.trim()) ?? 0;
-    final weight = double.tryParse(_weightCtrl.text.trim()) ?? 0;
-
-    // Mifflin-St Jeor equation
-    double bmr;
-    if (_gender == 'Male') {
-      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
-    } else {
-      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
-    }
-
-    final multiplier = _activityMultipliers[_activity] ?? 1.2;
-    final tdee = bmr * multiplier;
-
+  void _pushBot(String text) {
     setState(() {
-      _bmr = bmr;
-      _tdee = tdee;
+      _messages.add(_ChatMessage(text: text, fromUser: false));
     });
   }
 
-  String? _validatePositive(String? v) {
-    if (v == null || v.trim().isEmpty) return 'Required';
-    final n = double.tryParse(v.trim());
-    if (n == null || n <= 0) return 'Enter a valid positive number';
-    return null;
+  void _pushUser(String text) {
+    setState(() {
+      _messages.add(_ChatMessage(text: text, fromUser: true));
+    });
+  }
+
+  void _handleSubmitText() {
+    final text = _inputCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    _pushUser(text);
+    _inputCtrl.clear();
+
+    switch (_step) {
+      case 0:
+        final n = int.tryParse(text);
+        if (n == null || n < 10 || n > 120) {
+          _pushBot('Please enter a valid age (10–120).');
+          return;
+        }
+        _age = n;
+        _step = 1;
+        _pushBot('Great. What is your height in cm?');
+        break;
+      case 1:
+        final n = double.tryParse(text);
+        if (n == null || n < 50 || n > 300) {
+          _pushBot('Please enter a realistic height in cm (e.g. 170).');
+          return;
+        }
+        _height = n;
+        _step = 2;
+        _pushBot('Nice. What is your weight in kg?');
+        break;
+      case 2:
+        final n = double.tryParse(text);
+        if (n == null || n < 20 || n > 700) {
+          _pushBot('Please enter a realistic weight in kg (e.g. 70).');
+          return;
+        }
+        _weight = n;
+        _step = 3;
+        _pushBot('Which gender should I use? Tap a button:');
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _selectGender(String g) {
+    _pushUser(g);
+    _gender = g;
+    _step = 4;
+    _pushBot('Thanks. Now choose your typical activity level:');
+    setState(() {});
+  }
+
+  void _selectActivity(String a) {
+    _pushUser(a);
+    _activity = a;
+    _step = 5;
+    _calculateAndShowResults();
+  }
+
+  void _calculateAndShowResults() {
+    if (_age == null || _height == null || _weight == null) {
+      _pushBot('Missing information. Please restart.');
+      return;
+    }
+
+    // Mifflin-St Jeor
+    double bmr;
+    if (_gender == 'Male') {
+      bmr = 10 * _weight! + 6.25 * _height! - 5 * _age! + 5;
+    } else {
+      bmr = 10 * _weight! + 6.25 * _height! - 5 * _age! - 161;
+    }
+    final multiplier = _activityMultipliers[_activity] ?? 1.2;
+    final tdee = bmr * multiplier;
+
+    _pushBot('Here are your results:');
+    _pushBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day');
+    _pushBot('Estimated daily needs (TDEE): ${tdee.round()} kcal/day (activity: $_activity)');
+    _pushBot('Tap "Restart" to run again or adjust values from the drawer.');
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _inputCtrl.dispose();
+    super.dispose();
+  }
+
+  Widget _buildMessage(_ChatMessage m) {
+    final align = m.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final color = m.fromUser ? Colors.green[100] : Colors.grey[200];
+    final textColor = Colors.black;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      child: Column(
+        crossAxisAlignment: align,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Text(m.text, style: TextStyle(color: textColor)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Use NavBarScaffold so the app drawer/navigation is present
     return NavBarScaffold(
       title: 'Calorie Coach',
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Age
-              TextFormField(
-                controller: _ageCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'Age (years)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  final msg = _validatePositive(v);
-                  if (msg != null) return msg;
-                  final age = int.tryParse(v!.trim()) ?? 0;
-                  if (age < 10 || age > 120) return 'Enter a realistic age';
-                  return null;
-                },
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                itemCount: _messages.length,
+                itemBuilder: (_, i) => _buildMessage(_messages[i]),
               ),
-              const SizedBox(height: 12),
+            ),
 
-              // Height
-              TextFormField(
-                controller: _heightCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'Height (cm)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  final msg = _validatePositive(v);
-                  if (msg != null) return msg;
-                  final h = double.tryParse(v!.trim()) ?? 0;
-                  if (h < 50 || h > 300) return 'Enter a realistic height';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Weight
-              TextFormField(
-                controller: _weightCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'Weight (kg)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  final msg = _validatePositive(v);
-                  if (msg != null) return msg;
-                  final w = double.tryParse(v!.trim()) ?? 0;
-                  if (w < 20 || w > 700) return 'Enter a realistic weight';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-
-              // Gender & Activity row
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _gender,
-                      items: const [
-                        DropdownMenuItem(value: 'Male', child: Text('Male')),
-                        DropdownMenuItem(
-                            value: 'Female', child: Text('Female')),
-                      ],
-                      onChanged: (v) => setState(() => _gender = v!),
-                      decoration: const InputDecoration(
-                        labelText: 'Gender',
-                        border: OutlineInputBorder(),
+            // Choice row for gender
+            if (_step == 3)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _selectGender('Male'),
+                        child: const Text('Male'),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _activity,
-                      items: _activityMultipliers.keys
-                          .map((k) => DropdownMenuItem(value: k, child: Text(k)))
-                          .toList(),
-                      onChanged: (v) => setState(() => _activity = v!),
-                      decoration: const InputDecoration(
-                        labelText: 'Activity level',
-                        border: OutlineInputBorder(),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => _selectGender('Female'),
+                        child: const Text('Female'),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _calculate,
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Text('Calculate'),
-                      ),
-                    ),
-                  ),
-                ],
+            // Choice row for activity
+            if (_step == 4)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _activityMultipliers.keys.map((k) {
+                    return ElevatedButton(
+                      onPressed: () => _selectActivity(k),
+                      child: Text(k),
+                    );
+                  }).toList(),
+                ),
               ),
 
-              const SizedBox(height: 20),
-
-              if (_bmr != null && _tdee != null)
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Results',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('BMR (calories/day):'),
-                            Text('${_bmr!.round()} kcal'),
+            // Text input for numeric steps (age/height/weight)
+            if (_step == 0 || _step == 1 || _step == 2)
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _inputCtrl,
+                          keyboardType: TextInputType.numberWithOptions(decimal: _step != 0),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                           ],
+                          decoration: InputDecoration(
+                            hintText: _step == 0
+                                ? 'Enter age'
+                                : _step == 1
+                                    ? 'Enter height (cm)'
+                                    : 'Enter weight (kg)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          ),
+                          onSubmitted: (_) => _handleSubmitText(),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Estimated needs (TDEE):'),
-                            Text('${_tdee!.round()} kcal'),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Based on Mifflin–St Jeor equation and selected activity level.',
-                          style: Theme.of(context).textTheme.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: _handleSubmitText,
+                        child: const Icon(Icons.send),
+                      )
+                    ],
                   ),
                 ),
-            ],
-          ),
+              ),
+
+            // Restart button when done
+            if (_step == 5)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          _startConversation();
+                        },
+                        child: const Text('Restart'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // optionally navigate back to adjust via drawer
+                          Navigator.of(context).maybePop();
+                        },
+                        child: const Text('Done'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _ChatMessage {
+  final String text;
+  final bool fromUser;
+  _ChatMessage({required this.text, required this.fromUser});
 }
