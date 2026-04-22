@@ -148,6 +148,12 @@ async def _normalize_existing_ingredient_data(db: AsyncSession):
 
 async def _ensure_ingredient_table_columns():
     async with engine.begin() as conn:
+        try:
+            await conn.execute(text(
+                "ALTER TABLE recipe ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0"
+            ))
+        except Exception:
+            pass
         for col, col_type in [("quantity", "REAL"), ("unit", "TEXT")]:
             try:
                 await conn.execute(text(f"ALTER TABLE recipe_ingredient ADD COLUMN {col} {col_type}"))
@@ -345,7 +351,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/recipes", response_model=list[schemas.Recipe])
 async def list_recipes(db: AsyncSession = Depends(database.get_db)):
-    result = await db.execute(select(models.Recipe))
+    result = await db.execute(
+        select(models.Recipe).where(models.Recipe.is_deleted != True)
+    )
     recipes = result.scalars().all()
 
     recipe_responses = []
@@ -637,13 +645,75 @@ async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_
     recipe = res.scalars().first()
     if not recipe:
         raise HTTPException(status_code=404, detail="Recipe not found")
-
-    await db.execute(models.RecipeTag.__table__.delete().where(models.RecipeTag.recipe_id == recipe_id))
-    await db.execute(models.RecipeIngredient.__table__.delete().where(models.RecipeIngredient.recipe_id == recipe_id))
-
-    await db.delete(recipe)
+    recipe.is_deleted = True
     await db.commit()
     return {"message": "Success"}
+
+
+@app.get("/recipes/deleted", response_model=list[schemas.Recipe])
+async def list_deleted_recipes(db: AsyncSession = Depends(database.get_db)):
+    result = await db.execute(
+        select(models.Recipe).where(models.Recipe.is_deleted == True)
+    )
+    recipes = result.scalars().all()
+
+    recipe_responses = []
+    for r in recipes:
+        tag_result = await db.execute(
+            select(models.Tag.tag_name).join(models.RecipeTag).where(models.RecipeTag.recipe_id == r.recipe_id)
+        )
+        tags = tag_result.scalars().all()
+
+        ing_result = await db.execute(
+            select(
+                models.Ingredients.ingredient_name,
+                models.RecipeIngredient.quantity,
+                models.RecipeIngredient.unit,
+            )
+            .join(models.RecipeIngredient)
+            .where(models.RecipeIngredient.recipe_id == r.recipe_id)
+        )
+        ingredient_rows = ing_result.all()
+        recipe_ingredients = [
+            {
+                "ingredient_name": row[0],
+                "quantity": float(row[1] or 1),
+                "unit": _normalize_unit(row[2]),
+            }
+            for row in ingredient_rows
+        ]
+        nutrition = _build_nutrition_info(
+            await _calculate_recipe_nutrition_totals(db, r.recipe_id),
+            r.servings or 1,
+        )
+        recipe_responses.append(schemas.Recipe(**{
+            "title": r.recipe_name or "",
+            "summary": r.summary or "",
+            "image_url": r.image_url,
+            "prep_time": str(r.prep_time) if r.prep_time else "",
+            "cook_time": str(r.cook_time) if r.cook_time else "",
+            "total_time": "",
+            "servings": r.servings or 1,
+            "difficulty": "Medium",
+            "tags": tags,
+            "ingredients": [ri["ingredient_name"] for ri in recipe_ingredients],
+            "recipe_ingredients": recipe_ingredients,
+            "steps": json.loads(r.instructions) if r.instructions else [],
+            "nutrition": nutrition,
+            "id": r.recipe_id,
+        }))
+    return recipe_responses
+
+
+@app.post("/recipes/{recipe_id}/restore")
+async def restore_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_db)):
+    res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_id == recipe_id))
+    recipe = res.scalars().first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    recipe.is_deleted = False
+    await db.commit()
+    return {"message": "Restored"}
 
 from fastapi.staticfiles import StaticFiles
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

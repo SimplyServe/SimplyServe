@@ -77,7 +77,8 @@ class Recipe(Base):
     image_url = Column(String)
     cook_time = Column(Integer)
     servings = Column(Integer)
-    instructions = Column(String) 
+    instructions = Column(String)
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
 class SavedRecipe(Base):
     __tablename__ = "saved_recipes"

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simplyserve/services/favourites_service.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
@@ -105,6 +106,7 @@ class RecipePage extends StatefulWidget {
 class _RecipePageState extends State<RecipePage> {
   bool _isFavourited = false;
   RecipeModel? _currentRecipe;
+  final FavouritesService _favouritesService = FavouritesService();
 
   static const Color _brand = Color(0xFF74BC42);
 
@@ -112,6 +114,15 @@ class _RecipePageState extends State<RecipePage> {
   void initState() {
     super.initState();
     _currentRecipe = widget.recipe;
+    _loadFavouriteState();
+  }
+
+  Future<void> _loadFavouriteState() async {
+    if (widget.recipe?.id != null) return;
+    final title = widget.recipe?.title;
+    if (title == null) return;
+    final isFav = await _favouritesService.isFavourite(title);
+    if (mounted) setState(() => _isFavourited = isFav);
   }
 
   RecipeModel get _recipe =>
@@ -307,9 +318,32 @@ class _RecipePageState extends State<RecipePage> {
             icon: Icons.delete_outline,
             iconColor: Colors.black87,
             onTap: () async {
-              if (_recipe.id != null) {
-                bool result = await RecipeService().deleteRecipe(_recipe.id!);
-                if (result && context.mounted) {
+              if (_recipe.id == null) return;
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Delete Recipe'),
+                  content: Text(
+                      'Move "${_recipe.title}" to Deleted Recipes?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Delete',
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true && context.mounted) {
+                final success =
+                    await RecipeService().deleteRecipe(_recipe.id!);
+                if (success && context.mounted) {
                   Navigator.of(context).pop();
                 }
               }
@@ -317,18 +351,42 @@ class _RecipePageState extends State<RecipePage> {
             tooltip: 'Delete Recipe',
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: _CircleIconButton(
-            icon: _isFavourited
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            iconColor: _isFavourited ? Colors.redAccent : Colors.black87,
-            onTap: () => setState(() => _isFavourited = !_isFavourited),
-            tooltip:
-                _isFavourited ? 'Remove from Favourites' : 'Add to Favourites',
+        if (_recipe.id == null)
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: _CircleIconButton(
+              icon: _isFavourited
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              iconColor: _isFavourited ? Colors.redAccent : Colors.black87,
+              onTap: () async {
+                if (_isFavourited) {
+                  await _favouritesService.removeFavourite(_recipe.title);
+                  if (!mounted) return;
+                  setState(() => _isFavourited = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Removed from My Recipes'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  await _favouritesService.addFavourite(_recipe.title);
+                  if (!mounted) return;
+                  setState(() => _isFavourited = true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Added to My Recipes'),
+                      backgroundColor: Color(0xFF74BC42),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              tooltip:
+                  _isFavourited ? 'Remove from My Recipes' : 'Add to My Recipes',
+            ),
           ),
-        ),
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: ClipRRect(
