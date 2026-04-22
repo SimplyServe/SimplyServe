@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/authorisation.dart';
@@ -145,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
                       const Center(
                         child: Text(
-                          'Simply Serve',
+                          'SimplyServe',
                           style: TextStyle(
                             fontSize: 30,
                             fontWeight: FontWeight.w600,

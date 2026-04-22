@@ -37,7 +37,7 @@ class ProfileService {
     final token = await _storage.read(key: 'token');
     if (token == null) throw Exception('Not authenticated');
 
-    final response = await _dio.patch(
+    final response = await _dio.put(
       '/users/me',
       data: {'name': name},
       options: Options(
