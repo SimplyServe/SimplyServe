@@ -15,6 +15,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   final List<_ChatMessage> _messages = [];
   int _step = 0; // 0: age, 1: height, 2: weight, 3: gender, 4: activity, 5: done
 
+  // auto-scroll controller so new bot messages (intro) are visible
+  final ScrollController _scrollCtrl = ScrollController();
+
   int? _age;
   double? _height; // cm
   double? _weight; // kg
@@ -36,6 +39,15 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     'Moderately active': 1.55,
     'Very active': 1.725,
     'Extra active': 1.9,
+  };
+
+  // Friendly descriptions used in the activity selection UI
+  static const Map<String, String> _activityDescriptions = {
+    'Sedentary': 'Little or no exercise, desk job',
+    'Lightly active': 'Light exercise 1–3 days/week',
+    'Moderately active': 'Moderate exercise 3–5 days/week',
+    'Very active': 'Hard exercise 6–7 days/week',
+    'Extra active': 'Very hard exercise or physical job',
   };
 
   // SharedPreferences keys
@@ -153,6 +165,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     setState(() {
       _messages.add(_ChatMessage(text: text, fromUser: true));
     });
+    _scrollToBottom();
   }
 
   // Sends bot message with typing indicator ("…") and optional delay
@@ -161,6 +174,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     setState(() {
       _messages.add(_ChatMessage(text: '…', fromUser: false, isTyping: true));
     });
+    _scrollToBottom();
 
     await Future.delayed(Duration(milliseconds: delayMs));
 
@@ -169,6 +183,21 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       final idx = _messages.lastIndexWhere((m) => m.isTyping == true);
       if (idx != -1) _messages.removeAt(idx);
       _messages.add(_ChatMessage(text: text, fromUser: false));
+    });
+    _scrollToBottom();
+  }
+
+  // ensure list scrolls to bottom when new messages arrive
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollCtrl.hasClients) return;
+      try {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      } catch (_) {}
     });
   }
 
@@ -308,6 +337,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   @override
   void dispose() {
     _inputCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -437,48 +467,95 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           children: [
             Expanded(
               child: ListView.builder(
+                controller: _scrollCtrl, // ensure auto-scroll works
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 itemCount: _messages.length,
                 itemBuilder: (_, i) => _buildMessage(_messages[i]),
               ),
             ),
 
-            // Choice row for gender
+            // Improved gender choice: ChoiceChips with icons and clear labels
             if (_step == 3)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _selectGender('Male'),
-                        child: const Text('Male'),
-                      ),
+                    const Text('Which gender should I use?', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Male'),
+                          avatar: const Icon(Icons.male, size: 18),
+                          selected: _gender == 'Male',
+                          // always call handler so user can confirm / proceed even if already selected
+                          onSelected: (_) => _selectGender('Male'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Female'),
+                          avatar: const Icon(Icons.female, size: 18),
+                          selected: _gender == 'Female',
+                          onSelected: (_) => _selectGender('Female'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Prefer not to say'),
+                          selected: _gender == 'Prefer not to say',
+                          onSelected: (_) => _selectGender('Prefer not to say'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _selectGender('Female'),
-                        child: const Text('Female'),
-                      ),
-                    ),
+                    const SizedBox(height: 6),
+                    const Text('You can change this later in your profile.', style: TextStyle(fontSize: 12, color: Colors.black54)),
                   ],
                 ),
               ),
 
-            // Choice row for activity
+            // Improved activity selection: selectable list with short descriptions
             if (_step == 4)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _activityMultipliers.keys.map((k) {
-                    return ElevatedButton(
-                      onPressed: () => _selectActivity(k),
-                      child: Text(k),
-                    );
-                  }).toList(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Choose your typical activity level', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    ..._activityMultipliers.keys.map((k) {
+                      final selected = _activity == k;
+                      return Card(
+                        color: selected ? Colors.green[50] : null,
+                        child: InkWell(
+                          onTap: () => _selectActivity(k),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                                  color: selected ? Colors.green : Colors.black54,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(k, style: TextStyle(fontWeight: FontWeight.w600, color: selected ? Colors.green[800] : Colors.black)),
+                                      const SizedBox(height: 2),
+                                      Text(_activityDescriptions[k] ?? '', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                    ],
+                                  ),
+                                ),
+                                if (selected) const Icon(Icons.check, color: Colors.green),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    const SizedBox(height: 6),
+                    const Text('Tap an option to select. If you are unsure, choose the closest match.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  ],
                 ),
               ),
 
