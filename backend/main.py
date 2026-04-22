@@ -281,9 +281,13 @@ def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
 
     return parsed
 
+async def seed_user_data(user_id: int, db: AsyncSession):
+    pass
+
 
 @app.post("/register", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(database.get_db)):
+    
     result = await db.execute(select(models.User).where(models.User.email == user.email))
     db_user = result.scalars().first()
     if db_user:
