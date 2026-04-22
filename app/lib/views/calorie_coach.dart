@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // added
 import 'package:simplyserve/widgets/navbar.dart';
 
 class CalorieCoachView extends StatefulWidget {
@@ -37,14 +38,86 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     'Extra active': 1.9,
   };
 
+  // SharedPreferences keys
+  static const _kAge = 'cc_age';
+  static const _kHeight = 'cc_height';
+  static const _kWeight = 'cc_weight';
+  static const _kGender = 'cc_gender';
+  static const _kActivity = 'cc_activity';
+  static const _kBmr = 'cc_bmr';
+  static const _kTdee = 'cc_tdee';
+
   @override
   void initState() {
     super.initState();
-    _startConversation();
+    // attempt to load saved results; if none, start normal conversation
+    _loadSavedResults();
+  }
+
+  Future<void> _loadSavedResults() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedTdee = prefs.getDouble(_kTdee);
+    if (storedTdee == null) {
+      // no saved results
+      await _startConversation();
+      return;
+    }
+
+    // restore fields
+    setState(() {
+      _age = prefs.getInt(_kAge);
+      _height = prefs.getDouble(_kHeight);
+      _weight = prefs.getDouble(_kWeight);
+      _gender = prefs.getString(_kGender) ?? 'Male';
+      _activity = prefs.getString(_kActivity) ?? 'Sedentary';
+      _bmr = prefs.getDouble(_kBmr);
+      _tdee = prefs.getDouble(_kTdee);
+      _step = 5; // mark as done so UI shows Restart/Done
+    });
+
+    // show restored conversation/messages
+    _messages.clear();
+    await _sendBot('Welcome back — I loaded your previous Calorie Coach results.');
+    await _sendBot('Age: ${_age ?? 'N/A'}');
+    await _sendBot('Height: ${_height != null ? _height!.toStringAsFixed(1) + " cm" : 'N/A'}');
+    await _sendBot('Weight: ${_weight != null ? _weight!.toStringAsFixed(1) + " kg" : 'N/A'}');
+    await _sendBot('Gender: $_gender');
+    await _sendBot('Activity: $_activity');
+    if (_bmr != null && _tdee != null) {
+      await _sendBot('BMR: ${_bmr!.round()} kcal/day', delayMs: 600);
+      await _sendBot('Estimated needs (TDEE): ${_tdee!.round()} kcal/day', delayMs: 600);
+    } else {
+      await _sendBot('No calculated results found. You can restart to run again.');
+    }
+  }
+
+  Future<void> _saveResults() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_age != null) prefs.setInt(_kAge, _age!);
+    if (_height != null) prefs.setDouble(_kHeight, _height!);
+    if (_weight != null) prefs.setDouble(_kWeight, _weight!);
+    prefs.setString(_kGender, _gender);
+    prefs.setString(_kActivity, _activity);
+    if (_bmr != null) prefs.setDouble(_kBmr, _bmr!);
+    if (_tdee != null) prefs.setDouble(_kTdee, _tdee!);
+  }
+
+  Future<void> _clearSavedResults() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kAge);
+    await prefs.remove(_kHeight);
+    await prefs.remove(_kWeight);
+    await prefs.remove(_kGender);
+    await prefs.remove(_kActivity);
+    await prefs.remove(_kBmr);
+    await prefs.remove(_kTdee);
   }
 
   // startConversation is async so bot messages can be sent with typing delay
   Future<void> _startConversation() async {
+    // clear saved results in storage when explicitly starting fresh
+    await _clearSavedResults();
+
     _messages.clear();
     _step = 0;
     _age = null;
@@ -156,11 +229,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     final multiplier = _activityMultipliers[_activity] ?? 1.2;
     final tdee = bmr * multiplier;
 
-    // store results for summary dialog
+    // store results for summary dialog and persist them
     setState(() {
       _bmr = bmr;
       _tdee = tdee;
     });
+    await _saveResults();
 
     await _sendBot('Here are your results:');
     await _sendBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day', delayMs: 600);
