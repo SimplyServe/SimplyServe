@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/views/meal_calendar.dart';
 import 'package:simplyserve/views/shopping_list.dart';
+import 'package:simplyserve/views/calorie_coach.dart'; // added import
 
 
 
@@ -141,6 +142,27 @@ class NavBarScaffold extends StatelessWidget {
               selectedColor: themeColor,
               onTap: () => _navigate(context, '/shopping-list'),
             ),
+
+            // Added Calorie Coach navigation
+            ListTile(
+              leading: const Icon(Icons.local_fire_department),
+              title: const Text('Calorie Coach'),
+              selected: _isActiveRoute(context, '/calorie-coach'),
+              selectedTileColor: selectedTileColor,
+              selectedColor: themeColor,
+              onTap: () {
+                final currentRoute = ModalRoute.of(context)?.settings.name;
+                // close the drawer first
+                Navigator.pop(context);
+                if (currentRoute != '/calorie-coach') {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CalorieCoachView()),
+                  );
+                }
+              },
+            ),
+
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Settings'),
