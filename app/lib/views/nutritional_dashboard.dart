@@ -1,6 +1,7 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simplyserve/services/meal_log_service.dart';
 import 'package:simplyserve/services/profile_service.dart';
 import 'package:simplyserve/views/meal_calendar.dart';
@@ -26,11 +27,13 @@ class _DashboardViewState extends State<DashboardView> {
   final ProfileService _profileService = ProfileService();
   String? _displayName;
   String? _profileImageUrl;
+  bool _showCoachButton = false;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _checkCoachStatus();
   }
 
   Future<void> _loadProfile() async {
@@ -46,6 +49,15 @@ class _DashboardViewState extends State<DashboardView> {
     setState(() {
       _displayName = name.isEmpty ? null : name;
       _profileImageUrl = fullImageUrl;
+    });
+  }
+
+  Future<void> _checkCoachStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final completed = prefs.getBool('cc_completed') ?? false;
+    if (!mounted) return;
+    setState(() {
+      _showCoachButton = !completed;
     });
   }
 
@@ -220,6 +232,55 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                 ],
                 const SizedBox(height: 24),
+
+                // ── Coach Button (first-time users only) ──────────────
+                if (_showCoachButton) ...[
+                  Card(
+                    elevation: 2,
+                    color: Color(0xFFFFF8E1),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.local_fire_department,
+                                  color: Color(0xFF74BC42), size: 28),
+                              SizedBox(width: 8),
+                              Text(
+                                'Set Up Your Calorie Coach',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Get personalized calorie and protein targets based on your body and goals.',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey[700]),
+                          ),
+                          SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/calorie-coach')
+                                    .then((_) {
+                                  _checkCoachStatus();
+                                });
+                              },
+                              icon: Icon(Icons.arrow_forward),
+                              label: Text('Start Calorie Coach'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                ],
 
                 // ── Action Buttons ──────────────────────────────────────
                 const Text(

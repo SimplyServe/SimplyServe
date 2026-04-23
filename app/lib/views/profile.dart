@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:simplyserve/services/profile_service.dart';
@@ -32,6 +31,12 @@ class _ProfileViewState extends State<ProfileView> {
   String? _ccActivity;
   double? _ccBmr;
   double? _ccTdee;
+  String? _ccHeightUnit;
+  String? _ccWeightUnit;
+  String? _ccGoal;
+  double? _ccTargetWeight;
+  double? _ccCalorieTarget;
+  double? _ccProteinTarget;
 
   @override
   void initState() {
@@ -53,7 +58,8 @@ class _ProfileViewState extends State<ProfileView> {
         isLoading = false;
         if (userData != null) {
           email = userData['email'] ?? 'No email set';
-          if (userData['name'] != null && userData['name'].toString().isNotEmpty) {
+          if (userData['name'] != null &&
+              userData['name'].toString().isNotEmpty) {
             displayName = userData['name'];
             _nameController.text = userData['name'];
           }
@@ -61,7 +67,8 @@ class _ProfileViewState extends State<ProfileView> {
             final rawUrl = userData['profile_image_url'] as String;
             // Build full URL from the relative path returned by the server
             final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
-            profileImageUrl = rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl';
+            profileImageUrl =
+                rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl';
           }
         }
       });
@@ -97,7 +104,8 @@ class _ProfileViewState extends State<ProfileView> {
               ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Color(0xFFEDF7E5),
-                  child: Icon(Icons.photo_library_outlined, color: Color(0xFF74BC42)),
+                  child: Icon(Icons.photo_library_outlined,
+                      color: Color(0xFF74BC42)),
                 ),
                 title: const Text('Photo Library'),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
@@ -105,7 +113,8 @@ class _ProfileViewState extends State<ProfileView> {
               ListTile(
                 leading: const CircleAvatar(
                   backgroundColor: Color(0xFFEDF7E5),
-                  child: Icon(Icons.camera_alt_outlined, color: Color(0xFF74BC42)),
+                  child:
+                      Icon(Icons.camera_alt_outlined, color: Color(0xFF74BC42)),
                 ),
                 title: const Text('Camera'),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
@@ -199,12 +208,60 @@ class _ProfileViewState extends State<ProfileView> {
       _ccActivity = prefs.getString('cc_activity');
       _ccBmr = prefs.getDouble('cc_bmr');
       _ccTdee = prefs.getDouble('cc_tdee');
+      _ccHeightUnit = prefs.getString('cc_height_unit') ?? 'cm';
+      _ccWeightUnit = prefs.getString('cc_weight_unit') ?? 'kg';
+      _ccGoal = prefs.getString('cc_goal');
+      _ccTargetWeight = prefs.getDouble('cc_target_weight');
+      _ccCalorieTarget = prefs.getDouble('cc_calorie_target');
+      _ccProteinTarget = prefs.getDouble('cc_protein_target');
     });
+  }
+
+  String _formatHeight(double cm) {
+    if (_ccHeightUnit == 'ft') {
+      final totalInches = cm / 2.54;
+      final feet = (totalInches / 12).floor();
+      final inches = (totalInches % 12).round();
+      return "$feet'$inches\"";
+    }
+    return '${cm.toStringAsFixed(1)} cm';
+  }
+
+  String _formatWeight(double kg) {
+    if (_ccWeightUnit == 'lb') {
+      return '${(kg / 0.453592).toStringAsFixed(1)} lb';
+    }
+    return '${kg.toStringAsFixed(1)} kg';
+  }
+
+  String get _goalLabel {
+    switch (_ccGoal) {
+      case 'gain':
+        return 'Gain Weight';
+      case 'lose':
+        return 'Lose Weight';
+      case 'maintain':
+        return 'Maintain Weight';
+      default:
+        return 'N/A';
+    }
   }
 
   Widget _buildCalorieCoachCard() {
     // hide if no saved results
-    if (_ccTdee == null && _ccBmr == null && _ccAge == null) return const SizedBox.shrink();
+    if (_ccTdee == null && _ccBmr == null && _ccAge == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Compute macro breakdown (40/30/30 split)
+    String fatStr = 'N/A';
+    String carbStr = 'N/A';
+    if (_ccCalorieTarget != null) {
+      final carbTarget = (_ccCalorieTarget! * 0.40) / 4;
+      final fatTarget = (_ccCalorieTarget! * 0.30) / 9;
+      fatStr = '${fatTarget.round()}g/day';
+      carbStr = '${carbTarget.round()}g/day';
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -213,16 +270,35 @@ class _ProfileViewState extends State<ProfileView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Calorie Coach', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('Calorie Coach',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text('Age: ${_ccAge ?? 'N/A'}'),
-            Text('Height: ${_ccHeight != null ? '${_ccHeight!.toStringAsFixed(1)} cm' : 'N/A'}'),
-            Text('Weight: ${_ccWeight != null ? '${_ccWeight!.toStringAsFixed(1)} kg' : 'N/A'}'),
+            Text(
+                'Height: ${_ccHeight != null ? _formatHeight(_ccHeight!) : 'N/A'}'),
+            Text(
+                'Weight: ${_ccWeight != null ? _formatWeight(_ccWeight!) : 'N/A'}'),
             Text('Gender: ${_ccGender ?? 'N/A'}'),
             Text('Activity: ${_ccActivity ?? 'N/A'}'),
+            if (_ccGoal != null) Text('Goal: $_goalLabel'),
+            if (_ccGoal != null &&
+                _ccGoal != 'maintain' &&
+                _ccTargetWeight != null)
+              Text('Target weight: ${_formatWeight(_ccTargetWeight!)}'),
             const SizedBox(height: 8),
-            Text('BMR: ${_ccBmr != null ? '${_ccBmr!.round()} kcal/day' : 'N/A'}'),
-            Text('Estimated needs (TDEE): ${_ccTdee != null ? '${_ccTdee!.round()} kcal/day' : 'N/A'}'),
+            Text(
+                'BMR: ${_ccBmr != null ? '${_ccBmr!.round()} kcal/day' : 'N/A'}'),
+            Text(
+                'Daily calorie target: ${_ccCalorieTarget != null ? '${_ccCalorieTarget!.round()} kcal/day' : (_ccTdee != null ? '${_ccTdee!.round()} kcal/day' : 'N/A')}'),
+            if (_ccProteinTarget != null || _ccCalorieTarget != null) ...[
+              const SizedBox(height: 8),
+              const Text('Daily Macros (40/30/30):',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              if (_ccProteinTarget != null)
+                Text('  Protein (30%): ${_ccProteinTarget!.round()}g/day'),
+              Text('  Carbs (40%): $carbStr'),
+              Text('  Fat (30%): $fatStr'),
+            ],
           ],
         ),
       ),
@@ -266,7 +342,8 @@ class _ProfileViewState extends State<ProfileView> {
                   const SizedBox(height: 32),
                   _buildNameInputCard(),
                   const SizedBox(height: 16),
-                  _buildProfileItem(Icons.settings, 'Account Actions', 'Tap to edit settings'),
+                  _buildProfileItem(Icons.settings, 'Account Actions',
+                      'Tap to edit settings'),
                   _buildCalorieCoachCard(), // inserted calorie coach summary
                 ],
               ),
@@ -283,9 +360,8 @@ class _ProfileViewState extends State<ProfileView> {
           CircleAvatar(
             radius: 50,
             backgroundColor: const Color(0xFF74BC42),
-            backgroundImage: profileImageUrl != null
-                ? NetworkImage(profileImageUrl!)
-                : null,
+            backgroundImage:
+                profileImageUrl != null ? NetworkImage(profileImageUrl!) : null,
             child: profileImageUrl == null
                 ? const Icon(Icons.person, size: 50, color: Colors.white)
                 : null,
@@ -369,14 +445,16 @@ class _ProfileViewState extends State<ProfileView> {
               hintStyle: const TextStyle(color: Colors.grey),
               filled: true,
               fillColor: const Color(0xFFF8F6FB),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF74BC42), width: 1.5),
+                borderSide:
+                    const BorderSide(color: Color(0xFF74BC42), width: 1.5),
               ),
             ),
           ),
@@ -405,7 +483,8 @@ class _ProfileViewState extends State<ProfileView> {
                     )
                   : const Text(
                       'Save Name',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
             ),
           ),
