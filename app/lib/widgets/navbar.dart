@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/views/meal_calendar.dart';
-import 'package:simplyserve/views/shopping_list.dart';
 import 'package:simplyserve/views/calorie_coach.dart'; // added import
 
 
@@ -34,8 +33,6 @@ class NavBarScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const themeColor = Color(0xFF74BC42);
-    // ignore: deprecated_member_use
-    final selectedTileColor = themeColor.withOpacity(0.1);
 
     return Scaffold(
       appBar: AppBar(
@@ -51,82 +48,92 @@ class NavBarScaffold extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       drawer: Drawer(
+        backgroundColor: themeColor,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: themeColor,
+            DrawerHeader(
+              padding: EdgeInsets.zero,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/image.png'),
+                  fit: BoxFit.cover,
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                alignment: Alignment.bottomLeft,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.55),
+                    ],
+                  ),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
                       'Simply Serve',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
+                        shadows: [
+                          Shadow(blurRadius: 4, color: Colors.black54),
+                        ],
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  SizedBox(height: 8),
-                  Flexible(
-                    child: Text(
+                    SizedBox(height: 4),
+                    Text(
                       'Smart Meal Planner',
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w400,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, color: Colors.white24),
             ListTile(
-              leading: const Icon(Icons.dashboard),
-              title: const Text('Dashboard'),
+              leading: const Icon(Icons.dashboard, color: Colors.white),
+              title: const Text('Dashboard', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () => _navigate(context, '/'),
             ),
             ListTile(
-              leading: const Icon(Icons.casino_outlined),
-              title: const Text('Meal Spinner'),
+              leading: const Icon(Icons.casino_outlined, color: Colors.white),
+              title: const Text('Meal Spinner', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/spin'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () => _navigate(context, '/spin'),
             ),
             ListTile(
-              leading: const Icon(Icons.restaurant_menu),
-              title: const Text('Recipes'),
+              leading: const Icon(Icons.restaurant_menu, color: Colors.white),
+              title: const Text('Recipes', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/recipes'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () => _navigate(context, '/recipes'),
             ),
             ListTile(
-              leading: const Icon(Icons.calendar_month),
-              title: const Text('Meal Calendar'),
-              // Highlight as active only if route name matches; fall back to false
+              leading: const Icon(Icons.calendar_month, color: Colors.white),
+              title: const Text('Meal Calendar', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/calendar'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () {
                 final currentRoute = ModalRoute.of(context)?.settings.name;
                 Navigator.of(context).maybePop();
                 if (currentRoute != '/calendar') {
-                  // Push the calendar page directly (named route may not be registered).
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (_) => const MealCalendarView()),
@@ -135,24 +142,19 @@ class NavBarScaffold extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.shopping_cart_outlined),
-              title: const Text('Shopping List'),
+              leading: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+              title: const Text('Shopping List', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/shopping-list'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () => _navigate(context, '/shopping-list'),
             ),
-
-            // Added Calorie Coach navigation
             ListTile(
-              leading: const Icon(Icons.local_fire_department),
-              title: const Text('Calorie Coach'),
+              leading: const Icon(Icons.local_fire_department, color: Colors.white),
+              title: const Text('Calorie Coach', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/calorie-coach'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () {
                 final currentRoute = ModalRoute.of(context)?.settings.name;
-                // close the drawer first
                 Navigator.pop(context);
                 if (currentRoute != '/calorie-coach') {
                   Navigator.pushReplacement(
@@ -162,13 +164,11 @@ class NavBarScaffold extends StatelessWidget {
                 }
               },
             ),
-
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
+              leading: const Icon(Icons.settings, color: Colors.white),
+              title: const Text('Settings', style: TextStyle(color: Colors.white)),
               selected: _isActiveRoute(context, '/settings'),
-              selectedTileColor: selectedTileColor,
-              selectedColor: themeColor,
+              selectedTileColor: Colors.white24,
               onTap: () => _navigate(context, '/settings'),
             ),
           ],
