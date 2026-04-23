@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:simplyserve/views/meal_spinner_page.dart';
 import 'package:simplyserve/views/nutritional_dashboard.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
