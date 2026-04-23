@@ -299,7 +299,15 @@ class _RecipesViewState extends State<RecipesView>
             MaterialPageRoute(builder: (c) => const RecipeFormView()),
           );
           if (result is RecipeModel) {
-            _fetchRecipes();
+            await _fetchRecipes();
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Recipe created successfully.'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+              ),
+            );
           }
         },
         child: const Icon(Icons.add, color: Colors.white),
