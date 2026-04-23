@@ -12,6 +12,8 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool isLogin = true;
   bool isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureRepeat = true;
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -208,15 +210,22 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 20),
                       TextField(
                         controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
                           labelText: 'Password',
-                          border: OutlineInputBorder(
+                          border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
                           ),
-                          focusedBorder: OutlineInputBorder(
+                          focusedBorder: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
                             borderSide: BorderSide(color: Color(0xFF1C2A45)),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined),
+                            onPressed: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
                           ),
                         ),
                       ),
@@ -224,17 +233,24 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 20),
                         TextField(
                           controller: _repeatPasswordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
+                          obscureText: _obscureRepeat,
+                          decoration: InputDecoration(
                             labelText: 'Repeat Password',
-                            border: OutlineInputBorder(
+                            border: const OutlineInputBorder(
                               borderRadius:
                                   BorderRadius.all(Radius.circular(12)),
                             ),
-                            focusedBorder: OutlineInputBorder(
+                            focusedBorder: const OutlineInputBorder(
                               borderRadius:
                                   BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide(color: Color(0xFF1C2A45)),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscureRepeat
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined),
+                              onPressed: () =>
+                                  setState(() => _obscureRepeat = !_obscureRepeat),
                             ),
                           ),
                         ),
