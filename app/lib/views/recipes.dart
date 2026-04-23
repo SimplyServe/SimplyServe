@@ -323,7 +323,7 @@ class _RecipesViewState extends State<RecipesView>
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: 'Search recipes',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF74BC42)),
                 suffixIcon: _query.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
@@ -338,7 +338,16 @@ class _RecipesViewState extends State<RecipesView>
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderSide: const BorderSide(color: Color(0xFFB8DFA0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFB8DFA0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: Color(0xFF74BC42), width: 2),
                 ),
               ),
             ),
@@ -525,7 +534,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF333333),
+                color: Color(0xFF5FA832),
                 letterSpacing: 0.4),
           ),
           const SizedBox(height: 8),
@@ -578,7 +587,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF333333),
+                color: Color(0xFF5FA832),
                 letterSpacing: 0.4),
           ),
           const SizedBox(height: 8),
@@ -631,7 +640,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF333333),
+                color: Color(0xFF5FA832),
                 letterSpacing: 0.4),
           ),
           const SizedBox(height: 8),
@@ -765,6 +774,15 @@ class _RecipeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Green accent stripe
+            Container(
+              height: 4,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF74BC42), Color(0xFF5FA832)],
+                ),
+              ),
+            ),
             Stack(
               children: [
                 SizedBox(
@@ -859,35 +877,44 @@ class _RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.schedule_outlined,
-                          size: 15, color: Color(0xFF74BC42)),
-                      const SizedBox(width: 4),
-                      Text(
-                        recipe.totalTime,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF555555)),
-                      ),
-                      const SizedBox(width: 16),
-                      const Icon(Icons.bar_chart_rounded,
-                          size: 15, color: Color(0xFF74BC42)),
-                      const SizedBox(width: 4),
-                      Text(
-                        recipe.difficulty,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF555555)),
-                      ),
-                      const SizedBox(width: 16),
-                      const Icon(Icons.people_outline_rounded,
-                          size: 15, color: Color(0xFF74BC42)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Serves ${recipe.servings}',
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF555555)),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FAE8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFD0EDBA)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.schedule_outlined,
+                            size: 15, color: Color(0xFF74BC42)),
+                        const SizedBox(width: 4),
+                        Text(
+                          recipe.totalTime,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF555555)),
+                        ),
+                        const SizedBox(width: 14),
+                        const Icon(Icons.bar_chart_rounded,
+                            size: 15, color: Color(0xFF74BC42)),
+                        const SizedBox(width: 4),
+                        Text(
+                          recipe.difficulty,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF555555)),
+                        ),
+                        const SizedBox(width: 14),
+                        const Icon(Icons.people_outline_rounded,
+                            size: 15, color: Color(0xFF74BC42)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Serves ${recipe.servings}',
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF555555)),
+                        ),
+                      ],
+                    ),
                   ),
                   if (recipe.tags.isNotEmpty) ...[
                     const SizedBox(height: 12),

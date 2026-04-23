@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:simplyserve/services/meal_log_service.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
@@ -108,31 +107,36 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     return sections;
   }
 
-  void _logMealsToDashboard() {
-    final mealLogService = MealLogService();
-    final today = DateTime.now();
-
-    for (final recipe in _service.recipes) {
-      mealLogService.addMeal(
-        date: today,
-        meal: LoggedMeal(
-          recipeTitle: recipe.recipeTitle,
-          servings: 1,
-          caloriesPerServing: recipe.caloriesPerServing,
-          proteinPerServing: recipe.proteinPerServing,
-          carbsPerServing: recipe.carbsPerServing,
-          fatsPerServing: recipe.fatsPerServing,
-        ),
-      );
-    }
-
-    _service.clearRecipes();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Meals logged to dashboard!'),
-        backgroundColor: Color(0xFF74BC42),
-        behavior: SnackBarBehavior.floating,
+  void _confirmClearList() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Clear Shopping List'),
+        content: const Text(
+            'This will remove all ingredients and recipes from your list. Continue?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _service.clearAll();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Shopping list cleared.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text('Clear'),
+          ),
+        ],
       ),
     );
   }
@@ -143,65 +147,23 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     final hasRecipes = _service.recipes.isNotEmpty;
     final sections = _buildSections(items);
 
+    final hasItems = items.isNotEmpty || hasRecipes;
+
     return NavBarScaffold(
       title: 'Shopping List',
+      actions: [
+        if (hasItems)
+          TextButton.icon(
+            onPressed: _confirmClearList,
+            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+            label: const Text('Clear List',
+                style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+          ),
+      ],
       body: ColoredBox(
         color: _surfaceGreen,
         child: Column(
           children: [
-            if (hasRecipes)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFEAF7E5), Color(0xFFF7FBF4)],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFD7E9CF)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: _brandGreen.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.restaurant,
-                              color: Color(0xFF3F8F2A)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            '${_service.recipes.length} recipe(s) ready to log',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2E5D1F),
-                            ),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: _logMealsToDashboard,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _brandGreen,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: const Text('Log Meals'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             Expanded(
               child: items.isEmpty && !hasRecipes
                   ? const Center(
