@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simplyserve/widgets/widgets.dart';
 
-
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -10,7 +9,7 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: const PreferredSize(
         preferredSize: Size.fromHeight(60),
-        child: AppNavigation(bannerText: 'Simply Serve'),
+        child: AppNavigation(bannerText: 'SimplyServe'),
       ),
       body: Center(
         child: Column(
@@ -27,8 +26,8 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content:
-                          Text('Here you can view nutrition information and meal plans!')),
+                      content: Text(
+                          'Here you can view nutrition information and meal plans!')),
                 );
               },
               child: const Text('View Nutrition Information and Meal Plans'),

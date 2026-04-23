@@ -25,19 +25,27 @@ class _DashboardViewState extends State<DashboardView> {
   final MealLogService _mealLogService = MealLogService();
   final ProfileService _profileService = ProfileService();
   String? _displayName;
+  String? _profileImageUrl;
 
   @override
   void initState() {
     super.initState();
-    _loadDisplayName();
+    _loadProfile();
   }
 
-  Future<void> _loadDisplayName() async {
+  Future<void> _loadProfile() async {
     final userData = await _profileService.getCurrentUser();
     final name = (userData?['name'] ?? '').toString().trim();
+    final rawUrl = (userData?['profile_image_url'] ?? '').toString().trim();
+    final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
+    final fullImageUrl = rawUrl.isEmpty
+        ? null
+        : (rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl');
+
     if (!mounted) return;
     setState(() {
       _displayName = name.isEmpty ? null : name;
+      _profileImageUrl = fullImageUrl;
     });
   }
 
@@ -63,12 +71,31 @@ class _DashboardViewState extends State<DashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _welcomeMessage,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: Text(
+                        _welcomeMessage,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: const Color(0xFF74BC42),
+                      backgroundImage: _profileImageUrl != null
+                          ? NetworkImage(_profileImageUrl!)
+                          : null,
+                      child: _profileImageUrl == null
+                          ? const Icon(Icons.person, color: Colors.white)
+                          : null,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 const Text(

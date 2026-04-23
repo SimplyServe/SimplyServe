@@ -127,7 +127,9 @@ class _ProfileViewState extends State<ProfileView> {
 
     setState(() => isUploadingAvatar = true);
     try {
-      final newUrl = await _profileService.uploadProfileImage(picked.path);
+      final bytes = await picked.readAsBytes();
+      final fileName = picked.name;
+      final newUrl = await _profileService.uploadProfileImage(bytes, fileName);
       if (mounted) {
         final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
         setState(() {

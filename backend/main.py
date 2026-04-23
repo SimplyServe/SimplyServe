@@ -386,6 +386,10 @@ async def upload_avatar(
         buffer.write(await image.read())
 
     current_user.profile_image_url = f"/uploads/{filename}"
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
 
 @app.put("/users/me", response_model=schemas.User)
 async def update_users_me(

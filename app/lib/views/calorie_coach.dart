@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // added
+import 'package:simplyserve/services/profile_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
 class CalorieCoachView extends StatefulWidget {
@@ -11,9 +12,11 @@ class CalorieCoachView extends StatefulWidget {
 }
 
 class _CalorieCoachViewState extends State<CalorieCoachView> {
+  final ProfileService _profileService = ProfileService();
   final _inputCtrl = TextEditingController();
   final List<_ChatMessage> _messages = [];
-  int _step = 0; // 0: age, 1: height, 2: weight, 3: gender, 4: activity, 5: done
+  int _step =
+      0; // 0: age, 1: height, 2: weight, 3: gender, 4: activity, 5: done
 
   bool _showIntro = true; // shown only on first visit
 
@@ -32,8 +35,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // Optional: replace these with your asset paths if you add avatar images to assets.
   // Put the attached image file.png under assets/images/image.png
-  final String? _botAvatarAsset = 'assets/images/image.png'; // use attached image
+  final String? _botAvatarAsset =
+      'assets/images/image.png'; // use attached image
   final String? _userAvatarAsset = null; // 'assets/images/user.png';
+  String? _userAvatarUrl;
 
   static const Map<String, double> _activityMultipliers = {
     'Sedentary': 1.2,
@@ -64,8 +69,24 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   @override
   void initState() {
     super.initState();
+    _loadUserAvatar();
     // attempt to load saved results; if none, start normal conversation
     _loadSavedResults();
+  }
+
+  Future<void> _loadUserAvatar() async {
+    final userData = await _profileService.getCurrentUser();
+    final rawUrl = (userData?['profile_image_url'] ?? '').toString().trim();
+    if (!mounted) return;
+
+    if (rawUrl.isEmpty) {
+      setState(() => _userAvatarUrl = null);
+      return;
+    }
+
+    final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
+    final normalized = rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl';
+    setState(() => _userAvatarUrl = normalized);
   }
 
   Future<void> _loadSavedResults() async {
@@ -94,8 +115,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _messages.clear();
     _pushBot('Welcome back — I loaded your previous Calorie Coach results.');
     _pushBot('Age: ${_age ?? 'N/A'}');
-    _pushBot('Height: ${_height != null ? _height!.toStringAsFixed(1) + " cm" : 'N/A'}');
-    _pushBot('Weight: ${_weight != null ? _weight!.toStringAsFixed(1) + " kg" : 'N/A'}');
+    _pushBot(
+        'Height: ${_height != null ? _height!.toStringAsFixed(1) + " cm" : 'N/A'}');
+    _pushBot(
+        'Weight: ${_weight != null ? _weight!.toStringAsFixed(1) + " kg" : 'N/A'}');
     _pushBot('Gender: $_gender');
     _pushBot('Activity: $_activity');
     if (_bmr != null && _tdee != null) {
@@ -283,17 +306,24 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     await _saveResults();
 
     await _sendBot('Here are your results:');
-    await _sendBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day', delayMs: 600);
-    await _sendBot('Estimated daily needs (TDEE): ${tdee.round()} kcal/day (activity: $_activity)', delayMs: 600);
-    await _sendBot('Tap "Restart" to run again or press "Done" to see a summary.', delayMs: 500);
+    await _sendBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day',
+        delayMs: 600);
+    await _sendBot(
+        'Estimated daily needs (TDEE): ${tdee.round()} kcal/day (activity: $_activity)',
+        delayMs: 600);
+    await _sendBot(
+        'Tap "Restart" to run again or press "Done" to see a summary.',
+        delayMs: 500);
     setState(() {});
   }
 
   // show summary dialog when Done is pressed
   void _showSummaryDialog() {
     final age = _age?.toString() ?? 'N/A';
-    final height = _height != null ? '${_height!.toStringAsFixed(1)} cm' : 'N/A';
-    final weight = _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : 'N/A';
+    final height =
+        _height != null ? '${_height!.toStringAsFixed(1)} cm' : 'N/A';
+    final weight =
+        _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : 'N/A';
     final gender = _gender;
     final activity = _activity;
     final bmr = _bmr != null ? '${_bmr!.round()} kcal/day' : 'N/A';
@@ -347,7 +377,28 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     // larger avatar for better visibility
     final double _avatarSize = 56;
 
+    Widget _fallbackUserAvatar() {
+      return CircleAvatar(
+        radius: _avatarSize / 2,
+        backgroundColor: Colors.green[300],
+        child:
+            Icon(Icons.person, color: Colors.white, size: _avatarSize * 0.45),
+      );
+    }
+
     Widget _avatar(bool isUser) {
+      if (isUser && _userAvatarUrl != null) {
+        return ClipOval(
+          child: Image.network(
+            _userAvatarUrl!,
+            width: _avatarSize,
+            height: _avatarSize,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _fallbackUserAvatar(),
+          ),
+        );
+      }
+
       final asset = isUser ? _userAvatarAsset : _botAvatarAsset;
       if (asset != null) {
         return Container(
@@ -371,15 +422,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
               alignment: Alignment.center,
               errorBuilder: (_, __, ___) {
                 if (isUser) {
-                  return Container(
-                    width: _avatarSize,
-                    height: _avatarSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.green[300],
-                    ),
-                    child: Icon(Icons.person, color: Colors.white, size: _avatarSize * 0.45),
-                  );
+                  return _fallbackUserAvatar();
                 }
                 return const SizedBox.shrink();
               },
@@ -390,11 +433,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
       // fallback avatars
       if (isUser) {
-        return CircleAvatar(
-          radius: _avatarSize / 2,
-          backgroundColor: Colors.green[300],
-          child: Icon(Icons.person, color: Colors.white, size: _avatarSize * 0.45),
-        );
+        return _fallbackUserAvatar();
       }
 
       return CircleAvatar(
@@ -404,7 +443,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
 
     final bubble = ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+      constraints:
+          BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
       child: Container(
         decoration: BoxDecoration(
           color: m.fromUser ? Colors.green[100] : Colors.grey[200],
@@ -472,7 +512,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                 width: 140,
                 height: 140,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy, size: 100, color: Colors.green),
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.smart_toy, size: 100, color: Colors.green),
               ),
             ),
             const SizedBox(height: 28),
@@ -481,7 +522,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
               'I will ask a few quick questions (age, height, weight, gender, activity level) and use the Mifflin–St Jeor equation to estimate your BMR and TDEE.\n\n'
               'Your answers are stored locally on this device only.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF333333)),
+              style: TextStyle(
+                  fontSize: 14, height: 1.6, color: Color(0xFF333333)),
             ),
             const SizedBox(height: 40),
             ElevatedButton(
@@ -489,9 +531,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF74BC42),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                textStyle:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               child: const Text("Let's Go"),
             ),
@@ -527,11 +572,13 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             // Improved gender choice: ChoiceChips with icons and clear labels
             if (_step == 3)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Which gender should I use?', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text('Which gender should I use?',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -557,7 +604,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    const Text('You can change this later in your profile.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const Text('You can change this later in your profile.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54)),
                   ],
                 ),
               ),
@@ -565,11 +613,13 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             // Improved activity selection: selectable list with short descriptions
             if (_step == 4)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Choose your typical activity level', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text('Choose your typical activity level',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     ..._activityMultipliers.keys.map((k) {
                       final selected = _activity == k;
@@ -578,25 +628,39 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                         child: InkWell(
                           onTap: () => _selectActivity(k),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
                             child: Row(
                               children: [
                                 Icon(
-                                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                                  color: selected ? Colors.green : Colors.black54,
+                                  selected
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color:
+                                      selected ? Colors.green : Colors.black54,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(k, style: TextStyle(fontWeight: FontWeight.w600, color: selected ? Colors.green[800] : Colors.black)),
+                                      Text(k,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: selected
+                                                  ? Colors.green[800]
+                                                  : Colors.black)),
                                       const SizedBox(height: 2),
-                                      Text(_activityDescriptions[k] ?? '', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                      Text(_activityDescriptions[k] ?? '',
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54)),
                                     ],
                                   ),
                                 ),
-                                if (selected) const Icon(Icons.check, color: Colors.green),
+                                if (selected)
+                                  const Icon(Icons.check, color: Colors.green),
                               ],
                             ),
                           ),
@@ -604,7 +668,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                       );
                     }).toList(),
                     const SizedBox(height: 6),
-                    const Text('Tap an option to select. If you are unsure, choose the closest match.', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    const Text(
+                        'Tap an option to select. If you are unsure, choose the closest match.',
+                        style: TextStyle(fontSize: 12, color: Colors.black54)),
                   ],
                 ),
               ),
@@ -620,9 +686,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                       Expanded(
                         child: TextField(
                           controller: _inputCtrl,
-                          keyboardType: TextInputType.numberWithOptions(decimal: _step != 0),
+                          keyboardType: TextInputType.numberWithOptions(
+                              decimal: _step != 0),
                           inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]')),
                           ],
                           decoration: InputDecoration(
                             hintText: _step == 0
@@ -633,7 +701,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
                           ),
                           onSubmitted: (_) => _handleSubmitText(),
                         ),
@@ -651,7 +720,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             // Restart button when done
             if (_step == 5)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: Row(
                   children: [
                     Expanded(
@@ -686,5 +756,6 @@ class _ChatMessage {
   final String text;
   final bool fromUser;
   final bool isTyping;
-  _ChatMessage({required this.text, required this.fromUser, this.isTyping = false});
+  _ChatMessage(
+      {required this.text, required this.fromUser, this.isTyping = false});
 }
