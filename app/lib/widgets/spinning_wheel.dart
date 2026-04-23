@@ -22,7 +22,8 @@ class SpinningWheelWidget extends StatefulWidget {
   State<SpinningWheelWidget> createState() => _SpinningWheelWidgetState();
 }
 
-class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
+class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
+    with WidgetsBindingObserver {
   final RecipeService _recipeService = RecipeService();
   final AllergyService _allergyService = AllergyService();
   bool _isLoading = true;
@@ -55,8 +56,14 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController = FixedExtentScrollController();
     _fetchRecipes();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _fetchRecipes();
   }
 
   Future<void> _fetchRecipes() async {
@@ -136,6 +143,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
   }
