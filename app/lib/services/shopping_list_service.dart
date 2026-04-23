@@ -7,12 +7,9 @@ class ShoppingItem {
   int quantity;
   final Set<String> recipeTitles;
 
-  ShoppingItem({
-    required this.name,
-    this.quantity = 1,
-    Set<String>? recipeTitles,
-  })  : recipeTitles = recipeTitles ?? <String>{},
-        id = '${_counter++}';
+  ShoppingItem({required this.name, this.quantity = 1, String? recipeTitle})
+      : id = '${_counter++}',
+        recipeTitles = recipeTitle != null ? {recipeTitle} : {};
 }
 
 class ShoppingRecipeEntry {
@@ -53,31 +50,20 @@ class ShoppingListService extends ChangeNotifier {
   }
 
   void addIngredients(List<String> ingredients, {String? recipeTitle}) {
-    final normalizedRecipeTitle = recipeTitle?.trim();
     for (final rawName in ingredients) {
       final name = _normalizeName(rawName);
-      if (name.isEmpty) {
-        continue;
-      }
+      if (name.isEmpty) continue;
 
       final index = _items.indexWhere(
         (i) => i.name.toLowerCase() == name.toLowerCase(),
       );
       if (index != -1) {
         _items[index].quantity++;
-        if (normalizedRecipeTitle != null && normalizedRecipeTitle.isNotEmpty) {
-          _items[index].recipeTitles.add(normalizedRecipeTitle);
+        if (recipeTitle != null) {
+          _items[index].recipeTitles.add(recipeTitle);
         }
       } else {
-        _items.add(
-          ShoppingItem(
-            name: name,
-            recipeTitles:
-                normalizedRecipeTitle == null || normalizedRecipeTitle.isEmpty
-                    ? <String>{}
-                    : {normalizedRecipeTitle},
-          ),
-        );
+        _items.add(ShoppingItem(name: name, recipeTitle: recipeTitle));
       }
     }
     notifyListeners();
