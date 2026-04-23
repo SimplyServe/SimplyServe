@@ -16,6 +16,10 @@ import models, schemas, auth, database
 from database import engine
 from recipe_ingredients import RECIPE_INGREDIENTS
 
+from fastapi import File, UploadFile, Form
+import os
+import uuid
+
 app = FastAPI()
 
 app.add_middleware(
@@ -148,6 +152,12 @@ async def _normalize_existing_ingredient_data(db: AsyncSession):
 
 async def _ensure_ingredient_table_columns():
     async with engine.begin() as conn:
+        # User profile columns
+        for col, col_type in [("name", "TEXT"), ("profile_image_url", "TEXT")]:
+            try:
+                await conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+            except Exception:
+                pass
         try:
             await conn.execute(text(
                 "ALTER TABLE recipe ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0"
@@ -346,6 +356,36 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
+@app.patch("/users/me", response_model=schemas.User)
+async def update_user_me(
+    update: schemas.UserUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    if update.name is not None:
+        current_user.name = update.name.strip()
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+@app.post("/users/me/avatar", response_model=schemas.User)
+async def upload_avatar(
+    image: UploadFile = File(...),
+    current_user: models.User = Depends(auth.get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if image.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Unsupported image type")
+
+    ext = image.filename.rsplit(".", 1)[-1] if "." in image.filename else "jpg"
+    filename = f"avatar_{current_user.id}_{uuid.uuid4().hex}.{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as buffer:
+        buffer.write(await image.read())
+
+    current_user.profile_image_url = f"/uploads/{filename}"
 
 @app.put("/users/me", response_model=schemas.User)
 async def update_users_me(

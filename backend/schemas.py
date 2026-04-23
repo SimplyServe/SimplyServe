@@ -32,10 +32,15 @@ class UserCreate(UserBase):
 class UserLogin(UserBase):
     password: str
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+
 class User(UserBase):
     id: int
     name: Optional[str] = None
     is_active: bool
+    name: Optional[str] = None
+    profile_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -88,3 +93,4 @@ class Recipe(RecipeBase):
 
     class Config:
         from_attributes = True
+        
