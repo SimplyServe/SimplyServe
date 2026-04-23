@@ -444,7 +444,7 @@ class _RecipesViewState extends State<RecipesView>
             unselectedLabelColor: Colors.grey,
             indicatorColor: const Color(0xFF74BC42),
             tabs: const [
-              Tab(text: 'Recipes'),
+              Tab(text: 'SimplyServe Originals'),
               Tab(text: 'My Recipes'),
             ],
           ),
