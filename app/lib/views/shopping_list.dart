@@ -56,10 +56,157 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     );
   }
 
+  Widget _buildSectionHeader(String title, {bool isCommon = false}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 16,
+            decoration: BoxDecoration(
+              color: const Color(0xFF74BC42),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (isCommon) ...[
+            const Icon(Icons.layers, size: 16, color: Color(0xFF74BC42)),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isCommon
+                  ? const Color(0xFF74BC42)
+                  : const Color(0xFF555555),
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemCard(ShoppingItem item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: const Border(
+            left: BorderSide(color: Color(0xFF74BC42), width: 4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Text(
+                  item.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _QtyButton(
+                  icon: Icons.remove,
+                  onTap: () =>
+                      _service.updateQuantity(item.id, item.quantity - 1),
+                ),
+                SizedBox(
+                  width: 32,
+                  child: Text(
+                    '${item.quantity}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+                _QtyButton(
+                  icon: Icons.add,
+                  onTap: () =>
+                      _service.updateQuantity(item.id, item.quantity + 1),
+                ),
+              ],
+            ),
+            IconButton(
+              icon:
+                  const Icon(Icons.delete_outline, color: Colors.redAccent),
+              onPressed: () => _service.removeItem(item.id),
+              tooltip: 'Remove',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = _service.items;
     final hasRecipes = _service.recipes.isNotEmpty;
+
+    // Partition items into sections
+    final commonItems = <ShoppingItem>[];
+    final Map<String, List<ShoppingItem>> perRecipe = {};
+    final otherItems = <ShoppingItem>[];
+
+    for (final item in items) {
+      if (item.recipeTitles.length > 1) {
+        commonItems.add(item);
+      } else if (item.recipeTitles.length == 1) {
+        perRecipe
+            .putIfAbsent(item.recipeTitles.first, () => [])
+            .add(item);
+      } else {
+        otherItems.add(item);
+      }
+    }
+
+    final hasSections = commonItems.isNotEmpty ||
+        perRecipe.isNotEmpty ||
+        otherItems.isNotEmpty;
+
+    // Build flat list of widgets
+    final listWidgets = <Widget>[];
+
+    if (commonItems.isNotEmpty) {
+      listWidgets.add(_buildSectionHeader('Common Ingredients', isCommon: true));
+      listWidgets.addAll(commonItems.map(_buildItemCard));
+    }
+
+    for (final entry in perRecipe.entries) {
+      listWidgets.add(_buildSectionHeader(entry.key));
+      listWidgets.addAll(entry.value.map(_buildItemCard));
+    }
+
+    if (otherItems.isNotEmpty) {
+      if (commonItems.isNotEmpty || perRecipe.isNotEmpty) {
+        listWidgets.add(_buildSectionHeader('Other'));
+      }
+      listWidgets.addAll(otherItems.map(_buildItemCard));
+    }
 
     return NavBarScaffold(
       title: 'Shopping List',
@@ -97,7 +244,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
               ),
             ),
           Expanded(
-            child: items.isEmpty && !hasRecipes
+            child: !hasSections && !hasRecipes
                 ? const Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -117,84 +264,10 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                       ],
                     ),
                   )
-                : ListView.builder(
+                : ListView(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 16),
-                              // Ingredient name
-                              Expanded(
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  child: Text(
-                                    item.name,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF333333),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Quantity controls
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _QtyButton(
-                                    icon: Icons.remove,
-                                    onTap: () => _service.updateQuantity(
-                                        item.id, item.quantity - 1),
-                                  ),
-                                  SizedBox(
-                                    width: 32,
-                                    child: Text(
-                                      '${item.quantity}',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
-                                    ),
-                                  ),
-                                  _QtyButton(
-                                    icon: Icons.add,
-                                    onTap: () => _service.updateQuantity(
-                                        item.id, item.quantity + 1),
-                                  ),
-                                ],
-                              ),
-                              // Delete
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.redAccent),
-                                onPressed: () =>
-                                    _service.removeItem(item.id),
-                                tooltip: 'Remove',
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                    children: listWidgets,
                   ),
           ),
         ],

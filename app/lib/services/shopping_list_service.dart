@@ -5,8 +5,11 @@ class ShoppingItem {
   final String id;
   String name;
   int quantity;
+  final Set<String> recipeTitles;
 
-  ShoppingItem({required this.name, this.quantity = 1}) : id = '${_counter++}';
+  ShoppingItem({required this.name, this.quantity = 1, String? recipeTitle})
+      : id = '${_counter++}',
+        recipeTitles = recipeTitle != null ? {recipeTitle} : {};
 }
 
 class ShoppingRecipeEntry {
@@ -46,20 +49,21 @@ class ShoppingListService extends ChangeNotifier {
     return withoutPrefix.trim();
   }
 
-  void addIngredients(List<String> ingredients) {
+  void addIngredients(List<String> ingredients, {String? recipeTitle}) {
     for (final rawName in ingredients) {
       final name = _normalizeName(rawName);
-      if (name.isEmpty) {
-        continue;
-      }
+      if (name.isEmpty) continue;
 
       final index = _items.indexWhere(
         (i) => i.name.toLowerCase() == name.toLowerCase(),
       );
       if (index != -1) {
         _items[index].quantity++;
+        if (recipeTitle != null) {
+          _items[index].recipeTitles.add(recipeTitle);
+        }
       } else {
-        _items.add(ShoppingItem(name: name));
+        _items.add(ShoppingItem(name: name, recipeTitle: recipeTitle));
       }
     }
     notifyListeners();
