@@ -8,12 +8,14 @@ class NavBarScaffold extends StatelessWidget {
   final Widget body;
   final String title;
   final Widget? floatingActionButton;
+  final List<Widget>? actions;
 
   const NavBarScaffold({
     super.key,
     required this.body,
     required this.title,
     this.floatingActionButton,
+    this.actions,
   });
 
   void _navigate(BuildContext context, String routeName) {
@@ -46,6 +48,7 @@ class NavBarScaffold extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 1,
         iconTheme: const IconThemeData(color: Colors.black),
+        actions: actions,
       ),
       drawer: Drawer(
         backgroundColor: themeColor,

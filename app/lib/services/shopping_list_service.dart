@@ -94,4 +94,10 @@ class ShoppingListService extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void clearAll() {
+    _items.clear();
+    _recipes.clear();
+    notifyListeners();
+  }
 }
