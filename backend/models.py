@@ -9,6 +9,8 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
+    name = Column(String, nullable=True)
+    profile_image_url = Column(String, nullable=True)
 
     shopping_lists = relationship("ShoppingList", back_populates="user", cascade="all, delete-orphan")
     meals = relationship("Meals", back_populates="user", cascade="all, delete-orphan")
@@ -150,3 +152,4 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     tag_name = Column(String, unique=True)
+    

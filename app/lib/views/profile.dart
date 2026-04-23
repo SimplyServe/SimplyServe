@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:simplyserve/services/profile_service.dart';
 
 class ProfileView extends StatefulWidget {
@@ -11,10 +13,15 @@ class ProfileView extends StatefulWidget {
 class _ProfileViewState extends State<ProfileView> {
   final ProfileService _profileService = ProfileService();
   final TextEditingController _nameController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+
   bool isLoading = true;
   bool isSavingName = false;
+  bool isUploadingAvatar = false;
+
   String email = '';
   String displayName = 'SimplyServe User';
+  String? profileImageUrl;
 
   @override
   void initState() {
@@ -39,8 +46,97 @@ class _ProfileViewState extends State<ProfileView> {
             displayName = userData['name'];
             _nameController.text = userData['name'];
           }
+          if (userData['profile_image_url'] != null) {
+            final rawUrl = userData['profile_image_url'] as String;
+            // Build full URL from the relative path returned by the server
+            final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
+            profileImageUrl = rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl';
+          }
         }
       });
+    }
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Choose photo',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEDF7E5),
+                  child: Icon(Icons.photo_library_outlined, color: Color(0xFF74BC42)),
+                ),
+                title: const Text('Photo Library'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEDF7E5),
+                  child: Icon(Icons.camera_alt_outlined, color: Color(0xFF74BC42)),
+                ),
+                title: const Text('Camera'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final XFile? picked = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 800,
+    );
+    if (picked == null) return;
+
+    setState(() => isUploadingAvatar = true);
+    try {
+      final newUrl = await _profileService.uploadProfileImage(picked.path);
+      if (mounted) {
+        final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
+        setState(() {
+          profileImageUrl = newUrl.startsWith('http') ? newUrl : '$base$newUrl';
+          isUploadingAvatar = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated'),
+            backgroundColor: Color(0xFF74BC42),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => isUploadingAvatar = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload photo: $e')),
+        );
+      }
     }
   }
 
@@ -96,11 +192,7 @@ class _ProfileViewState extends State<ProfileView> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Color(0xFF74BC42),
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
-                  ),
+                  _buildAvatarSection(),
                   const SizedBox(height: 16),
                   Text(
                     displayName,
@@ -124,6 +216,61 @@ class _ProfileViewState extends State<ProfileView> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildAvatarSection() {
+    return GestureDetector(
+      onTap: isUploadingAvatar ? null : _pickAndUploadImage,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: const Color(0xFF74BC42),
+            backgroundImage: profileImageUrl != null
+                ? NetworkImage(profileImageUrl!)
+                : null,
+            child: profileImageUrl == null
+                ? const Icon(Icons.person, size: 50, color: Colors.white)
+                : null,
+          ),
+          if (isUploadingAvatar)
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                // ignore: deprecated_member_use
+                color: Colors.black.withOpacity(0.4),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+          if (!isUploadingAvatar)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF74BC42),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

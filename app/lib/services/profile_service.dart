@@ -51,4 +51,29 @@ class ProfileService {
       throw Exception('Failed to update name');
     }
   }
+
+  Future<String> uploadProfileImage(String filePath) async {
+    final token = await _storage.read(key: 'token');
+    if (token == null) throw Exception('Not authenticated');
+
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(filePath),
+    });
+
+    final response = await _dio.post(
+      '/users/me/avatar',
+      data: formData,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to upload image');
+    }
+
+    return response.data['profile_image_url'] as String;
+  }
 }
