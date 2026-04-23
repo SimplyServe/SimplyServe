@@ -19,7 +19,7 @@ void main() {
       );
 
       // Check for app title
-      expect(find.text('Simply Serve'), findsOneWidget);
+      expect(find.text('SimplyServe'), findsOneWidget);
 
       // Check for mode title
       expect(find.text('Sign in'), findsOneWidget);
@@ -28,15 +28,15 @@ void main() {
       expect(find.text('Enter your details to continue'), findsOneWidget);
 
       // Check for text fields
-      expect(find.byType(TextField), findsNWidgets(2)); // Email and password in login mode
+      expect(find.byType(TextField),
+          findsNWidgets(2)); // Email and password in login mode
 
       // Check for buttons
       expect(find.text('Continue'), findsOneWidget);
       expect(find.text('Create an account'), findsOneWidget);
     });
 
-    testWidgets('Login mode shows correct text',
-        (WidgetTester tester) async {
+    testWidgets('Login mode shows correct text', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: LoginPage(),
@@ -62,8 +62,7 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
     });
 
-    testWidgets('Continue button exists',
-        (WidgetTester tester) async {
+    testWidgets('Continue button exists', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: LoginPage(),
@@ -74,8 +73,7 @@ void main() {
       expect(find.widgetWithText(ElevatedButton, 'Continue'), findsOneWidget);
     });
 
-    testWidgets('LoginPage has Scaffold',
-        (WidgetTester tester) async {
+    testWidgets('LoginPage has Scaffold', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: LoginPage(),
@@ -85,8 +83,7 @@ void main() {
       expect(find.byType(Scaffold), findsOneWidget);
     });
 
-    testWidgets('LoginPage is a StatefulWidget',
-        (WidgetTester tester) async {
+    testWidgets('LoginPage is a StatefulWidget', (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: LoginPage(),
