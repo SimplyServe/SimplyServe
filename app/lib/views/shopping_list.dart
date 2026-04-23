@@ -305,11 +305,13 @@ class _ShoppingSectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: section.filled
+              // ignore: deprecated_member_use
               ? section.accent.withOpacity(0.18)
               : const Color(0xFFE7EEE2),
         ),
         boxShadow: [
           BoxShadow(
+            // ignore: deprecated_member_use
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
@@ -336,6 +338,7 @@ class _ShoppingSectionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
+                    // ignore: deprecated_member_use
                     color: brandGreen.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -375,6 +378,7 @@ class _ShoppingSectionCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
+                    // ignore: deprecated_member_use
                     color: brandGreen.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(999),
                   ),

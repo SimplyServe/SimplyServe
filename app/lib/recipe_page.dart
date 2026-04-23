@@ -362,6 +362,7 @@ class _RecipePageState extends State<RecipePage> {
                   await _favouritesService.removeFavourite(_recipe.title);
                   if (!mounted) return;
                   setState(() => _isFavourited = false);
+                  // ignore: use_build_context_synchronously
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Removed from My Recipes'),
@@ -372,6 +373,7 @@ class _RecipePageState extends State<RecipePage> {
                   await _favouritesService.addFavourite(_recipe.title);
                   if (!mounted) return;
                   setState(() => _isFavourited = true);
+                  // ignore: use_build_context_synchronously
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Added to My Recipes'),
