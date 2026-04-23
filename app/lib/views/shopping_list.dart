@@ -14,7 +14,6 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   final _service = ShoppingListService();
 
   static const Color _brandGreen = Color(0xFF74BC42);
-  static const Color _softGreen = Color(0xFFE8F5E9);
   static const Color _surfaceGreen = Color(0xFFF4FAF1);
 
   @override
@@ -55,7 +54,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
     for (final item in items) {
       final matchedRecipes = recipeOrder
-          .where((recipeTitle) => item.recipeTitles.contains(recipeTitle))
+          .where((t) => item.recipeTitles.contains(t))
           .toList();
 
       if (matchedRecipes.length > 1) {
@@ -70,48 +69,40 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     final sections = <_ShoppingSection>[];
 
     if (commonItems.isNotEmpty) {
-      commonItems
-          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      sections.add(
-        _ShoppingSection(
-          title: 'Common ingredients',
-          subtitle: 'Used in more than one recipe',
-          items: commonItems,
-          accent: _brandGreen,
-          filled: true,
-        ),
-      );
+      commonItems.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      sections.add(_ShoppingSection(
+        title: 'Common ingredients',
+        subtitle: 'Used in more than one recipe',
+        items: commonItems,
+        accent: _brandGreen,
+        filled: true,
+      ));
     }
 
     for (final recipe in _service.recipes) {
       final recipeItems = recipeItemMap[recipe.recipeTitle];
-      if (recipeItems == null || recipeItems.isEmpty) {
-        continue;
-      }
-      recipeItems
-          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      sections.add(
-        _ShoppingSection(
-          title: recipe.recipeTitle,
-          subtitle:
-              '${recipeItems.length} ingredient${recipeItems.length == 1 ? '' : 's'}',
-          items: recipeItems,
-          accent: _brandGreen,
-        ),
-      );
+      if (recipeItems == null || recipeItems.isEmpty) continue;
+      recipeItems.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      sections.add(_ShoppingSection(
+        title: recipe.recipeTitle,
+        subtitle:
+            '${recipeItems.length} ingredient${recipeItems.length == 1 ? '' : 's'}',
+        items: recipeItems,
+        accent: _brandGreen,
+      ));
     }
 
     if (otherItems.isNotEmpty) {
-      otherItems
-          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      sections.add(
-        _ShoppingSection(
-          title: 'Other ingredients',
-          subtitle: 'Added without a recipe reference',
-          items: otherItems,
-          accent: const Color(0xFF4E8A2B),
-        ),
-      );
+      otherItems.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      sections.add(_ShoppingSection(
+        title: 'Other ingredients',
+        subtitle: 'Added without a recipe reference',
+        items: otherItems,
+        accent: const Color(0xFF4E8A2B),
+      ));
     }
 
     return sections;
@@ -146,158 +137,11 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {bool isCommon = false}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-      child: Row(
-        children: [
-          Container(
-            width: 3,
-            height: 16,
-            decoration: BoxDecoration(
-              color: const Color(0xFF74BC42),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (isCommon) ...[
-            const Icon(Icons.layers, size: 16, color: Color(0xFF74BC42)),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isCommon
-                  ? const Color(0xFF74BC42)
-                  : const Color(0xFF555555),
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildItemCard(ShoppingItem item) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: const Border(
-            left: BorderSide(color: Color(0xFF74BC42), width: 4),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Text(
-                  item.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF333333),
-                  ),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _QtyButton(
-                  icon: Icons.remove,
-                  onTap: () =>
-                      _service.updateQuantity(item.id, item.quantity - 1),
-                ),
-                SizedBox(
-                  width: 32,
-                  child: Text(
-                    '${item.quantity}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ),
-                _QtyButton(
-                  icon: Icons.add,
-                  onTap: () =>
-                      _service.updateQuantity(item.id, item.quantity + 1),
-                ),
-              ],
-            ),
-            IconButton(
-              icon:
-                  const Icon(Icons.delete_outline, color: Colors.redAccent),
-              onPressed: () => _service.removeItem(item.id),
-              tooltip: 'Remove',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final items = _service.items;
     final hasRecipes = _service.recipes.isNotEmpty;
     final sections = _buildSections(items);
-
-    // Partition items into sections
-    final commonItems = <ShoppingItem>[];
-    final Map<String, List<ShoppingItem>> perRecipe = {};
-    final otherItems = <ShoppingItem>[];
-
-    for (final item in items) {
-      if (item.recipeTitles.length > 1) {
-        commonItems.add(item);
-      } else if (item.recipeTitles.length == 1) {
-        perRecipe
-            .putIfAbsent(item.recipeTitles.first, () => [])
-            .add(item);
-      } else {
-        otherItems.add(item);
-      }
-    }
-
-    final hasSections = commonItems.isNotEmpty ||
-        perRecipe.isNotEmpty ||
-        otherItems.isNotEmpty;
-
-    // Build flat list of widgets
-    final listWidgets = <Widget>[];
-
-    if (commonItems.isNotEmpty) {
-      listWidgets.add(_buildSectionHeader('Common Ingredients', isCommon: true));
-      listWidgets.addAll(commonItems.map(_buildItemCard));
-    }
-
-    for (final entry in perRecipe.entries) {
-      listWidgets.add(_buildSectionHeader(entry.key));
-      listWidgets.addAll(entry.value.map(_buildItemCard));
-    }
-
-    if (otherItems.isNotEmpty) {
-      if (commonItems.isNotEmpty || perRecipe.isNotEmpty) {
-        listWidgets.add(_buildSectionHeader('Other'));
-      }
-      listWidgets.addAll(otherItems.map(_buildItemCard));
-    }
 
     return NavBarScaffold(
       title: 'Shopping List',
@@ -369,62 +213,39 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                           SizedBox(height: 16),
                           Text(
                             'Your shopping list is empty',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            style:
+                                TextStyle(fontSize: 16, color: Colors.grey),
                           ),
                           SizedBox(height: 8),
                           Text(
                             'Add ingredients from a recipe to get started.',
-                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                            style:
+                                TextStyle(fontSize: 13, color: Colors.grey),
                           ),
                         ],
                       ),
                     )
-                  : sections.isEmpty
-                      ? _buildLegacyEmptyState()
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                          itemCount: sections.length,
-                          itemBuilder: (context, sectionIndex) {
-                            final section = sections[sectionIndex];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: _ShoppingSectionCard(
-                                section: section,
-                                brandGreen: _brandGreen,
-                                onRemoveItem: (item) =>
-                                    _service.removeItem(item.id),
-                                onDecreaseQuantity: (item) => _service
-                                    .updateQuantity(item.id, item.quantity - 1),
-                                onIncreaseQuantity: (item) => _service
-                                    .updateQuantity(item.id, item.quantity + 1),
-                              ),
-                            );
-                          },
+                  : ListView.builder(
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      itemCount: sections.length,
+                      itemBuilder: (context, i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _ShoppingSectionCard(
+                          section: sections[i],
+                          brandGreen: _brandGreen,
+                          onRemoveItem: (item) =>
+                              _service.removeItem(item.id),
+                          onDecreaseQuantity: (item) => _service
+                              .updateQuantity(item.id, item.quantity - 1),
+                          onIncreaseQuantity: (item) => _service
+                              .updateQuantity(item.id, item.quantity + 1),
                         ),
+                      ),
+                    ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildLegacyEmptyState() {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'Your shopping list is empty',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Add ingredients from a recipe to get started.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-        ],
       ),
     );
   }
@@ -460,6 +281,59 @@ class _ShoppingSectionCard extends StatelessWidget {
     required this.onDecreaseQuantity,
     required this.onIncreaseQuantity,
   });
+
+  Widget _buildItemRow(ShoppingItem item) {
+    return Column(
+      children: [
+        const Divider(height: 1, color: Color(0xFFF0F0F0)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    item.name,
+                    style: const TextStyle(
+                        fontSize: 14, color: Color(0xFF333333)),
+                  ),
+                ),
+              ),
+              _QtyButton(
+                icon: Icons.remove,
+                onTap: () => onDecreaseQuantity(item),
+              ),
+              SizedBox(
+                width: 34,
+                child: Text(
+                  '${item.quantity}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+              _QtyButton(
+                icon: Icons.add,
+                onTap: () => onIncreaseQuantity(item),
+                backgroundColor: const Color(0xFFE4F2DE),
+                iconColor: const Color(0xFF3C7E2A),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline,
+                    color: Color(0xFF7D7D7D)),
+                onPressed: () => onRemoveItem(item),
+                tooltip: 'Remove',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -536,8 +410,8 @@ class _ShoppingSectionCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: brandGreen.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(999),
@@ -553,52 +427,8 @@ class _ShoppingSectionCard extends StatelessWidget {
                 ),
               ],
             ),
-          Expanded(
-            child: !hasSections && !hasRecipes
-                ? const Center(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Add ingredients from a recipe to get started.',
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    children: listWidgets,
-                  ),
-                  SizedBox(
-                    width: 34,
-                    child: Text(
-                      '${item.quantity}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                  _QtyButton(
-                    icon: Icons.add,
-                    onTap: () => onIncreaseQuantity(item),
-                    backgroundColor: const Color(0xFFE4F2DE),
-                    iconColor: const Color(0xFF3C7E2A),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        color: Color(0xFF7D7D7D)),
-                    onPressed: () => onRemoveItem(item),
-                    tooltip: 'Remove',
-                  ),
-                ],
-              ),
-            ),
           ),
+          ...section.items.map(_buildItemRow),
         ],
       ),
     );
