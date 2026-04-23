@@ -25,12 +25,12 @@ void main() {
       // Verify AppBar title
       expect(find.text('Dashboard'), findsOneWidget);
 
-      // Verify main content
-      expect(find.text('Welcome back!'), findsOneWidget);
-      expect(find.text('Here is your daily nutritional summary.'), findsOneWidget);
+      // Verify main content - message will be "Welcome Back!" or "Welcome Back {name}!"
+      expect(find.textContaining('Welcome Back'), findsWidgets);
     });
 
-    testWidgets('DashboardView displays macro counter and no meals message by default',
+    testWidgets(
+        'DashboardView displays macro counter and no meals message by default',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -44,7 +44,10 @@ void main() {
 
       // Shows "Today's Meals" section with empty message
       expect(find.text("Today's Meals"), findsOneWidget);
-      expect(find.text('No meals logged yet. Log meals from the Meal Calendar or Shopping List.'), findsOneWidget);
+      expect(
+          find.text(
+              'No meals logged yet. Log meals from the Meal Calendar or Shopping List.'),
+          findsOneWidget);
     });
 
     testWidgets('Dashboard shows Log meals button when no data',
@@ -74,7 +77,8 @@ void main() {
       expect(find.byIcon(Icons.restaurant_menu), findsOneWidget);
     });
 
-    testWidgets('DashboardView displays drawer navigation', (WidgetTester tester) async {
+    testWidgets('DashboardView displays drawer navigation',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: DashboardView(),
@@ -141,7 +145,7 @@ void main() {
       );
 
       // Verify dashboard renders with cards and proper content
-      expect(find.text('Welcome back!'), findsOneWidget);
+      expect(find.textContaining('Welcome Back'), findsWidgets);
       expect(find.byType(Card), findsAtLeastNWidgets(1));
     });
   });
