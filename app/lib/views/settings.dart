@@ -37,6 +37,9 @@ class _SettingsViewState extends State<SettingsView>
     super.dispose();
   }
 
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
   Future<void> _loadAllergiesAndHiddenRecipes() async {
     final storedAllergies = await _allergyService.loadAllergies();
     if (!mounted) {
@@ -243,19 +246,107 @@ class _SettingsViewState extends State<SettingsView>
   }
 
   Widget _buildAllergiesTab() {
+    final presets = AllergenFilterService.knownAllergens;
+    final activeLower = _allergies.map((a) => a.toLowerCase()).toSet();
+
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
         const SizedBox(height: 8),
-        // Input row
+        // ── Common allergens ─────────────────────────
+        const Text(
+          'Common Allergens',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF5FA832),
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Tap to add. Each allergen automatically covers related ingredients.',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: presets.map((preset) {
+            final active = activeLower.contains(preset.toLowerCase());
+            return GestureDetector(
+              onTap: () async {
+                if (active) {
+                  final idx = _allergies.indexWhere(
+                      (a) => a.toLowerCase() == preset.toLowerCase());
+                  if (idx != -1) await _removeAllergy(idx);
+                } else {
+                  final already = _allergies.any(
+                      (a) => a.toLowerCase() == preset.toLowerCase());
+                  if (!already) {
+                    setState(() => _allergies.add(preset));
+                    await _allergyService.saveAllergies(_allergies);
+                    await _refreshHiddenRecipes();
+                  }
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: active
+                      ? const Color(0xFF74BC42)
+                      : const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: active
+                        ? const Color(0xFF74BC42)
+                        : const Color(0xFFCCCCCC),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (active) ...[
+                      const Icon(Icons.check, size: 13, color: Colors.white),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      _capitalize(preset),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: active ? Colors.white : const Color(0xFF555555),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 20),
+        const Divider(),
+        const SizedBox(height: 12),
+        // ── Custom allergen input ─────────────────────
+        const Text(
+          'Custom Allergen',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF5FA832),
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: TextField(
                 controller: _allergyController,
                 decoration: InputDecoration(
-                  hintText: 'e.g. peanuts, gluten, dairy...',
-                  labelText: 'Add an allergen',
+                  hintText: 'e.g. kiwi, mango...',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -287,8 +378,18 @@ class _SettingsViewState extends State<SettingsView>
           ],
         ),
         const SizedBox(height: 16),
-        // Allergy chips
+        // ── Active allergens ─────────────────────────
         if (_allergies.isNotEmpty) ...[
+          const Text(
+            'Active Filters',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5FA832),
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -297,7 +398,8 @@ class _SettingsViewState extends State<SettingsView>
                 label: Text(entry.value),
                 deleteIcon: const Icon(Icons.close, size: 16),
                 onDeleted: () => _removeAllergy(entry.key),
-                backgroundColor: const Color(0xFF74BC42).withValues(alpha: 0.1),
+                backgroundColor:
+                    const Color(0xFF74BC42).withValues(alpha: 0.1),
                 labelStyle: const TextStyle(color: Color(0xFF74BC42)),
                 deleteIconColor: const Color(0xFF74BC42),
                 side: const BorderSide(color: Color(0xFF74BC42), width: 0.8),
