@@ -10,6 +10,7 @@ import 'package:simplyserve/views/profile.dart';
 import 'package:simplyserve/views/shopping_list.dart';
 import 'package:simplyserve/views/deleted_recipes.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:simplyserve/views/calorie_coach.dart'; // added import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,7 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfileView(),
         '/shopping-list': (context) => const ShoppingListView(),
         '/deleted-recipes': (context) => const DeletedRecipesView(),
+        '/calorie-coach': (context) => const CalorieCoachView(), // added route
       },
     );
   }
