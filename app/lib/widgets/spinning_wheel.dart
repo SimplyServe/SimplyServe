@@ -22,7 +22,8 @@ class SpinningWheelWidget extends StatefulWidget {
   State<SpinningWheelWidget> createState() => _SpinningWheelWidgetState();
 }
 
-class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
+class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
+    with WidgetsBindingObserver {
   final RecipeService _recipeService = RecipeService();
   final AllergyService _allergyService = AllergyService();
   bool _isLoading = true;
@@ -55,8 +56,14 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController = FixedExtentScrollController();
     _fetchRecipes();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _fetchRecipes();
   }
 
   Future<void> _fetchRecipes() async {
@@ -136,6 +143,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
   }
@@ -239,7 +247,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -254,9 +262,38 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'What to eat?',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Container(
+            height: 4,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF74BC42), Color(0xFF4E8A2B)],
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF74BC42).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.casino_outlined,
+                    color: Color(0xFF74BC42), size: 18),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'What to eat?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1C2A45),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           _buildMealFilterRow(),

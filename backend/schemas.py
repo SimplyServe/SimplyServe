@@ -27,6 +27,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    name: Optional[str] = None
 
 class UserLogin(UserBase):
     password: str
@@ -36,12 +37,17 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     id: int
+    name: Optional[str] = None
     is_active: bool
     name: Optional[str] = None
     profile_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class UserNameUpdate(BaseModel):
+    name: str
 
 class NutritionInfo(BaseModel):
     calories: int

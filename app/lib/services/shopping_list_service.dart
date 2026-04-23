@@ -5,8 +5,11 @@ class ShoppingItem {
   final String id;
   String name;
   int quantity;
+  final Set<String> recipeTitles;
 
-  ShoppingItem({required this.name, this.quantity = 1}) : id = '${_counter++}';
+  ShoppingItem({required this.name, this.quantity = 1, String? recipeTitle})
+      : id = '${_counter++}',
+        recipeTitles = recipeTitle != null ? {recipeTitle} : {};
 }
 
 class ShoppingRecipeEntry {
@@ -36,30 +39,23 @@ class ShoppingListService extends ChangeNotifier {
   final List<ShoppingRecipeEntry> _recipes = [];
   List<ShoppingRecipeEntry> get recipes => List.unmodifiable(_recipes);
 
-  String _normalizeName(String rawName) {
-    final trimmed = rawName.trim();
-    // Remove leading quantity/unit prefixes such as "1 pcs onion".
-    final withoutPrefix = trimmed.replaceFirst(
-      RegExp(r'^\d+(?:\.\d+)?\s+[A-Za-z]+\s+'),
-      '',
-    );
-    return withoutPrefix.trim();
-  }
+  String _normalizeName(String rawName) => rawName.trim();
 
-  void addIngredients(List<String> ingredients) {
+  void addIngredients(List<String> ingredients, {String? recipeTitle}) {
     for (final rawName in ingredients) {
       final name = _normalizeName(rawName);
-      if (name.isEmpty) {
-        continue;
-      }
+      if (name.isEmpty) continue;
 
       final index = _items.indexWhere(
         (i) => i.name.toLowerCase() == name.toLowerCase(),
       );
       if (index != -1) {
         _items[index].quantity++;
+        if (recipeTitle != null) {
+          _items[index].recipeTitles.add(recipeTitle);
+        }
       } else {
-        _items.add(ShoppingItem(name: name));
+        _items.add(ShoppingItem(name: name, recipeTitle: recipeTitle));
       }
     }
     notifyListeners();
@@ -97,5 +93,11 @@ class ShoppingListService extends ChangeNotifier {
       _recipes.clear();
       notifyListeners();
     }
+  }
+
+  void clearAll() {
+    _items.clear();
+    _recipes.clear();
+    notifyListeners();
   }
 }

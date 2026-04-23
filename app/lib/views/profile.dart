@@ -2,9 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:simplyserve/services/profile_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileView extends StatefulWidget {
-  const ProfileView({super.key});
+  const ProfileView({Key? key}) : super(key: key);
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
@@ -23,9 +24,19 @@ class _ProfileViewState extends State<ProfileView> {
   String displayName = 'SimplyServe User';
   String? profileImageUrl;
 
+  // Calorie Coach fields (persisted keys match calorie_coach.dart)
+  int? _ccAge;
+  double? _ccHeight;
+  double? _ccWeight;
+  String? _ccGender;
+  String? _ccActivity;
+  double? _ccBmr;
+  double? _ccTdee;
+
   @override
   void initState() {
     super.initState();
+    _loadCalorieCoachSummary();
     _fetchProfile();
   }
 
@@ -176,6 +187,46 @@ class _ProfileViewState extends State<ProfileView> {
     }
   }
 
+  Future<void> _loadCalorieCoachSummary() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _ccAge = prefs.getInt('cc_age');
+      _ccHeight = prefs.getDouble('cc_height');
+      _ccWeight = prefs.getDouble('cc_weight');
+      _ccGender = prefs.getString('cc_gender');
+      _ccActivity = prefs.getString('cc_activity');
+      _ccBmr = prefs.getDouble('cc_bmr');
+      _ccTdee = prefs.getDouble('cc_tdee');
+    });
+  }
+
+  Widget _buildCalorieCoachCard() {
+    // hide if no saved results
+    if (_ccTdee == null && _ccBmr == null && _ccAge == null) return const SizedBox.shrink();
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Calorie Coach', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Age: ${_ccAge ?? 'N/A'}'),
+            Text('Height: ${_ccHeight != null ? '${_ccHeight!.toStringAsFixed(1)} cm' : 'N/A'}'),
+            Text('Weight: ${_ccWeight != null ? '${_ccWeight!.toStringAsFixed(1)} kg' : 'N/A'}'),
+            Text('Gender: ${_ccGender ?? 'N/A'}'),
+            Text('Activity: ${_ccActivity ?? 'N/A'}'),
+            const SizedBox(height: 8),
+            Text('BMR: ${_ccBmr != null ? '${_ccBmr!.round()} kcal/day' : 'N/A'}'),
+            Text('Estimated needs (TDEE): ${_ccTdee != null ? '${_ccTdee!.round()} kcal/day' : 'N/A'}'),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,9 +239,10 @@ class _ProfileViewState extends State<ProfileView> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
+          : RefreshIndicator(
+              onRefresh: _loadCalorieCoachSummary,
+              child: ListView(
+                padding: const EdgeInsets.all(24.0),
                 children: [
                   _buildAvatarSection(),
                   const SizedBox(height: 16),
@@ -213,6 +265,7 @@ class _ProfileViewState extends State<ProfileView> {
                   _buildNameInputCard(),
                   const SizedBox(height: 16),
                   _buildProfileItem(Icons.settings, 'Account Actions', 'Tap to edit settings'),
+                  _buildCalorieCoachCard(), // inserted calorie coach summary
                 ],
               ),
             ),

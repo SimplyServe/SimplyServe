@@ -264,6 +264,38 @@ class TestProtectedRoutes:
         assert response.status_code == 401
 
 
+class TestProfileUpdate:
+    """Tests for updating current user's profile details."""
+
+    async def test_update_current_user_name_success(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict,
+    ):
+        response = await async_client.put(
+            "/users/me",
+            json={"name": "Updated User"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated User"
+
+    async def test_update_current_user_name_empty_fails(
+        self,
+        async_client: AsyncClient,
+        auth_headers: dict,
+    ):
+        response = await async_client.put(
+            "/users/me",
+            json={"name": "   "},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400
+
+
 class TestTokenRefresh:
     """Tests for token handling and validity."""
 

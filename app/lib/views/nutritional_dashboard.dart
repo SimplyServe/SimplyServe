@@ -1,9 +1,12 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/meal_log_service.dart';
+import 'package:simplyserve/services/profile_service.dart';
 import 'package:simplyserve/views/meal_calendar.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
-class DashboardView extends StatelessWidget {
+class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
 
   static String _formatNumber(double value) {
@@ -15,25 +18,54 @@ class DashboardView extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final mealLogService = MealLogService();
+  State<DashboardView> createState() => _DashboardViewState();
+}
 
+class _DashboardViewState extends State<DashboardView> {
+  final MealLogService _mealLogService = MealLogService();
+  final ProfileService _profileService = ProfileService();
+  String? _displayName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDisplayName();
+  }
+
+  Future<void> _loadDisplayName() async {
+    final userData = await _profileService.getCurrentUser();
+    final name = (userData?['name'] ?? '').toString().trim();
+    if (!mounted) return;
+    setState(() {
+      _displayName = name.isEmpty ? null : name;
+    });
+  }
+
+  String get _welcomeMessage {
+    if (_displayName == null) {
+      return 'Welcome Back!';
+    }
+    return 'Welcome Back $_displayName!';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return NavBarScaffold(
       title: 'Dashboard',
       body: AnimatedBuilder(
-        animation: mealLogService,
+        animation: _mealLogService,
         builder: (context, _) {
-          final totals = mealLogService.totalsForDay(DateTime.now());
-          final meals = mealLogService.mealsForDay(DateTime.now());
+          final totals = _mealLogService.totalsForDay(DateTime.now());
+          final meals = _mealLogService.mealsForDay(DateTime.now());
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Welcome back!',
-                  style: TextStyle(
+                Text(
+                  _welcomeMessage,
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -73,7 +105,7 @@ class DashboardView extends StatelessWidget {
                               ],
                             ),
                             Text(
-                              '${_formatNumber(totals.calories)} kcal',
+                              '${DashboardView._formatNumber(totals.calories)} kcal',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -88,17 +120,20 @@ class DashboardView extends StatelessWidget {
                             _MacroLegendItem(
                               icon: '🍗',
                               label: 'Protein',
-                              value: '${_formatNumber(totals.protein)}g',
+                              value:
+                                  '${DashboardView._formatNumber(totals.protein)}g',
                             ),
                             _MacroLegendItem(
                               icon: '🍞',
                               label: 'Carbs',
-                              value: '${_formatNumber(totals.carbs)}g',
+                              value:
+                                  '${DashboardView._formatNumber(totals.carbs)}g',
                             ),
                             _MacroLegendItem(
                               icon: '🥑',
                               label: 'Fat',
-                              value: '${_formatNumber(totals.fats)}g',
+                              value:
+                                  '${DashboardView._formatNumber(totals.fats)}g',
                             ),
                           ],
                         ),
@@ -151,7 +186,7 @@ class DashboardView extends StatelessWidget {
                     (meal) => _LoggedMealTile(
                       meal: meal,
                       onRemove: () {
-                        mealLogService.removeMeal(
+                        _mealLogService.removeMeal(
                             DateTime.now(), meal.recipeTitle);
                       },
                     ),

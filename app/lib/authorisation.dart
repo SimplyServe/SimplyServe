@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/authorisation.dart';
@@ -14,7 +12,10 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool isLogin = true;
   bool isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureRepeat = true;
 
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _repeatPasswordController = TextEditingController();
@@ -22,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _repeatPasswordController.dispose();
@@ -66,6 +68,7 @@ class _LoginPageState extends State<LoginPage> {
           _showErrorSnackBar(error);
         }
       } else {
+        final name = _nameController.text.trim();
         final repeatPassword = _repeatPasswordController.text;
         if (password != repeatPassword) {
           _showErrorSnackBar('Passwords do not match.');
@@ -75,7 +78,11 @@ class _LoginPageState extends State<LoginPage> {
           return;
         }
 
-        final error = await _authService.register(email, password);
+        final error = await _authService.register(
+          email,
+          password,
+          name: name.isEmpty ? null : name,
+        );
         if (error == null) {
           final loginError = await _authService.login(email, password);
           if (loginError == null) {
@@ -145,7 +152,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 8),
                       const Center(
                         child: Text(
-                          'Simply Serve',
+                          'SimplyServe',
                           style: TextStyle(
                             fontSize: 30,
                             fontWeight: FontWeight.w600,
@@ -168,6 +175,25 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 32),
+                      if (!isLogin) ...[
+                        TextField(
+                          controller: _nameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Name (optional)',
+                            border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
+                              borderSide: BorderSide(color: Color(0xFF1C2A45)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                       TextField(
                         controller: _emailController,
                         decoration: const InputDecoration(
@@ -184,15 +210,22 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 20),
                       TextField(
                         controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
                           labelText: 'Password',
-                          border: OutlineInputBorder(
+                          border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
                           ),
-                          focusedBorder: OutlineInputBorder(
+                          focusedBorder: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(Radius.circular(12)),
                             borderSide: BorderSide(color: Color(0xFF1C2A45)),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined),
+                            onPressed: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
                           ),
                         ),
                       ),
@@ -200,17 +233,24 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 20),
                         TextField(
                           controller: _repeatPasswordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
+                          obscureText: _obscureRepeat,
+                          decoration: InputDecoration(
                             labelText: 'Repeat Password',
-                            border: OutlineInputBorder(
+                            border: const OutlineInputBorder(
                               borderRadius:
                                   BorderRadius.all(Radius.circular(12)),
                             ),
-                            focusedBorder: OutlineInputBorder(
+                            focusedBorder: const OutlineInputBorder(
                               borderRadius:
                                   BorderRadius.all(Radius.circular(12)),
                               borderSide: BorderSide(color: Color(0xFF1C2A45)),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscureRepeat
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined),
+                              onPressed: () =>
+                                  setState(() => _obscureRepeat = !_obscureRepeat),
                             ),
                           ),
                         ),

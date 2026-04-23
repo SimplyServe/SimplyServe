@@ -183,8 +183,9 @@ class _RecipePageState extends State<RecipePage> {
               final service = ShoppingListService();
               service.addIngredients(
                 _recipe.ingredients
-                    .map((ingredient) => ingredient.name.trim())
+                    .map((ingredient) => ingredient.displayLabel)
                     .toList(),
+                recipeTitle: _recipe.title,
               );
               service.addRecipe(ShoppingRecipeEntry(
                 recipeTitle: _recipe.title,
@@ -200,8 +201,7 @@ class _RecipePageState extends State<RecipePage> {
                     ) ??
                     0,
                 fatsPerServing: double.tryParse(
-                      _recipe.nutrition.fats
-                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                      _recipe.nutrition.fats.replaceAll(RegExp(r'[^0-9.]'), ''),
                     ) ??
                     0,
               ));
@@ -323,16 +323,15 @@ class _RecipePageState extends State<RecipePage> {
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('Delete Recipe'),
-                  content: Text(
-                      'Move "${_recipe.title}" to Deleted Recipes?'),
+                  content: Text('Move "${_recipe.title}" to Deleted Recipes?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
                       child: const Text('Cancel'),
                     ),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red),
+                      style:
+                          ElevatedButton.styleFrom(backgroundColor: Colors.red),
                       onPressed: () => Navigator.of(ctx).pop(true),
                       child: const Text('Delete',
                           style: TextStyle(color: Colors.white)),
@@ -341,8 +340,7 @@ class _RecipePageState extends State<RecipePage> {
                 ),
               );
               if (confirmed == true && context.mounted) {
-                final success =
-                    await RecipeService().deleteRecipe(_recipe.id!);
+                final success = await RecipeService().deleteRecipe(_recipe.id!);
                 if (success && context.mounted) {
                   Navigator.of(context).pop();
                 }
@@ -383,8 +381,9 @@ class _RecipePageState extends State<RecipePage> {
                   );
                 }
               },
-              tooltip:
-                  _isFavourited ? 'Remove from My Recipes' : 'Add to My Recipes',
+              tooltip: _isFavourited
+                  ? 'Remove from My Recipes'
+                  : 'Add to My Recipes',
             ),
           ),
       ],
