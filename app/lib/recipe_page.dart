@@ -183,7 +183,7 @@ class _RecipePageState extends State<RecipePage> {
               final service = ShoppingListService();
               service.addIngredients(
                 _recipe.ingredients
-                    .map((ingredient) => ingredient.name.trim())
+                    .map((ingredient) => ingredient.displayLabel)
                     .toList(),
                 recipeTitle: _recipe.title,
               );

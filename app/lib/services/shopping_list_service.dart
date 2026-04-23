@@ -39,15 +39,7 @@ class ShoppingListService extends ChangeNotifier {
   final List<ShoppingRecipeEntry> _recipes = [];
   List<ShoppingRecipeEntry> get recipes => List.unmodifiable(_recipes);
 
-  String _normalizeName(String rawName) {
-    final trimmed = rawName.trim();
-    // Remove leading quantity/unit prefixes such as "1 pcs onion".
-    final withoutPrefix = trimmed.replaceFirst(
-      RegExp(r'^\d+(?:\.\d+)?\s+[A-Za-z]+\s+'),
-      '',
-    );
-    return withoutPrefix.trim();
-  }
+  String _normalizeName(String rawName) => rawName.trim();
 
   void addIngredients(List<String> ingredients, {String? recipeTitle}) {
     for (final rawName in ingredients) {
