@@ -33,14 +33,20 @@ class AuthService {
     }
   }
 
-  Future<String?> register(String email, String password) async {
+  Future<String?> register(String email, String password,
+      {String? name}) async {
     try {
+      final payload = {
+        'email': email,
+        'password': password,
+      };
+      if (name != null && name.trim().isNotEmpty) {
+        payload['name'] = name.trim();
+      }
+
       await _dio.post(
         '/register',
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: payload,
       );
       return null;
     } on DioException catch (e) {
