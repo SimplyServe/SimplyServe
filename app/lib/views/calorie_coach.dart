@@ -15,6 +15,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   final List<_ChatMessage> _messages = [];
   int _step = 0; // 0: age, 1: height, 2: weight, 3: gender, 4: activity, 5: done
 
+  bool _showIntro = true; // shown only on first visit
+
   // auto-scroll controller so new bot messages (intro) are visible
   final ScrollController _scrollCtrl = ScrollController();
 
@@ -70,13 +72,14 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     final prefs = await SharedPreferences.getInstance();
     final storedTdee = prefs.getDouble(_kTdee);
     if (storedTdee == null) {
-      // no saved results
-      await _startConversation();
+      // no saved results — show intro screen
+      setState(() => _showIntro = true);
       return;
     }
 
-    // restore fields
+    // restore fields — skip intro for returning users
     setState(() {
+      _showIntro = false;
       _age = prefs.getInt(_kAge);
       _height = prefs.getDouble(_kHeight);
       _weight = prefs.getDouble(_kWeight);
@@ -141,11 +144,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _tdee = null;
     setState(() {});
 
-    // Full intro text shown immediately (no typing indicator / delay)
-    _pushBot('Welcome to Calorie Coach — your simple assistant for estimating daily calorie needs.');
-    _pushBot('I will ask a few quick questions (age, height, weight, gender, activity level) and use the Mifflin–St Jeor equation to estimate your Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE).');
-    _pushBot('Your answers are stored locally on this device so you can return later and see your results again. Data stays on your device only.');
-    _pushBot('This will only take a moment. First question — how old are you? (years)');
+    _pushBot('This will only take a moment. How old are you? (years)');
+  }
+
+  Future<void> _letsGo() async {
+    setState(() => _showIntro = false);
+    await _startConversation();
   }
 
   // Adds a user message immediately
@@ -454,8 +458,58 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
   }
 
+  Widget _buildIntroScreen() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/images/Coach.png',
+                width: 140,
+                height: 140,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy, size: 100, color: Colors.green),
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              'Welcome to Calorie Coach — your simple assistant for estimating daily calorie needs.\n\n'
+              'I will ask a few quick questions (age, height, weight, gender, activity level) and use the Mifflin–St Jeor equation to estimate your BMR and TDEE.\n\n'
+              'Your answers are stored locally on this device only.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, height: 1.6, color: Color(0xFF333333)),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: _letsGo,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF74BC42),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              child: const Text("Let's Go"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_showIntro) {
+      return NavBarScaffold(
+        title: 'Calorie Coach',
+        body: _buildIntroScreen(),
+      );
+    }
+
     return NavBarScaffold(
       title: 'Calorie Coach',
       body: SafeArea(
