@@ -52,12 +52,12 @@ class ProfileService {
     }
   }
 
-  Future<String> uploadProfileImage(String filePath) async {
+  Future<String> uploadProfileImage(List<int> bytes, String fileName) async {
     final token = await _storage.read(key: 'token');
     if (token == null) throw Exception('Not authenticated');
 
     final formData = FormData.fromMap({
-      'image': await MultipartFile.fromFile(filePath),
+      'image': MultipartFile.fromBytes(bytes, filename: fileName),
     });
 
     final response = await _dio.post(
