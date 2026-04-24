@@ -859,7 +859,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   // ── Message bubble builder ───────────────────────────────────────────
 
   Widget _buildMessage(_ChatMessage m) {
-    const double avatarSize = 56;
+    const double avatarSize = 36;
 
     Widget fallbackUserAvatar() {
       return CircleAvatar(
@@ -927,6 +927,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             bottomLeft: Radius.circular(isUser ? 16 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 16),
           ),
+          border: Border.all(
+            color: isUser
+                ? const Color(0xFFBCDFA0)
+                : const Color(0xFFE7EEE2),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -953,7 +959,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             : Text(
                 m.text,
                 style: TextStyle(
-                  color: isUser ? _textDark : const Color(0xFF333333),
+                  color: isUser ? _textDark : const Color(0xFF2D4A24),
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -1292,6 +1298,53 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         child: SafeArea(
           child: Column(
             children: [
+              // Gradient header — matches meal_spinner_page.dart / shopping_list.dart
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [_brandGreen, _darkGreen],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.local_fire_department_outlined,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Calorie Coach',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Personalised calorie & macro targets.',
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: ListView.builder(
                   controller: _scrollCtrl,
