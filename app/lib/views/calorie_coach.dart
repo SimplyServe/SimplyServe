@@ -44,6 +44,13 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   bool _isWeightUpdateMode = false;
   bool _showIntro = true;
 
+  // ── Brand colours ────────────────────────────────────────────────────
+  static const Color _brandGreen = Color(0xFF74BC42);
+  static const Color _darkGreen = Color(0xFF4E8A2B);
+  static const Color _surfaceGreen = Color(0xFFF4FAF1);
+  static const Color _textDark = Color(0xFF24421A);
+  static const Color _textMuted = Color(0xFF5F7559);
+
   static const Map<String, double> _activityMultipliers = {
     'Sedentary': 1.2,
     'Lightly active': 1.375,
@@ -670,8 +677,6 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         _height != null ? '${_height!.toStringAsFixed(1)} cm' : 'N/A';
     final weight =
         _weight != null ? '${_weight!.toStringAsFixed(1)} kg' : 'N/A';
-    final gender = _gender;
-    final activity = _activity;
     final bmr = _bmr != null ? '${_bmr!.round()} kcal/day' : 'N/A';
     final calories =
         _calorieTarget != null ? '${_calorieTarget!.round()} kcal/day' : 'N/A';
@@ -691,41 +696,98 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Summary'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: EdgeInsets.zero,
+        title: Container(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_brandGreen, _darkGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: const Text(
+            'Your Summary',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Age: $age'),
-            Text('Height: $height'),
-            Text('Weight: $weight'),
-            Text('Gender: ${_gender ?? 'N/A'}'),
-            Text('Activity: ${_activity ?? 'N/A'}'),
-            Text('Goal: $_goalDisplayName'),
+            _summaryRow(Icons.cake_outlined, 'Age', age),
+            _summaryRow(Icons.straighten, 'Height', height),
+            _summaryRow(Icons.monitor_weight_outlined, 'Weight', weight),
+            _summaryRow(Icons.person_outline, 'Gender', _gender ?? 'N/A'),
+            _summaryRow(Icons.directions_run, 'Activity', _activity ?? 'N/A'),
+            _summaryRow(Icons.flag_outlined, 'Goal', _goalDisplayName),
             if (_goal != 'maintain' && _targetWeight != null)
-              Text('Target weight: ${_formatWeightForDisplay(_targetWeight!)}'),
+              _summaryRow(Icons.my_location,
+                  'Target weight', _formatWeightForDisplay(_targetWeight!)),
+            const Divider(height: 20),
+            _summaryRow(Icons.local_fire_department_outlined, 'BMR', bmr),
+            _summaryRow(Icons.bolt_outlined, 'Daily calories', calories),
             const SizedBox(height: 8),
-            Text('BMR: $bmr'),
-            Text('Daily calorie target: $calories'),
-            const SizedBox(height: 8),
-            const Text('Daily Macros :',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            Text(' Protein : $protein'),
-            Text(' Carbs : $carbStr'),
-            Text(' Fat : $fatStr'),
+            Text('Daily Macros',
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: _textDark)),
+            const SizedBox(height: 6),
+            _summaryRow(Icons.egg_outlined, 'Protein', protein),
+            _summaryRow(Icons.grain, 'Carbs', carbStr),
+            _summaryRow(Icons.water_drop_outlined, 'Fat', fatStr),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(foregroundColor: _textMuted),
             child: const Text('Close'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               _startConversation();
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _brandGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
             child: const Text('Restart'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: _brandGreen),
+          const SizedBox(width: 8),
+          Text('$label: ',
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF555555),
+                  fontWeight: FontWeight.w500)),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A)),
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
@@ -797,14 +859,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   // ── Message bubble builder ───────────────────────────────────────────
 
   Widget _buildMessage(_ChatMessage m) {
-    // avatar widget builder: uses asset if provided, otherwise fallback to Icon
-    // larger avatar for better visibility
     const double avatarSize = 56;
 
     Widget fallbackUserAvatar() {
       return CircleAvatar(
         radius: avatarSize / 2,
-        backgroundColor: Colors.green[300],
+        backgroundColor: _brandGreen,
         child: const Icon(Icons.person,
             color: Colors.white, size: avatarSize * 0.45),
       );
@@ -828,14 +888,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         return Container(
           width: avatarSize,
           height: avatarSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            image: DecorationImage(
-              image: AssetImage(asset),
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
+          decoration: const BoxDecoration(shape: BoxShape.circle),
           child: ClipOval(
             child: Image.asset(
               asset,
@@ -844,9 +897,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
               fit: BoxFit.cover,
               alignment: Alignment.center,
               errorBuilder: (_, __, ___) {
-                if (isUser) {
-                  return fallbackUserAvatar();
-                }
+                if (isUser) return fallbackUserAvatar();
                 return const SizedBox.shrink();
               },
             ),
@@ -854,9 +905,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         );
       }
 
-      if (isUser) {
-        return fallbackUserAvatar();
-      }
+      if (isUser) return fallbackUserAvatar();
 
       return const CircleAvatar(
         radius: avatarSize / 2,
@@ -864,35 +913,57 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       );
     }
 
+    final isUser = m.fromUser;
+
     final bubble = ConstrainedBox(
       constraints:
           BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
       child: Container(
         decoration: BoxDecoration(
-          color: m.fromUser ? Colors.green[100] : Colors.grey[200],
-          borderRadius: BorderRadius.circular(12),
+          color: isUser ? const Color(0xFFE4F2DE) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isUser ? 16 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 16),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: m.isTyping
-            ? const Row(
+            ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
                     width: 12,
                     height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: _brandGreen),
                   ),
-                  SizedBox(width: 8),
-                  Text('…'),
+                  const SizedBox(width: 8),
+                  const Text('…'),
                 ],
               )
-            : Text(m.text, style: const TextStyle(color: Colors.black)),
+            : Text(
+                m.text,
+                style: TextStyle(
+                  color: isUser ? _textDark : const Color(0xFF333333),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
       ),
     );
 
-    if (m.fromUser) {
+    if (isUser) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -905,7 +976,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       );
     } else {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -921,48 +992,282 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   // ── Intro screen ──────────────────────────────────────────────────────
 
   Widget _buildIntroScreen() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.asset(
-                'assets/images/Coach.png',
-                width: 140,
-                height: 140,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.smart_toy, size: 100, color: Colors.green),
+    return ColoredBox(
+      color: _surfaceGreen,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Gradient header — matches meal_spinner_page.dart
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [_brandGreen, _darkGreen],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.local_fire_department_outlined,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Calorie Coach',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Personalised calorie & macro targets.',
+                          style: TextStyle(fontSize: 14, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 28),
-            const Text(
-              'Welcome to Calorie Coach — your assistant for personalized calorie and protein targets.\n\n'
-              'I will ask a few quick questions (age, height, weight, gender, activity level, and fitness goal) '
-              'to calculate your daily calorie and macro needs.\n\n'
-              'Your answers are stored locally on this device only.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 14, height: 1.6, color: Color(0xFF333333)),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: _letsGo,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF74BC42),
-                foregroundColor: Colors.white,
+
+              Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                textStyle:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  children: [
+                    // Avatar card
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _brandGreen.withValues(alpha: 0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(70),
+                        child: Image.asset(
+                          'assets/images/Coach.png',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: _surfaceGreen,
+                              borderRadius: BorderRadius.circular(60),
+                            ),
+                            child: const Icon(Icons.smart_toy,
+                                size: 60, color: _brandGreen),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // Info card — matches shopping_list.dart card style
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFE7EEE2)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(20),
+                      child: const Text(
+                        'Welcome to Calorie Coach — your assistant for personalised calorie and protein targets.\n\n'
+                        'I will ask a few quick questions (age, height, weight, gender, activity level, and fitness goal) '
+                        'to calculate your daily calorie and macro needs.\n\n'
+                        'Your answers are stored locally on this device only.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.7,
+                          color: Color(0xFF444444),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _letsGo,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _brandGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          textStyle: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600),
+                          elevation: 0,
+                        ),
+                        child: const Text("Let's Go"),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Text("Let's Go"),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Selection panel helper ───────────────────────────────────────────
+
+  Widget _panelContainer({required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE7EEE2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: child,
+    );
+  }
+
+  Widget _panelLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: 13,
+        color: _textDark,
+      ),
+    );
+  }
+
+  Widget _styledChoiceChip({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _surfaceGreen,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFCCE8B5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: _brandGreen),
+            const SizedBox(width: 6),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _textDark)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _styledOptionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFEAF7E5) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? _brandGreen : const Color(0xFFE7EEE2),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: selected
+                    ? _brandGreen.withValues(alpha: 0.15)
+                    : const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon,
+                  size: 18, color: selected ? _brandGreen : Colors.black45),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: selected ? _textDark : Colors.black87,
+                      )),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF777777))),
+                  ],
+                ],
+              ),
+            ),
+            if (selected)
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: _brandGreen,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: const Icon(Icons.check, color: Colors.white, size: 12),
+              ),
           ],
         ),
       ),
@@ -982,352 +1287,337 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
     return NavBarScaffold(
       title: 'Calorie Coach',
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollCtrl,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                itemCount: _messages.length,
-                itemBuilder: (_, i) => _buildMessage(_messages[i]),
-              ),
-            ),
-
-            // ── Step 1: Height unit selection ──
-            if (_step == 1)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Choose your height unit:',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Centimeters (cm)'),
-                          avatar: const Icon(Icons.straighten, size: 18),
-                          selected: false,
-                          onSelected: (_) => _selectHeightUnit('cm'),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Feet & Inches'),
-                          avatar: const Icon(Icons.height, size: 18),
-                          selected: false,
-                          onSelected: (_) => _selectHeightUnit('ft'),
-                        ),
-                      ],
-                    ),
-                  ],
+      body: ColoredBox(
+        color: _surfaceGreen,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  itemCount: _messages.length,
+                  itemBuilder: (_, i) => _buildMessage(_messages[i]),
                 ),
               ),
 
-            // ── Step 3: Weight unit selection ──
-            if (_step == 3)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Choose your weight unit:',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Kilograms (kg)'),
-                          avatar: const Icon(Icons.monitor_weight, size: 18),
-                          selected: false,
-                          onSelected: (_) => _selectWeightUnit('kg'),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Pounds (lb)'),
-                          avatar: const Icon(Icons.fitness_center, size: 18),
-                          selected: false,
-                          onSelected: (_) => _selectWeightUnit('lb'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-            // ── Step 5: Gender selection ──
-            if (_step == 5)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Which gender should I use?',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Male'),
-                          avatar: const Icon(Icons.male, size: 18),
-                          selected: _gender == 'Male',
-                          onSelected: (_) => _selectGender('Male'),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Female'),
-                          avatar: const Icon(Icons.female, size: 18),
-                          selected: _gender == 'Female',
-                          onSelected: (_) => _selectGender('Female'),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Prefer not to say'),
-                          selected: _gender == 'Prefer not to say',
-                          onSelected: (_) => _selectGender('Prefer not to say'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                        'You can change this later by restarting the coach.',
-                        style: TextStyle(fontSize: 12, color: Colors.black54)),
-                  ],
-                ),
-              ),
-
-            // ── Step 6: Activity selection ──
-            if (_step == 6)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('Choose your typical activity level',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    ..._activityMultipliers.keys.map((k) {
-                      final selected = _activity == k;
-                      return Card(
-                        color: selected ? Colors.green[50] : null,
-                        child: InkWell(
-                          onTap: () => _selectActivity(k),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  selected
-                                      ? Icons.radio_button_checked
-                                      : Icons.radio_button_off,
-                                  color:
-                                      selected ? Colors.green : Colors.black54,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(k,
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              color: selected
-                                                  ? Colors.green[800]
-                                                  : Colors.black)),
-                                      const SizedBox(height: 2),
-                                      Text(_activityDescriptions[k] ?? '',
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.black54)),
-                                    ],
-                                  ),
-                                ),
-                                if (selected)
-                                  const Icon(Icons.check, color: Colors.green),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-
-            // ── Step 7: Goal selection ──
-            if (_step == 7)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text('What is your fitness goal?',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    ...{
-                      'gain': {
-                        'label': 'Gain Weight',
-                        'desc':
-                            'Calorie surplus for muscle growth and mass gain',
-                        'icon': Icons.trending_up,
-                      },
-                      'maintain': {
-                        'label': 'Maintain Weight',
-                        'desc':
-                            'Stay at current weight, optimize body composition',
-                        'icon': Icons.balance,
-                      },
-                      'lose': {
-                        'label': 'Lose Weight',
-                        'desc':
-                            'Calorie deficit to lose fat while preserving muscle',
-                        'icon': Icons.trending_down,
-                      },
-                    }.entries.map((e) {
-                      final selected = _goal == e.key;
-                      return Card(
-                        color: selected ? Colors.green[50] : null,
-                        child: InkWell(
-                          onTap: () => _selectGoal(e.key),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  e.value['icon'] as IconData,
-                                  color:
-                                      selected ? Colors.green : Colors.black54,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        e.value['label'] as String,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: selected
-                                              ? Colors.green[800]
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        e.value['desc'] as String,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.black54),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (selected)
-                                  const Icon(Icons.check, color: Colors.green),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    const SizedBox(height: 6),
-                    const Text(
-                        'Tap an option to select. If you are unsure, choose the closest match.',
-                        style: TextStyle(fontSize: 12, color: Colors.black54)),
-                  ],
-                ),
-              ),
-
-            // ── Text input for numeric steps ──
-            if (_showTextInput)
-              SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
+              // ── Step 1: Height unit selection ──
+              if (_step == 1)
+                _panelContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _inputCtrl,
-                          keyboardType: TextInputType.numberWithOptions(
-                            decimal: _step != 0,
+                      _panelLabel('Choose your height unit:'),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _styledChoiceChip(
+                            label: 'Centimeters (cm)',
+                            icon: Icons.straighten,
+                            onTap: () => _selectHeightUnit('cm'),
                           ),
-                          inputFormatters: [
-                            // Allow spaces for feet+inches input
-                            if (_step == 2 && _heightUnit == 'ft')
-                              FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9. ]'))
-                            else
-                              FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9.]')),
-                          ],
-                          decoration: InputDecoration(
-                            hintText: _inputHintText,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
+                          _styledChoiceChip(
+                            label: 'Feet & Inches',
+                            icon: Icons.height,
+                            onTap: () => _selectHeightUnit('ft'),
                           ),
-                          onSubmitted: (_) => _handleSubmitText(),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: _handleSubmitText,
-                        child: const Icon(Icons.send),
-                      )
                     ],
                   ),
                 ),
-              ),
 
-            // ── Step 9: Done buttons ──
-            if (_step == 9 && !_isWeightUpdateMode)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                child: Column(
-                  children: [
-                    Row(
+              // ── Step 3: Weight unit selection ──
+              if (_step == 3)
+                _panelContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _panelLabel('Choose your weight unit:'),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _styledChoiceChip(
+                            label: 'Kilograms (kg)',
+                            icon: Icons.monitor_weight,
+                            onTap: () => _selectWeightUnit('kg'),
+                          ),
+                          _styledChoiceChip(
+                            label: 'Pounds (lb)',
+                            icon: Icons.fitness_center,
+                            onTap: () => _selectWeightUnit('lb'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ── Step 5: Gender selection ──
+              if (_step == 5)
+                _panelContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _panelLabel('Which gender should I use?'),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _styledChoiceChip(
+                            label: 'Male',
+                            icon: Icons.male,
+                            onTap: () => _selectGender('Male'),
+                          ),
+                          _styledChoiceChip(
+                            label: 'Female',
+                            icon: Icons.female,
+                            onTap: () => _selectGender('Female'),
+                          ),
+                          _styledChoiceChip(
+                            label: 'Prefer not to say',
+                            icon: Icons.person_outline,
+                            onTap: () => _selectGender('Prefer not to say'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                          'You can change this later by restarting the coach.',
+                          style:
+                              TextStyle(fontSize: 12, color: Color(0xFF8A9A85))),
+                    ],
+                  ),
+                ),
+
+              // ── Step 6: Activity selection ──
+              if (_step == 6)
+                _panelContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _panelLabel('Choose your typical activity level'),
+                      const SizedBox(height: 10),
+                      ..._activityMultipliers.keys.map((k) {
+                        return _styledOptionCard(
+                          title: k,
+                          subtitle: _activityDescriptions[k] ?? '',
+                          icon: Icons.directions_run,
+                          selected: _activity == k,
+                          onTap: () => _selectActivity(k),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+
+              // ── Step 7: Goal selection ──
+              if (_step == 7)
+                _panelContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _panelLabel('What is your fitness goal?'),
+                      const SizedBox(height: 10),
+                      ...[
+                        {
+                          'key': 'gain',
+                          'label': 'Gain Weight',
+                          'desc':
+                              'Calorie surplus for muscle growth and mass gain',
+                          'icon': Icons.trending_up,
+                        },
+                        {
+                          'key': 'maintain',
+                          'label': 'Maintain Weight',
+                          'desc':
+                              'Stay at current weight, optimise body composition',
+                          'icon': Icons.balance,
+                        },
+                        {
+                          'key': 'lose',
+                          'label': 'Lose Weight',
+                          'desc':
+                              'Calorie deficit to lose fat while preserving muscle',
+                          'icon': Icons.trending_down,
+                        },
+                      ].map((e) {
+                        return _styledOptionCard(
+                          title: e['label'] as String,
+                          subtitle: e['desc'] as String,
+                          icon: e['icon'] as IconData,
+                          selected: _goal == e['key'],
+                          onTap: () => _selectGoal(e['key'] as String),
+                        );
+                      }),
+                      const SizedBox(height: 2),
+                      const Text(
+                          'Tap an option to select. If you are unsure, choose the closest match.',
+                          style:
+                              TextStyle(fontSize: 12, color: Color(0xFF8A9A85))),
+                    ],
+                  ),
+                ),
+
+              // ── Text input for numeric steps ──
+              if (_showTextInput)
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE7EEE2)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    child: Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: _startConversation,
-                            child: const Text('Restart'),
+                          child: TextField(
+                            controller: _inputCtrl,
+                            keyboardType: TextInputType.numberWithOptions(
+                              decimal: _step != 0,
+                            ),
+                            inputFormatters: [
+                              if (_step == 2 && _heightUnit == 'ft')
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9. ]'))
+                              else
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9.]')),
+                            ],
+                            decoration: InputDecoration(
+                              hintText: _inputHintText,
+                              hintStyle:
+                                  const TextStyle(color: Color(0xFFAAAAAA)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFDDDDDD)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(
+                                    color: _brandGreen, width: 1.5),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 12),
+                            ),
+                            onSubmitted: (_) => _handleSubmitText(),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _showSummaryDialog,
-                            child: const Text('Done'),
+                        GestureDetector(
+                          onTap: _handleSubmitText,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _brandGreen,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.send,
+                                color: Colors.white, size: 20),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _startWeightUpdate,
-                        icon: const Icon(Icons.monitor_weight),
-                        label: const Text('Update Current Weight'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-          ],
+
+              // ── Step 9: Done buttons ──
+              if (_step == 9 && !_isWeightUpdateMode)
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFE7EEE2)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _startConversation,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _textMuted,
+                                  side: const BorderSide(
+                                      color: Color(0xFFCCCCCC)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                child: const Text('Restart'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _showSummaryDialog,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _brandGreen,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                child: const Text('Done'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _startWeightUpdate,
+                            icon: const Icon(Icons.monitor_weight,
+                                color: _brandGreen, size: 18),
+                            label: const Text('Update Current Weight',
+                                style: TextStyle(color: _textDark)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: _brandGreen),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
