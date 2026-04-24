@@ -1684,3 +1684,4 @@ class _ChatMessage {
   _ChatMessage(
       {required this.text, required this.fromUser, this.isTyping = false});
 }
+
