@@ -45,6 +45,26 @@ class _DashboardViewState extends State<DashboardView> {
   static const _kFatTarget = 'cc_fat_target';
   static const _kCompleted = 'cc_completed';
 
+  // Profile keys from Calorie Coach
+  static const _kHeight = 'cc_height';
+  static const _kWeight = 'cc_weight';
+  static const _kGender = 'cc_gender';
+  static const _kActivity = 'cc_activity';
+  static const _kHeightUnit = 'cc_height_unit';
+  static const _kWeightUnit = 'cc_weight_unit';
+  static const _kGoal = 'cc_goal';
+  static const _kTargetWeight = 'cc_target_weight';
+
+  // Profile state
+  double? _height;
+  double? _weight;
+  String? _gender;
+  String? _activity;
+  String _heightUnit = 'cm';
+  String _weightUnit = 'kg';
+  String? _goal;
+  double? _targetWeight;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +95,17 @@ class _DashboardViewState extends State<DashboardView> {
     final proteinTarget = prefs.getDouble(_kProteinTarget);
     final carbTarget = prefs.getDouble(_kCarbTarget);
     final fatTarget = prefs.getDouble(_kFatTarget);
+
+    // Load profile fields saved by Calorie Coach
+    final height = prefs.getDouble(_kHeight);
+    final weight = prefs.getDouble(_kWeight);
+    final gender = prefs.getString(_kGender);
+    final activity = prefs.getString(_kActivity);
+    final heightUnit = prefs.getString(_kHeightUnit) ?? 'cm';
+    final weightUnit = prefs.getString(_kWeightUnit) ?? 'kg';
+    final goal = prefs.getString(_kGoal);
+    final targetWeight = prefs.getDouble(_kTargetWeight);
+
     if (!mounted) return;
     setState(() {
       _showCoachButton = !completed;
@@ -82,7 +113,47 @@ class _DashboardViewState extends State<DashboardView> {
       _proteinTarget = proteinTarget;
       _carbTarget = carbTarget;
       _fatTarget = fatTarget;
+      _height = height;
+      _weight = weight;
+      _gender = gender;
+      _activity = activity;
+      _heightUnit = heightUnit;
+      _weightUnit = weightUnit;
+      _goal = goal;
+      _targetWeight = targetWeight;
     });
+  }
+
+  /// Converts stored-cm height to a display string respecting the chosen unit.
+  String _formatHeight(double cm) {
+    if (_heightUnit == 'ft') {
+      final totalInches = cm / 2.54;
+      final feet = totalInches ~/ 12;
+      final inches = (totalInches % 12).round();
+      return '${feet}ft ${inches}in';
+    }
+    return '${cm.round()} cm';
+  }
+
+  /// Converts stored-kg weight to a display string respecting the chosen unit.
+  String _formatWeight(double kg) {
+    if (_weightUnit == 'lb') {
+      return '${(kg * 2.20462).round()} lb';
+    }
+    return '${kg.toStringAsFixed(1)} kg';
+  }
+
+  /// Human-readable goal label.
+  String get _goalLabel {
+    switch (_goal) {
+      case 'gain':
+        return 'Gain Weight';
+      case 'lose':
+        return 'Lose Weight';
+      case 'maintain':
+      default:
+        return 'Maintain Weight';
+    }
   }
 
   String get _welcomeMessage {
@@ -326,6 +397,177 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  // ── Your Profile Card ──────────────────────────────────
+                  if (_height != null || _weight != null || _gender != null) ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFE7EEE2)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Card header
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFFF1FAEC), Colors.white],
+                              ),
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(18)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: _brandGreen.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.person_outline_rounded,
+                                    color: _brandGreen,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Your Profile',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF24421A),
+                                    ),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                            context, '/calorie-coach')
+                                        .then((_) => _loadCoachData());
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: _brandGreen.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      'Edit',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: _brandGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Profile stat grid
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    if (_height != null)
+                                      Expanded(
+                                        child: _ProfileStatTile(
+                                          icon: Icons.height_rounded,
+                                          label: 'Height',
+                                          value: _formatHeight(_height!),
+                                          iconColor: const Color(0xFF42A5F5),
+                                        ),
+                                      ),
+                                    if (_weight != null)
+                                      Expanded(
+                                        child: _ProfileStatTile(
+                                          icon: Icons.monitor_weight_outlined,
+                                          label: 'Weight',
+                                          value: _formatWeight(_weight!),
+                                          iconColor: const Color(0xFFAB47BC),
+                                        ),
+                                      ),
+                                    if (_gender != null)
+                                      Expanded(
+                                        child: _ProfileStatTile(
+                                          icon: Icons.wc_rounded,
+                                          label: 'Gender',
+                                          value: _gender!,
+                                          iconColor: const Color(0xFFFF8F00),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (_activity != null || _goal != null) ...[
+                                  const SizedBox(height: 10),
+                                  const Divider(
+                                      height: 1, color: Color(0xFFE7EEE2)),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      if (_activity != null)
+                                        Expanded(
+                                          child: _ProfileStatTile(
+                                            icon: Icons.directions_run_rounded,
+                                            label: 'Activity',
+                                            value: _activity!,
+                                            iconColor: _brandGreen,
+                                          ),
+                                        ),
+                                      if (_goal != null)
+                                        Expanded(
+                                          child: _ProfileStatTile(
+                                            icon: _goal == 'gain'
+                                                ? Icons.trending_up
+                                                : _goal == 'lose'
+                                                    ? Icons.trending_down
+                                                    : Icons.balance_rounded,
+                                            label: 'Goal',
+                                            value: _goalLabel,
+                                            iconColor: _goal == 'gain'
+                                                ? const Color(0xFF66BB6A)
+                                                : _goal == 'lose'
+                                                    ? const Color(0xFFEF5350)
+                                                    : const Color(0xFF42A5F5),
+                                          ),
+                                        ),
+                                      if (_goal != 'maintain' &&
+                                          _targetWeight != null)
+                                        Expanded(
+                                          child: _ProfileStatTile(
+                                            icon: Icons.flag_rounded,
+                                            label: 'Target',
+                                            value: _formatWeight(_targetWeight!),
+                                            iconColor: const Color(0xFFFF8F00),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
 
                   // ── Today's Meals ──────────────────────────────────────
                   const Text(
@@ -757,6 +999,65 @@ class _CoachProgressBar extends StatelessWidget {
           style: const TextStyle(fontSize: 11, color: Color(0xFF8A9A85)),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileStatTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color iconColor;
+
+  const _ProfileStatTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 16),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF5F7559),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF24421A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
