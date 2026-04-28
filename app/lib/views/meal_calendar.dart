@@ -349,6 +349,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
             double.tryParse(recipe.nutrition.carbs.replaceAll('g', '')) ?? 0,
         fatsPerServing:
             double.tryParse(recipe.nutrition.fats.replaceAll('g', '')) ?? 0,
+        plannedDate: DateTime(day.year, day.month, day.day),
       ));
     }
   }
@@ -357,7 +358,8 @@ class _MealCalendarViewState extends State<MealCalendarView> {
     final sheetServingsByTitle = _servingsByTitle(day, forLog: false);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final isFuture = DateTime(day.year, day.month, day.day).isAfter(today);
+    final normalizedDay = DateTime(day.year, day.month, day.day);
+    final isFuture = !normalizedDay.isBefore(today); // includes today
 
     showModalBottomSheet<void>(
       context: context,

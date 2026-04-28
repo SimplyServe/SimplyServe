@@ -29,11 +29,32 @@ class _ShoppingListViewState extends State<ShoppingListView> {
 
   void _onChanged() => setState(() {});
 
+  String _formatPlannedDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final d = DateTime(date.year, date.month, date.day);
+    if (d == today) return 'Today';
+    if (d == tomorrow) return 'Tomorrow';
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month]}';
+  }
+
   List<_ShoppingSection> _buildSections(List<ShoppingItem> items) {
+    // Sort recipes by plannedDate (earliest first, undated last)
+    final sortedRecipes = List.of(_service.recipes)
+      ..sort((a, b) {
+        if (a.plannedDate == null && b.plannedDate == null) return 0;
+        if (a.plannedDate == null) return 1;
+        if (b.plannedDate == null) return -1;
+        return a.plannedDate!.compareTo(b.plannedDate!);
+      });
+
     final recipeOrder = <String>[];
     final seenRecipeTitles = <String>{};
 
-    for (final recipe in _service.recipes) {
+    for (final recipe in sortedRecipes) {
       if (seenRecipeTitles.add(recipe.recipeTitle)) {
         recipeOrder.add(recipe.recipeTitle);
       }
@@ -79,15 +100,19 @@ class _ShoppingListViewState extends State<ShoppingListView> {
       ));
     }
 
-    for (final recipe in _service.recipes) {
+    for (final recipe in sortedRecipes) {
       final recipeItems = recipeItemMap[recipe.recipeTitle];
       if (recipeItems == null || recipeItems.isEmpty) continue;
       recipeItems.sort(
           (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      final dateLabel = recipe.plannedDate != null
+          ? _formatPlannedDate(recipe.plannedDate!)
+          : null;
+      final countLabel =
+          '${recipeItems.length} ingredient${recipeItems.length == 1 ? '' : 's'}';
       sections.add(_ShoppingSection(
         title: recipe.recipeTitle,
-        subtitle:
-            '${recipeItems.length} ingredient${recipeItems.length == 1 ? '' : 's'}',
+        subtitle: dateLabel != null ? '$dateLabel · $countLabel' : countLabel,
         items: recipeItems,
         accent: _brandGreen,
       ));

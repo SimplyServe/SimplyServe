@@ -18,6 +18,7 @@ class ShoppingRecipeEntry {
   final double proteinPerServing;
   final double carbsPerServing;
   final double fatsPerServing;
+  final DateTime? plannedDate;
 
   const ShoppingRecipeEntry({
     required this.recipeTitle,
@@ -25,6 +26,7 @@ class ShoppingRecipeEntry {
     required this.proteinPerServing,
     required this.carbsPerServing,
     required this.fatsPerServing,
+    this.plannedDate,
   });
 }
 
