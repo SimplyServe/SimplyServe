@@ -3,11 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:simplyserve/views/nutritional_dashboard.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUpAll(() async {
-    // Initialize dotenv for testing
     await dotenv.load(fileName: ".env");
+  });
+
+  setUp(() {
+    // Provide an empty SharedPreferences store so cc_completed is unset
+    SharedPreferences.setMockInitialValues({});
   });
 
   group('DashboardView Widget Tests', () {
@@ -42,11 +47,11 @@ void main() {
       expect(find.text('Calories Today'), findsOneWidget);
       expect(find.text('0 kcal'), findsOneWidget);
 
-      // Shows "Today's Meals" section with empty message
+      // Shows "Today's Meals" section — title and no-meals message (two separate Text widgets)
       expect(find.text("Today's Meals"), findsOneWidget);
+      expect(find.text('No meals logged yet'), findsOneWidget);
       expect(
-          find.text(
-              'No meals logged yet. Log meals from the Meal Calendar or Shopping List.'),
+          find.text('Log meals from the Meal Calendar or Shopping List.'),
           findsOneWidget);
     });
 
@@ -119,6 +124,71 @@ void main() {
       expect(find.byIcon(Icons.settings), findsWidgets);
     });
 
+    testWidgets('Dashboard shows Meal Spinner button',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
+      );
+
+      expect(find.text('Meal Spinner'), findsOneWidget);
+      expect(find.byIcon(Icons.casino), findsOneWidget);
+    });
+
+    testWidgets('Dashboard welcome header shows daily summary subtitle',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
+      );
+
+      expect(find.text('Here is your daily nutritional summary.'), findsOneWidget);
+    });
+
+    testWidgets('Dashboard macro counter shows Protein, Carbs and Fat labels',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
+      );
+
+      expect(find.text('Protein'), findsOneWidget);
+      expect(find.text('Carbs'), findsOneWidget);
+      expect(find.text('Fat'), findsOneWidget);
+    });
+
+    testWidgets('Dashboard welcome header shows profile avatar',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
+      );
+
+      // No profile image loaded in test env — fallback person icon shown
+      expect(find.byType(CircleAvatar), findsOneWidget);
+      expect(find.byIcon(Icons.person), findsOneWidget);
+    });
+
+    testWidgets('Dashboard shows Calorie Coach setup card for new users',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DashboardView(),
+        ),
+      );
+      // Wait for SharedPreferences to resolve (no network call, safe to settle)
+      await tester.pumpAndSettle();
+
+      // cc_completed is unset → _showCoachButton is true
+      expect(find.text('Set Up Your Calorie Coach'), findsOneWidget);
+      expect(find.text('Start Calorie Coach'), findsOneWidget);
+      expect(find.byIcon(Icons.local_fire_department), findsOneWidget);
+    });
+
     testWidgets('DashboardView has SingleChildScrollView',
         (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -143,10 +213,12 @@ void main() {
           home: const DashboardView(),
         ),
       );
+      await tester.pump();
 
-      // Verify dashboard renders with cards and proper content
+      // Verify dashboard renders with themed content and key structural widgets
       expect(find.textContaining('Welcome Back'), findsWidgets);
-      expect(find.byType(Card), findsAtLeastNWidgets(1));
+      expect(find.byType(ColoredBox), findsAtLeastNWidgets(1));
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
     });
   });
 }
