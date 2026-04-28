@@ -40,6 +40,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   String? _userAvatarUrl;
   double? _calorieTarget;
   double? _proteinTarget;
+  double? _carbTarget;
+  double? _fatTarget;
 
   bool _isWeightUpdateMode = false;
   bool _showIntro = true;
@@ -80,6 +82,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   static const _kTargetWeight = 'cc_target_weight';
   static const _kCalorieTarget = 'cc_calorie_target';
   static const _kProteinTarget = 'cc_protein_target';
+  static const _kCarbTarget = 'cc_carb_target';
+  static const _kFatTarget = 'cc_fat_target';
   static const _kCompleted = 'cc_completed';
   static const _kGoalReached = 'cc_goal_reached';
 
@@ -131,6 +135,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _targetWeight = prefs.getDouble(_kTargetWeight);
       _calorieTarget = prefs.getDouble(_kCalorieTarget) ?? _tdee;
       _proteinTarget = prefs.getDouble(_kProteinTarget);
+      _carbTarget = prefs.getDouble(_kCarbTarget);
+      _fatTarget = prefs.getDouble(_kFatTarget);
       _step = 9;
     });
 
@@ -181,6 +187,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     if (_proteinTarget != null) {
       prefs.setDouble(_kProteinTarget, _proteinTarget!);
     }
+    if (_carbTarget != null) {
+      prefs.setDouble(_kCarbTarget, _carbTarget!);
+    }
+    if (_fatTarget != null) {
+      prefs.setDouble(_kFatTarget, _fatTarget!);
+    }
     prefs.setBool(_kCompleted, true);
   }
 
@@ -200,6 +212,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _kTargetWeight,
       _kCalorieTarget,
       _kProteinTarget,
+      _kCarbTarget,
+      _kFatTarget,
       _kCompleted,
       _kGoalReached,
     ]) {
@@ -563,11 +577,15 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _tdee = tdee;
       _calorieTarget = _computeCalorieTarget(tdee);
       _proteinTarget = _computeProteinTarget(_calorieTarget!);
+      _carbTarget = _computeCarbTarget(_calorieTarget!);
+      _fatTarget = _computeFatTarget(_calorieTarget!);
 
       prefs.setDouble(_kBmr, bmr);
       prefs.setDouble(_kTdee, tdee);
       prefs.setDouble(_kCalorieTarget, _calorieTarget!);
       prefs.setDouble(_kProteinTarget, _proteinTarget!);
+      prefs.setDouble(_kCarbTarget, _carbTarget!);
+      prefs.setDouble(_kFatTarget, _fatTarget!);
 
       await _sendBot(
           'Recalculated — daily calorie target: ${_calorieTarget!.round()} kcal/day, '
@@ -657,6 +675,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _tdee = tdee;
       _calorieTarget = calorieTarget;
       _proteinTarget = proteinTarget;
+      _carbTarget = carbTarget;
+      _fatTarget = fatTarget;
     });
     await _saveResults();
 
@@ -1703,4 +1723,3 @@ class _ChatMessage {
   _ChatMessage(
       {required this.text, required this.fromUser, this.isTyping = false});
 }
-
