@@ -31,6 +31,89 @@ class _DeletedRecipesViewState extends State<DeletedRecipesView> {
     }
   }
 
+  Future<void> _permanentDelete(RecipeModel recipe) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Permanently'),
+        content: Text(
+            'Are you sure you want to permanently delete "${recipe.title}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final success = await _recipeService.permanentDeleteRecipe(recipe.id!);
+    if (!mounted) return;
+    if (success) {
+      setState(() => _deletedRecipes.remove(recipe));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${recipe.title}" permanently deleted.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to permanently delete recipe.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _permanentDeleteAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete All Permanently'),
+        content: const Text(
+            'Are you sure you want to permanently delete all deleted recipes? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final ids = _deletedRecipes.map((r) => r.id!).toList();
+    final success = await _recipeService.permanentDeleteAllRecipes(ids);
+    if (!mounted) return;
+    if (success) {
+      setState(() => _deletedRecipes.clear());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All deleted recipes permanently removed.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to permanently delete all recipes.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _restore(RecipeModel recipe) async {
     final success = await _recipeService.restoreRecipe(recipe.id!);
     if (!mounted) return;
@@ -61,6 +144,17 @@ class _DeletedRecipesViewState extends State<DeletedRecipesView> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 1,
+        actions: [
+          if (_deletedRecipes.isNotEmpty)
+            TextButton.icon(
+              onPressed: _permanentDeleteAll,
+              icon: const Icon(Icons.delete_forever, color: Colors.red),
+              label: const Text(
+                'Delete All',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(
@@ -136,17 +230,28 @@ class _DeletedRecipesViewState extends State<DeletedRecipesView> {
                             style: TextStyle(
                                 fontSize: 12, color: Colors.grey[600]),
                           ),
-                          trailing: TextButton.icon(
-                            onPressed: () => _restore(recipe),
-                            icon: const Icon(Icons.restore,
-                                size: 18, color: Color(0xFF74BC42)),
-                            label: const Text(
-                              'Restore',
-                              style: TextStyle(
-                                color: Color(0xFF74BC42),
-                                fontWeight: FontWeight.w600,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => _restore(recipe),
+                                icon: const Icon(Icons.restore,
+                                    size: 18, color: Color(0xFF74BC42)),
+                                label: const Text(
+                                  'Restore',
+                                  style: TextStyle(
+                                    color: Color(0xFF74BC42),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            ),
+                              IconButton(
+                                onPressed: () => _permanentDelete(recipe),
+                                icon: const Icon(Icons.delete_forever,
+                                    color: Colors.red),
+                                tooltip: 'Delete permanently',
+                              ),
+                            ],
                           ),
                         ),
                       );

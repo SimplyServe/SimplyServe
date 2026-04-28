@@ -600,17 +600,36 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     return target;
   }
 
-  // 40/30/30 split (carbs/protein/fat) based on calorie target
+  // Protein from body weight (g/kg), fat fixed at 25% of calories,
+  // carbs fill whatever is left.
   double _computeProteinTarget(double calories) {
-    return (calories * 0.30) / 4; // 30% of calories, 4 kcal per gram
-  }
-
-  double _computeCarbTarget(double calories) {
-    return (calories * 0.40) / 4; // 40% of calories, 4 kcal per gram
+    if (_weight == null) return (calories * 0.30) / 4;
+    final double gPerKg;
+    switch (_goal) {
+      case 'lose':
+        gPerKg = 2.0;
+        break;
+      case 'gain':
+        gPerKg = 2.2;
+        break;
+      default:
+        gPerKg = 1.8;
+    }
+    final proteinG = _weight! * gPerKg;
+    // Cap so protein never exceeds 35% of calories
+    final maxProteinG = (calories * 0.35) / 4;
+    return proteinG < maxProteinG ? proteinG : maxProteinG;
   }
 
   double _computeFatTarget(double calories) {
-    return (calories * 0.30) / 9; // 30% of calories, 9 kcal per gram
+    return (calories * 0.25) / 9; // 25% of calories, 9 kcal per gram
+  }
+
+  double _computeCarbTarget(double calories) {
+    final proteinCals = _computeProteinTarget(calories) * 4;
+    final fatCals = _computeFatTarget(calories) * 9;
+    final remaining = calories - proteinCals - fatCals;
+    return remaining > 0 ? remaining / 4 : 0;
   }
 
   Future<void> _calculateAndShowResults() async {

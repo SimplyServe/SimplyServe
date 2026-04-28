@@ -780,5 +780,16 @@ async def restore_recipe(recipe_id: int, db: AsyncSession = Depends(database.get
     await db.commit()
     return {"message": "Restored"}
 
+@app.delete("/recipes/{recipe_id}/permanent")
+async def permanent_delete_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_db)):
+    res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_id == recipe_id))
+    recipe = res.scalars().first()
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    await db.delete(recipe)
+    await db.commit()
+    return {"message": "Permanently deleted"}
+
+
 from fastapi.staticfiles import StaticFiles
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

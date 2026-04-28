@@ -167,6 +167,33 @@ class RecipeService {
     }
   }
 
+  Future<bool> permanentDeleteRecipe(int id) async {
+    try {
+      await _dio.delete(
+        '/recipes/$id/permanent',
+        options: await _getAuthOptions(),
+      );
+      return true;
+    } catch (e) {
+      print('Error permanently deleting recipe: $e');
+      return false;
+    }
+  }
+
+  Future<bool> permanentDeleteAllRecipes(List<int> ids) async {
+    try {
+      final opts = await _getAuthOptions();
+      await Future.wait(ids.map((id) => _dio.delete(
+            '/recipes/$id/permanent',
+            options: opts,
+          )));
+      return true;
+    } catch (e) {
+      print('Error permanently deleting all recipes: $e');
+      return false;
+    }
+  }
+
   Future<bool> restoreRecipe(int id) async {
     try {
       await _dio.post(
