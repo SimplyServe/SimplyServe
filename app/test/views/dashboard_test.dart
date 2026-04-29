@@ -50,8 +50,7 @@ void main() {
       // Shows "Today's Meals" section — title and no-meals message (two separate Text widgets)
       expect(find.text("Today's Meals"), findsOneWidget);
       expect(find.text('No meals logged yet'), findsOneWidget);
-      expect(
-          find.text('Log meals from the Meal Calendar or Shopping List.'),
+      expect(find.text('Log meals from the Meal Calendar or Shopping List.'),
           findsOneWidget);
     });
 
@@ -144,7 +143,8 @@ void main() {
         ),
       );
 
-      expect(find.text('Here is your daily nutritional summary.'), findsOneWidget);
+      expect(
+          find.text('Here is your daily nutritional summary.'), findsOneWidget);
     });
 
     testWidgets('Dashboard macro counter shows Protein, Carbs and Fat labels',
