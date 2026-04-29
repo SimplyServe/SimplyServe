@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // added
+import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/profile_service.dart';
+import 'package:simplyserve/services/recipe_catalog_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
 class CalorieCoachView extends StatefulWidget {
@@ -46,6 +48,21 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   bool _isWeightUpdateMode = false;
   bool _showIntro = true;
 
+  // Dietary options — step 7.5
+  // Steps: ..., 7=goal, 7.5=dietary (handled as _step==75), 8=target weight, 9=done
+  final List<String> _dietaryOptions = [];
+
+  static const List<String> _allDietaryOptions = [
+    'Vegetarian',
+    'Vegan',
+    'Gluten Free',
+    'Dairy Free',
+    'Nut Free',
+    'Halal',
+    'Kosher',
+    'No restrictions',
+  ];
+
   // ── Brand colours ────────────────────────────────────────────────────
   static const Color _brandGreen = Color(0xFF74BC42);
   static const Color _darkGreen = Color(0xFF4E8A2B);
@@ -86,6 +103,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   static const _kFatTarget = 'cc_fat_target';
   static const _kCompleted = 'cc_completed';
   static const _kGoalReached = 'cc_goal_reached';
+  static const _kDietaryOptions = 'cc_dietary_options';
 
   @override
   void initState() {
@@ -137,6 +155,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _proteinTarget = prefs.getDouble(_kProteinTarget);
       _carbTarget = prefs.getDouble(_kCarbTarget);
       _fatTarget = prefs.getDouble(_kFatTarget);
+      final savedDietary = prefs.getStringList(_kDietaryOptions);
+      if (savedDietary != null) {
+        _dietaryOptions
+          ..clear()
+          ..addAll(savedDietary);
+      }
       _step = 9;
     });
 
@@ -166,6 +190,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     if (_proteinTarget != null) {
       _pushBot('Protein target: ${_proteinTarget!.round()}g/day');
     }
+    if (_dietaryOptions.isNotEmpty) {
+      _pushBot('Dietary preferences: $_dietaryDisplayName');
+    }
+    _pushBot('Tap "Suggest Recipes" to see meals matched to your goals and diet.');
   }
 
   Future<void> _saveResults() async {
@@ -193,6 +221,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     if (_fatTarget != null) {
       prefs.setDouble(_kFatTarget, _fatTarget!);
     }
+    prefs.setStringList(_kDietaryOptions, _dietaryOptions);
     prefs.setBool(_kCompleted, true);
   }
 
@@ -216,6 +245,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _kFatTarget,
       _kCompleted,
       _kGoalReached,
+      _kDietaryOptions,
     ]) {
       await prefs.remove(key);
     }
@@ -286,6 +316,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _calorieTarget = null;
     _proteinTarget = null;
     _isWeightUpdateMode = false;
+    _dietaryOptions.clear();
     setState(() {});
 
     _pushBot('This will only take a moment. How old are you? (years)');
@@ -366,11 +397,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   }
 
   bool get _showTextInput =>
-      _step == 0 ||
+      (_step == 0 ||
       _step == 2 ||
       _step == 4 ||
       _step == 8 ||
-      _isWeightUpdateMode;
+      _isWeightUpdateMode) && _step != 75;
 
   Future<void> _handleSubmitText() async {
     final text = _inputCtrl.text.trim();
@@ -519,12 +550,25 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _pushUser(labels[goal]!);
     _goal = goal;
 
-    if (goal == 'maintain') {
+    // Always go to dietary options step first
+    _step = 75;
+    await _sendBot(
+        'Great! Do you have any dietary requirements or preferences? Select all that apply, then tap "Continue".');
+    setState(() {});
+  }
+
+  Future<void> _confirmDietaryOptions() async {
+    final display = _dietaryOptions.isEmpty || _dietaryOptions.contains('No restrictions')
+        ? 'No restrictions'
+        : _dietaryOptions.join(', ');
+    _pushUser(display);
+
+    if (_goal == 'maintain') {
       _step = 9;
       await _calculateAndShowResults();
     } else {
       _step = 8;
-      final action = goal == 'gain' ? 'gain' : 'lose';
+      final action = _goal == 'gain' ? 'gain' : 'lose';
       final unitLabel = _weightUnit == 'lb' ? 'pounds' : 'kg';
       await _sendBot(
           'What is your target weight to $action to? (in $unitLabel)');
@@ -705,7 +749,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     await _sendBot(' Carbs : ${carbTarget.round()}g', delayMs: 400);
     await _sendBot(' Fat : ${fatTarget.round()}g', delayMs: 400);
     await _sendBot(
-        'Tap "Restart" to run again, "Done" for a summary, or "Update Weight" to log progress.',
+        'Tap "Suggest Recipes" to see meals matched to your goals, or "Restart" to run again.',
         delayMs: 500);
     setState(() {});
   }
@@ -766,6 +810,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             _summaryRow(Icons.person_outline, 'Gender', _gender ?? 'N/A'),
             _summaryRow(Icons.directions_run, 'Activity', _activity ?? 'N/A'),
             _summaryRow(Icons.flag_outlined, 'Goal', _goalDisplayName),
+            _summaryRow(Icons.restaurant_outlined, 'Diet', _dietaryDisplayName),
             if (_goal != 'maintain' && _targetWeight != null)
               _summaryRow(Icons.my_location,
                   'Target weight', _formatWeightForDisplay(_targetWeight!)),
@@ -829,6 +874,47 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                 overflow: TextOverflow.ellipsis),
           ),
         ],
+      ),
+    );
+  }
+
+  String get _dietaryDisplayName {
+    if (_dietaryOptions.isEmpty || _dietaryOptions.contains('No restrictions')) {
+      return 'No restrictions';
+    }
+    return _dietaryOptions.join(', ');
+  }
+
+  void _showRecipeSuggestions() {
+    // Map dietary options to recipe tags
+    final dietaryToTags = <String, String>{
+      'Vegan': 'Vegan',
+      'Vegetarian': 'Vegetarian',
+      'Gluten Free': 'Gluten Free',
+      'Dairy Free': 'Dairy Free',
+      'High Protein': 'High Protein',
+    };
+
+    final activeTags = _dietaryOptions
+        .where((d) => dietaryToTags.containsKey(d))
+        .map((d) => dietaryToTags[d]!)
+        .toList();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _RecipeSuggestionSheet(
+        calorieTarget: _calorieTarget,
+        proteinTarget: _proteinTarget,
+        dietaryTags: activeTags,
+        dietaryLabel: _dietaryDisplayName,
+        goal: _goal ?? 'maintain',
+        brandGreen: _brandGreen,
+        darkGreen: _darkGreen,
+        surfaceGreen: _surfaceGreen,
+        textDark: _textDark,
+        textMuted: _textMuted,
       ),
     );
   }
@@ -1148,8 +1234,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                       padding: const EdgeInsets.all(20),
                       child: const Text(
                         'Welcome to Calorie Coach — your assistant for personalised calorie and protein targets.\n\n'
-                        'I will ask a few quick questions (age, height, weight, gender, activity level, and fitness goal) '
-                        'to calculate your daily calorie and macro needs.\n\n'
+                        'I will ask a few quick questions (age, height, weight, gender, activity level, fitness goal, and dietary requirements) '
+                        'to calculate your daily calorie and macro needs, then suggest matching recipes.\n\n'
                         'Your answers are stored locally on this device only.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -1540,7 +1626,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                         },
                       ].map((e) {
                         return _styledOptionCard(
-                          title: e['label'] as String,
+                            title: e['label'] as String,
                           subtitle: e['desc'] as String,
                           icon: e['icon'] as IconData,
                           selected: _goal == e['key'],
@@ -1552,6 +1638,99 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                           'Tap an option to select. If you are unsure, choose the closest match.',
                           style:
                               TextStyle(fontSize: 12, color: Color(0xFF8A9A85))),
+                    ],
+                  ),
+                ),
+
+              // ── Step 75: Dietary options ──
+              if (_step == 75)
+                _panelContainer(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _panelLabel('Any dietary requirements?'),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Select all that apply — we\'ll use this to suggest matching recipes.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF8A9A85)),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _allDietaryOptions.map((option) {
+                          final selected = _dietaryOptions.contains(option);
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (option == 'No restrictions') {
+                                  _dietaryOptions.clear();
+                                  _dietaryOptions.add('No restrictions');
+                                } else {
+                                  _dietaryOptions.remove('No restrictions');
+                                  if (selected) {
+                                    _dietaryOptions.remove(option);
+                                  } else {
+                                    _dietaryOptions.add(option);
+                                  }
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? const Color(0xFFEAF7E5)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selected
+                                      ? _brandGreen
+                                      : const Color(0xFFE7EEE2),
+                                  width: selected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (selected)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 5),
+                                      child: Icon(Icons.check_circle,
+                                          size: 14, color: _brandGreen),
+                                    ),
+                                  Text(
+                                    option,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: selected ? _textDark : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _confirmDietaryOptions,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _brandGreen,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text('Continue'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1704,12 +1883,428 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _showRecipeSuggestions,
+                            icon: const Icon(Icons.restaurant_menu,
+                                color: Colors.white, size: 18),
+                            label: const Text('Suggest Recipes'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _darkGreen,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Recipe Suggestion Bottom Sheet ──────────────────────────────────────────
+
+class _RecipeSuggestionSheet extends StatefulWidget {
+  final double? calorieTarget;
+  final double? proteinTarget;
+  final List<String> dietaryTags;
+  final String dietaryLabel;
+  final String goal;
+  final Color brandGreen;
+  final Color darkGreen;
+  final Color surfaceGreen;
+  final Color textDark;
+  final Color textMuted;
+
+  const _RecipeSuggestionSheet({
+    required this.calorieTarget,
+    required this.proteinTarget,
+    required this.dietaryTags,
+    required this.dietaryLabel,
+    required this.goal,
+    required this.brandGreen,
+    required this.darkGreen,
+    required this.surfaceGreen,
+    required this.textDark,
+    required this.textMuted,
+  });
+
+  @override
+  State<_RecipeSuggestionSheet> createState() => _RecipeSuggestionSheetState();
+}
+
+class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
+  final RecipeCatalogService _catalogService = RecipeCatalogService();
+  List<dynamic> _allRecipes = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecipes();
+  }
+
+  Future<void> _loadRecipes() async {
+    try {
+      final recipes = await _catalogService.getAllRecipes();
+      setState(() {
+        _allRecipes = recipes;
+        _isLoading = false;
+      });
+    } catch (_) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  List<dynamic> get _filteredRecipes {
+    if (widget.dietaryTags.isEmpty) return _allRecipes.take(10).toList();
+    return _allRecipes.where((r) {
+      final tags = _recipeTags(r);
+      return widget.dietaryTags.every((dt) => tags.contains(dt));
+    }).toList();
+  }
+
+  dynamic _recipeField(dynamic recipe, String key) {
+    if (recipe is Map) return recipe[key];
+    try {
+      final json = recipe.toJson();
+      if (json is Map) return json[key];
+    } catch (_) {}
+    try {
+      switch (key) {
+        case 'calories':
+          return recipe.calories;
+        case 'protein':
+          return recipe.protein;
+        case 'tags':
+          return recipe.tags;
+        case 'title':
+          return recipe.title;
+        case 'description':
+          return recipe.description;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  List<dynamic> _recipeTags(dynamic recipe) {
+    final tags = _recipeField(recipe, 'tags');
+    if (tags is List) return tags;
+    return [];
+  }
+
+  int _recipeInt(dynamic recipe, String key) {
+    final value = _recipeField(recipe, key);
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  String _recipeString(dynamic recipe, String key) {
+    final value = _recipeField(recipe, key);
+    return value?.toString() ?? '';
+  }
+
+  Color _kcalColor(int kcal) {
+    final target = widget.calorieTarget;
+    if (target == null) return Colors.blueGrey;
+    final ratio = kcal / target;
+    if (ratio < 0.25) return Colors.blue;
+    if (ratio < 0.45) return Colors.green;
+    return Colors.orange;
+  }
+
+  Future<void> _navigateToRecipe(
+      BuildContext context, dynamic recipe) async {
+    try {
+      if (!context.mounted) return;
+      Navigator.pushNamed(context, '/recipe', arguments: recipe);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Unable to load recipe details.'),
+          backgroundColor: widget.brandGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final recipes = _filteredRecipes;
+    String goalLabel;
+    if (widget.goal == 'gain') {
+      goalLabel = 'Gain Weight';
+    } else if (widget.goal == 'lose') {
+      goalLabel = 'Lose Weight';
+    } else {
+      goalLabel = 'Maintain Weight';
+    }
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 4),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDDDDDD),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [widget.brandGreen, widget.darkGreen],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.restaurant_menu,
+                        color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Suggested Recipes',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          '$goalLabel · ${widget.dietaryLabel}',
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (widget.calorieTarget != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${widget.calorieTarget!.round()} kcal/day',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Recipe list
+            Expanded(
+                child: _isLoading
+                  ? Center(
+                    child: CircularProgressIndicator(
+                      color: widget.brandGreen),
+                  )
+                  : recipes.isEmpty
+                    ? Center(
+                      child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                        Icon(Icons.search_off,
+                          size: 56,
+                          color: widget.brandGreen.withValues(alpha: 0.4)),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No recipes match all your dietary filters.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 15, color: widget.textMuted),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Try adjusting your dietary options in the coach.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: widget.textMuted
+                              .withValues(alpha: 0.7)),
+                        ),
+                        ],
+                      ),
+                      ),
+                    )
+                    : ListView.builder(
+                      controller: scrollCtrl,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      itemCount: recipes.length,
+                      itemBuilder: (_, i) {
+                      final r = recipes[i];
+                      final kcal = _recipeInt(r, 'calories');
+                      final protein = _recipeInt(r, 'protein');
+                      final tags = _recipeTags(r);
+                      final name = _recipeString(r, 'title').isNotEmpty
+                          ? _recipeString(r, 'title')
+                          : 'Unknown Recipe';
+                      final description = _recipeString(r, 'description');
+                      return GestureDetector(
+                        onTap: () => _navigateToRecipe(context, r),
+                        child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: widget.surfaceGreen,
+                          borderRadius: BorderRadius.circular(14),
+                          border:
+                            Border.all(color: const Color(0xFFDEEDD4)),
+                          boxShadow: [
+                          BoxShadow(
+                            color:
+                              Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                            children: [
+                              Expanded(
+                              child: Text(
+                                name,
+                                style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: widget.textDark,
+                                ),
+                              ),
+                              ),
+                              Container(
+                              padding:
+                                const EdgeInsets.symmetric(
+                                  horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _kcalColor(kcal)
+                                  .withValues(alpha: 0.12),
+                                borderRadius:
+                                  BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$kcal kcal',
+                                style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _kcalColor(kcal),
+                                ),
+                              ),
+                              ),
+                            ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                            description,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: Color(0xFF555555),
+                              height: 1.4),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                            children: [
+                              Icon(Icons.egg_outlined,
+                                size: 13,
+                                color: widget.brandGreen),
+                              const SizedBox(width: 4),
+                              Text(
+                              '${protein}g protein',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: widget.textDark),
+                              ),
+                              const Spacer(),
+                              Wrap(
+                              spacing: 4,
+                              children: tags.take(3).map((tag) {
+                                return Container(
+                                padding:
+                                  const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: widget.brandGreen
+                                    .withValues(alpha: 0.12),
+                                  borderRadius:
+                                    BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  tag.toString(),
+                                  style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: widget.darkGreen,
+                                  ),
+                                ),
+                                );
+                              }).toList(),
+                              ),
+                            ],
+                            ),
+                          ],
+                          ),
+                        ),
+                        ),
+                      );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );
