@@ -4,6 +4,7 @@ import 'package:simplyserve/services/allergen_filter_service.dart';
 import 'package:simplyserve/services/allergy_service.dart';
 import 'package:simplyserve/services/favourites_service.dart';
 import 'package:simplyserve/services/recipe_catalog_service.dart';
+import 'package:simplyserve/services/shopping_list_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
@@ -752,6 +753,266 @@ class _RecipeCard extends StatelessWidget {
     this.onReturn,
   });
 
+  Future<void> _showAddToShoppingListSheet(BuildContext context) async {
+    final service = ShoppingListService();
+    final ingredients = recipe.ingredients;
+    if (ingredients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This recipe has no ingredients to add.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final selected = <int>{...List.generate(ingredients.length, (i) => i)};
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDDDDDD),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.shopping_cart_outlined,
+                            color: Color(0xFF74BC42), size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Add to Shopping List',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            Text(
+                              recipe.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF74BC42),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Select / deselect all
+                      TextButton(
+                        onPressed: () {
+                          setSheetState(() {
+                            if (selected.length == ingredients.length) {
+                              selected.clear();
+                            } else {
+                              selected.addAll(
+                                  List.generate(ingredients.length, (i) => i));
+                            }
+                          });
+                        },
+                        child: Text(
+                          selected.length == ingredients.length
+                              ? 'Deselect all'
+                              : 'Select all',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF74BC42),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(ctx).size.height * 0.45,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: ingredients.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, color: Color(0xFFF5F5F5)),
+                      itemBuilder: (_, i) {
+                        final ing = ingredients[i];
+                        final isChecked = selected.contains(i);
+                        return InkWell(
+                          onTap: () {
+                            setSheetState(() {
+                              if (isChecked) {
+                                selected.remove(i);
+                              } else {
+                                selected.add(i);
+                              }
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 4),
+                            child: Row(
+                              children: [
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    color: isChecked
+                                        ? const Color(0xFF74BC42)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: isChecked
+                                          ? const Color(0xFF74BC42)
+                                          : const Color(0xFFCCCCCC),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: isChecked
+                                      ? const Icon(Icons.check,
+                                          size: 14, color: Colors.white)
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    ing.name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isChecked
+                                          ? const Color(0xFF1A1A1A)
+                                          : const Color(0xFF888888),
+                                      fontWeight: isChecked
+                                          ? FontWeight.w500
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '${ing.quantity} ${ing.unit}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF74BC42),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: selected.isEmpty
+                            ? const Color(0xFFCCCCCC)
+                            : const Color(0xFF74BC42),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: selected.isEmpty
+                          ? null
+                          : () {
+                              final chosenLabels = selected
+                                  .map((i) => ingredients[i].displayLabel)
+                                  .toList();
+                              service.addIngredients(
+                                chosenLabels,
+                                recipeTitle: recipe.title,
+                              );
+                              service.addRecipe(ShoppingRecipeEntry(
+                                recipeTitle: recipe.title,
+                                caloriesPerServing: recipe.nutrition.calories,
+                                proteinPerServing: double.tryParse(
+                                      recipe.nutrition.protein
+                                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                                    ) ??
+                                    0,
+                                carbsPerServing: double.tryParse(
+                                      recipe.nutrition.carbs
+                                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                                    ) ??
+                                    0,
+                                fatsPerServing: double.tryParse(
+                                      recipe.nutrition.fats
+                                          .replaceAll(RegExp(r'[^0-9.]'), ''),
+                                    ) ??
+                                    0,
+                              ));
+                              Navigator.of(ctx).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    '${selected.length} ingredient${selected.length == 1 ? '' : 's'} added to your shopping list.',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: const Color(0xFF74BC42),
+                                ),
+                              );
+                            },
+                      child: Text(
+                        selected.isEmpty
+                            ? 'Select ingredients'
+                            : 'Add ${selected.length} ingredient${selected.length == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -926,6 +1187,33 @@ class _RecipeCard extends StatelessWidget {
                           .toList(),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  const Divider(height: 1, color: Color(0xFFF0F5EC)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showAddToShoppingListSheet(context),
+                      icon: const Icon(Icons.add_shopping_cart_rounded,
+                          size: 16, color: Color(0xFF74BC42)),
+                      label: const Text(
+                        'Add to Shopping List',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF74BC42),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFB8DFA0)),
+                        backgroundColor: const Color(0xFFF4FAF1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
