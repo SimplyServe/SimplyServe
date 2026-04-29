@@ -31,6 +31,7 @@ class _DeletedRecipesViewState extends State<DeletedRecipesView> {
     }
   }
 
+  // Soft-deleted recipes still have an id; permanent deletion removes them from the server
   Future<void> _permanentDelete(RecipeModel recipe) async {
     final confirmed = await showDialog<bool>(
       context: context,

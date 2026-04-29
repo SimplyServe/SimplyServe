@@ -29,6 +29,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     super.dispose();
   }
 
+  // ShoppingListService extends ChangeNotifier; rebuild whenever the list mutates
   void _onChanged() => setState(() {});
 
   void _addCustomIngredient() {
@@ -57,6 +58,9 @@ class _ShoppingListViewState extends State<ShoppingListView> {
     return '${date.day} ${months[date.month]}';
   }
 
+  // Items shared across multiple recipes go into a "Common ingredients" section;
+  // items tied to exactly one recipe go under that recipe; uncategorised items
+  // go into "Other ingredients".
   List<_ShoppingSection> _buildSections(List<ShoppingItem> items) {
     // Sort recipes by plannedDate (earliest first, undated last)
     final sortedRecipes = List.of(_service.recipes)

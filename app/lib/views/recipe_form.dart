@@ -152,14 +152,14 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       imageUrl: widget.existingRecipe?.imageUrl ?? '',
       prepTime: prepTime,
       cookTime: cookTime,
-      totalTime: '$prepTime + $cookTime',
+      totalTime: '$prepTime + $cookTime', // stored as display string, not a computed sum
       servings: servings,
       difficulty: 'Medium',
       nutrition: const NutritionInfo(
           calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
       ingredients: List<IngredientEntry>.from(_selectedIngredients),
       steps: steps,
-      tags: _selectedTags.isEmpty ? const ['New'] : _selectedTags.toList(),
+      tags: _selectedTags.isEmpty ? const ['New'] : _selectedTags.toList(), // 'New' is a sentinel so the backend never receives an empty tag list
       id: widget.existingRecipe?.id,
     );
 
@@ -715,6 +715,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
 
     final results = await _recipeService.searchIngredients(trimmed);
     if (!mounted) return;
+    // Discard results if the query changed while the request was in flight
     if (_ingredientSearchController.text.trim() != trimmed) {
       return;
     }

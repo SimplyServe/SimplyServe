@@ -68,6 +68,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
     }).toList();
   }
 
+  // Returns a title→servings map for either the meal log (forLog=true) or the meal plan
   Map<String, int> _servingsByTitle(DateTime day, {required bool forLog}) {
     if (forLog) {
       final meals = _mealLogService.mealsForDay(day);
@@ -331,6 +332,7 @@ class _MealCalendarViewState extends State<MealCalendarView> {
     final meals = _mealPlanService.mealsForDay(day);
     final shoppingService = ShoppingListService();
     for (final meal in meals) {
+      // orElse returns a dummy; the guard below skips it if title doesn't match
       final recipe = _availableRecipes.firstWhere(
         (r) => r.title == meal.recipeTitle,
         orElse: () => _availableRecipes.first,

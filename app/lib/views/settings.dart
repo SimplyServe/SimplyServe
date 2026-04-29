@@ -228,6 +228,7 @@ class _SettingsViewState extends State<SettingsView>
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             onPressed: () async {
+              // Auth state is local-only (SharedPreferences), not a server session
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool('isLoggedIn', false);
               if (!mounted) return;

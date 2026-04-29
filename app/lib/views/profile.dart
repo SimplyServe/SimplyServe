@@ -217,6 +217,7 @@ class _ProfileViewState extends State<ProfileView> {
     });
   }
 
+  // Height is always stored in cm internally; convert to ft/in only for display
   String _formatHeight(double cm) {
     if (_ccHeightUnit == 'ft') {
       final totalInches = cm / 2.54;
@@ -227,6 +228,7 @@ class _ProfileViewState extends State<ProfileView> {
     return '${cm.toStringAsFixed(1)} cm';
   }
 
+  // Weight is always stored in kg internally; convert to lb only for display
   String _formatWeight(double kg) {
     if (_ccWeightUnit == 'lb') {
       return '${(kg / 0.453592).toStringAsFixed(1)} lb';
