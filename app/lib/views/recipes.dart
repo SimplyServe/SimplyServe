@@ -148,6 +148,7 @@ class _RecipesViewState extends State<RecipesView>
       final allergies = results[1] as List<String>;
       final favourites = results[2] as Set<String>;
 
+      // Recipes without an id are SimplyServe built-ins; those with an id are user-created
       final local = recipes.where((r) => r.id == null).toList()
         ..sort((a, b) => a.title.compareTo(b.title));
 

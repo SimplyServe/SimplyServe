@@ -119,7 +119,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       return;
     }
 
-    // restore fields — skip intro for returning users
+    // Skip intro for returning users; jump straight to step 9 (results screen)
     setState(() {
       _showIntro = false;
       _age = prefs.getInt(_kAge);
@@ -614,7 +614,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         target = tdee;
         break;
     }
-    if (target < 1200) target = 1200;
+    if (target < 1200) target = 1200; // 1200 kcal is a widely-used safe minimum to prevent nutritional deficiency
     return target;
   }
 

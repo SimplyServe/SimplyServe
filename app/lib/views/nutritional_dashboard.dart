@@ -70,6 +70,7 @@ class _DashboardViewState extends State<DashboardView> {
 
   Future<void> _loadCoachData() async {
     final prefs = await SharedPreferences.getInstance();
+    // _kCompleted is written by CalorieCoachView after finishing the questionnaire
     final completed = prefs.getBool(_kCompleted) ?? false;
     final calorieTarget = prefs.getDouble(_kCalorieTarget);
     final proteinTarget = prefs.getDouble(_kProteinTarget);
