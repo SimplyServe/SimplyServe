@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/allergen_filter_service.dart';
 import 'package:simplyserve/services/allergy_service.dart';
+import 'package:simplyserve/services/custom_tag_service.dart';
 import 'package:simplyserve/services/favourites_service.dart';
 import 'package:simplyserve/services/recipe_catalog_service.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
@@ -100,12 +101,14 @@ class _RecipesViewState extends State<RecipesView>
   final AllergyService _allergyService = AllergyService();
   final RecipeCatalogService _recipeCatalogService = RecipeCatalogService();
   final FavouritesService _favouritesService = FavouritesService();
+  final CustomTagService _customTagService = CustomTagService();
   String _query = '';
   bool _isLoading = true;
   final List<RecipeModel> _localRecipes = [];
   final List<RecipeModel> _userRecipes = [];
   List<String> _allergies = const [];
   Set<String> _favourites = {};
+  List<String> _customTags = [];
 
   final Set<String> _selectedTags = {};
   final Set<String> _selectedDifficulties = {};
@@ -133,6 +136,12 @@ class _RecipesViewState extends State<RecipesView>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _fetchRecipes();
+    _loadCustomTags();
+  }
+
+  Future<void> _loadCustomTags() async {
+    final tags = await _customTagService.loadTags();
+    if (mounted) setState(() => _customTags = tags);
   }
 
   Future<void> _fetchRecipes() async {
@@ -301,6 +310,7 @@ class _RecipesViewState extends State<RecipesView>
           );
           if (result is RecipeModel) {
             await _fetchRecipes();
+            await _loadCustomTags();
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -437,6 +447,7 @@ class _RecipesViewState extends State<RecipesView>
                     selectedTags: _selectedTags,
                     selectedDifficulties: _selectedDifficulties,
                     selectedCuisines: _selectedCuisines,
+                    customTags: _customTags,
                     maxDuration: _maxDuration,
                     onTagToggled: (tag) => setState(() =>
                         _selectedTags.contains(tag)
@@ -491,6 +502,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
   final Set<String> selectedTags;
   final Set<String> selectedDifficulties;
   final Set<String> selectedCuisines;
+  final List<String> customTags;
   final double maxDuration;
   final ValueChanged<String> onTagToggled;
   final ValueChanged<String> onDifficultyToggled;
@@ -501,6 +513,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
     required this.selectedTags,
     required this.selectedDifficulties,
     required this.selectedCuisines,
+    required this.customTags,
     required this.maxDuration,
     required this.onTagToggled,
     required this.onDifficultyToggled,
@@ -577,6 +590,58 @@ class _AdvancedFilterPanel extends StatelessWidget {
               );
             }).toList(),
           ),
+
+          // ── Custom Tags ────────────────────────────
+          if (customTags.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Custom Tags',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF5FA832),
+                  letterSpacing: 0.4),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: customTags.map((tag) {
+                final selected = selectedTags.contains(tag);
+                const colour = Color(0xFF9C27B0);
+                return GestureDetector(
+                  onTap: () => onTagToggled(tag),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: selected
+                          // ignore: deprecated_member_use
+                          ? colour.withOpacity(0.18)
+                          : const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected
+                            // ignore: deprecated_member_use
+                            ? colour.withOpacity(0.6)
+                            : const Color(0xFFDDDDDD),
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? colour : const Color(0xFF666666),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
 
           const SizedBox(height: 14),
           const Divider(height: 1, color: Color(0xFFEEEEEE)),

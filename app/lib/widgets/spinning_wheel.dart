@@ -6,6 +6,7 @@ import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/allergen_filter_service.dart';
 import 'package:simplyserve/services/allergy_service.dart';
 import 'package:simplyserve/services/recipe_service.dart';
+import 'package:simplyserve/services/reroll_avoidance_service.dart';
 
 /// Stays fast for a long time, then dramatically creeps to a stop —
 /// like a real slot machine building tension on the final items.
@@ -26,8 +27,10 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
     with WidgetsBindingObserver {
   final RecipeService _recipeService = RecipeService();
   final AllergyService _allergyService = AllergyService();
+  final RerollAvoidanceService _rerollService = RerollAvoidanceService();
   bool _isLoading = true;
   bool _isSpinning = false;
+  Set<String> _rolledToday = {};
 
   final Map<String, RecipeModel> _recipeMap = {};
 
@@ -40,11 +43,17 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   String? _activeMealFilter;
 
   List<String> get _meals {
-    if (_activeMealFilter == null) return _recipeMap.keys.toList();
-    return _recipeMap.entries
-        .where((e) => e.value.tags.contains(_activeMealFilter))
-        .map((e) => e.key)
-        .toList();
+    List<String> base;
+    if (_activeMealFilter == null) {
+      base = _recipeMap.keys.toList();
+    } else {
+      base = _recipeMap.entries
+          .where((e) => e.value.tags.contains(_activeMealFilter))
+          .map((e) => e.key)
+          .toList();
+    }
+    // Filter out recipes already rolled today
+    return base.where((title) => !_rolledToday.contains(title)).toList();
   }
 
   String _selectedMeal = '';
@@ -58,6 +67,11 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scrollController = FixedExtentScrollController();
+    _loadRolledAndFetch();
+  }
+
+  Future<void> _loadRolledAndFetch() async {
+    _rolledToday = await _rerollService.getRolledToday();
     _fetchRecipes();
   }
 
@@ -176,10 +190,13 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
     );
 
     if (mounted) {
+      final selected = _meals[finalTarget % _meals.length];
+      await _rerollService.markRolled(selected);
+      _rolledToday = await _rerollService.getRolledToday();
       setState(() {
         _currentIndex = finalTarget;
         _isSpinning = false;
-        _selectedMeal = _meals[finalTarget % _meals.length];
+        _selectedMeal = selected;
       });
     }
   }
@@ -297,6 +314,55 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
           ),
           const SizedBox(height: 12),
           _buildMealFilterRow(),
+          if (_rolledToday.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 14,
+                      color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_rolledToday.length} recipe${_rolledToday.length == 1 ? '' : 's'} rolled today',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () async {
+                      await _rerollService.clearRolledToday();
+                      _rolledToday = {};
+                      setState(() {
+                        _selectedMeal = '';
+                        _scrollController.dispose();
+                        _scrollController = FixedExtentScrollController();
+                        if (_meals.isNotEmpty) {
+                          _currentIndex =
+                              (_virtualMultiplier ~/ 2) * _meals.length;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (_scrollController.hasClients) {
+                              _scrollController.jumpToItem(_currentIndex);
+                            }
+                          });
+                        }
+                      });
+                    },
+                    child: const Text(
+                      'Reset',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF74BC42),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           _buildSlotMachine(),
           const SizedBox(height: 16),
