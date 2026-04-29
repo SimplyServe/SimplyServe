@@ -52,14 +52,15 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   // Steps: ..., 7=goal, 7.5=dietary (handled as _step==75), 8=target weight, 9=done
   final List<String> _dietaryOptions = [];
 
+  // These must exactly match the tag strings used in the recipe catalog
+  // (see _kAllTags in recipes.dart). Only include tags that recipes actually
+  // carry so the filter always returns results.
   static const List<String> _allDietaryOptions = [
-    'Vegetarian',
     'Vegan',
+    'High Protein',
+    'High Fibre',
     'Gluten Free',
     'Dairy Free',
-    'Nut Free',
-    'Halal',
-    'Kosher',
     'No restrictions',
   ];
 
@@ -886,19 +887,15 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   }
 
   void _showRecipeSuggestions() {
-    // Map dietary options to recipe tags
-    final dietaryToTags = <String, String>{
-      'Vegan': 'Vegan',
-      'Vegetarian': 'Vegetarian',
-      'Gluten Free': 'Gluten Free',
-      'Dairy Free': 'Dairy Free',
-      'High Protein': 'High Protein',
-    };
+    // "No restrictions" or nothing selected → no filter (show all recipes).
+    // Otherwise pass the selected labels directly — they match the catalog
+    // tag strings exactly (sourced from _kAllTags in recipes.dart).
+    final noFilter = _dietaryOptions.isEmpty ||
+        _dietaryOptions.contains('No restrictions');
 
-    final activeTags = _dietaryOptions
-        .where((d) => dietaryToTags.containsKey(d))
-        .map((d) => dietaryToTags[d]!)
-        .toList();
+    final activeTags = noFilter
+        ? <String>[]
+        : List<String>.from(_dietaryOptions);
 
     showModalBottomSheet<void>(
       context: context,
@@ -1950,17 +1947,29 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
   List<dynamic> _allRecipes = [];
   bool _isLoading = true;
 
+  // All tags found across loaded recipes — derived at runtime, not hardcoded
+  List<String> _availableTags = [];
+  // Currently active filters — seeded from the coach's dietary selection
+  late Set<String> _activeFilters;
+
   @override
   void initState() {
     super.initState();
+    _activeFilters = Set<String>.from(widget.dietaryTags);
     _loadRecipes();
   }
 
   Future<void> _loadRecipes() async {
     try {
       final recipes = await _catalogService.getAllRecipes();
+      // Collect every distinct tag that appears on at least one recipe
+      final tagSet = <String>{};
+      for (final r in recipes) {
+        tagSet.addAll(_recipeTags(r));
+      }
       setState(() {
         _allRecipes = recipes;
+        _availableTags = tagSet.toList()..sort();
         _isLoading = false;
       });
     } catch (_) {
@@ -1969,46 +1978,54 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
   }
 
   List<dynamic> get _filteredRecipes {
-    if (widget.dietaryTags.isEmpty) return _allRecipes.take(10).toList();
+    // No active filters → return every recipe
+    if (_activeFilters.isEmpty) return List<dynamic>.from(_allRecipes);
+    // Keep only recipes that carry every selected tag
     return _allRecipes.where((r) {
       final tags = _recipeTags(r);
-      return widget.dietaryTags.every((dt) => tags.contains(dt));
+      return _activeFilters.every((dt) => tags.contains(dt));
     }).toList();
   }
 
   dynamic _recipeField(dynamic recipe, String key) {
-    if (recipe is Map) return recipe[key];
-    try {
-      final json = recipe.toJson();
-      if (json is Map) return json[key];
-    } catch (_) {}
+    // Prefer typed RecipeModel access (avoids reflection / toJson overhead)
     try {
       switch (key) {
         case 'calories':
-          return recipe.calories;
+          return recipe.nutrition.calories; // int
         case 'protein':
-          return recipe.protein;
+          return recipe.nutrition.protein;  // String e.g. "25g"
         case 'tags':
-          return recipe.tags;
+          return recipe.tags;               // List<String>
         case 'title':
           return recipe.title;
         case 'description':
-          return recipe.description;
+          return recipe.summary;            // RecipeModel uses 'summary'
       }
     } catch (_) {}
+    // Fallback for Map-shaped recipes (user-created via API)
+    if (recipe is Map) return recipe[key];
     return null;
   }
 
-  List<dynamic> _recipeTags(dynamic recipe) {
+  List<String> _recipeTags(dynamic recipe) {
+    try {
+      final t = recipe.tags;
+      if (t is List) return List<String>.from(t);
+    } catch (_) {}
     final tags = _recipeField(recipe, 'tags');
-    if (tags is List) return tags;
+    if (tags is List) return List<String>.from(tags);
     return [];
   }
 
   int _recipeInt(dynamic recipe, String key) {
     final value = _recipeField(recipe, key);
+    if (value is int) return value;
     if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
+    if (value is String) {
+      // Strip non-numeric chars (e.g. "25g" → 25)
+      return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    }
     return 0;
   }
 
@@ -2140,7 +2157,103 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                 ],
               ),
             ),
-            // Recipe list
+            // ── Filter chips row ──
+            if (!_isLoading && _availableTags.isNotEmpty)
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.filter_list,
+                            size: 14, color: widget.textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Filter by tag',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: widget.textMuted),
+                        ),
+                        const Spacer(),
+                        if (_activeFilters.isNotEmpty)
+                          GestureDetector(
+                            onTap: () =>
+                                setState(() => _activeFilters.clear()),
+                            child: Text(
+                              'Clear all',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: widget.brandGreen,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _availableTags.map((tag) {
+                        final selected = _activeFilters.contains(tag);
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              if (selected) {
+                                _activeFilters.remove(tag);
+                              } else {
+                                _activeFilters.add(tag);
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? widget.brandGreen
+                                  : widget.surfaceGreen,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: selected
+                                    ? widget.brandGreen
+                                    : const Color(0xFFCCE8B5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (selected) ...[
+                                  const Icon(Icons.check,
+                                      size: 11, color: Colors.white),
+                                  const SizedBox(width: 3),
+                                ],
+                                Text(
+                                  tag,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: selected
+                                        ? Colors.white
+                                        : widget.darkGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 6),
+                    Divider(
+                        height: 1,
+                        color: const Color(0xFFE7EEE2)),
+                  ],
+                ),
+              ),
+            // Recipe list — rebuilds reactively when _activeFilters changes
             Expanded(
                 child: _isLoading
                   ? Center(
@@ -2159,19 +2272,38 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                           color: widget.brandGreen.withValues(alpha: 0.4)),
                         const SizedBox(height: 16),
                         Text(
-                          'No recipes match all your dietary filters.',
+                          'No recipes match the selected filters.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 15, color: widget.textMuted),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Try adjusting your dietary options in the coach.',
+                          'Try removing a filter above to see more results.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
                             color: widget.textMuted
                               .withValues(alpha: 0.7)),
+                        ),
+                        const SizedBox(height: 16),
+                        GestureDetector(
+                          onTap: () => setState(() => _activeFilters.clear()),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: widget.brandGreen,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Clear all filters',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13),
+                            ),
+                          ),
                         ),
                         ],
                       ),
