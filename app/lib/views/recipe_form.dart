@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/recipe_service.dart';
+import 'package:simplyserve/services/custom_tag_service.dart';
+import 'package:simplyserve/services/private_notes_service.dart';
 import 'dart:io' show File;
 
 const List<String> _kMealTypeTags = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -59,8 +61,11 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   final _servingsController = TextEditingController();
   final _ingredientSearchController = TextEditingController();
   final _stepsController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _customTagController = TextEditingController();
   XFile? _imageFile;
   final Set<String> _selectedTags = {};
+  List<String> _customTags = [];
   bool _isLoading = false;
   bool _isSearchingIngredients = false;
   List<String> _ingredientSuggestions = [];
@@ -68,6 +73,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
 
   final ImagePicker _picker = ImagePicker();
   final RecipeService _recipeService = RecipeService();
+  final CustomTagService _customTagService = CustomTagService();
+  final PrivateNotesService _notesService = PrivateNotesService();
 
   bool get _isEditMode => widget.existingRecipe?.id != null;
 
@@ -75,18 +82,37 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   void initState() {
     super.initState();
     final recipe = widget.existingRecipe;
-    if (recipe == null) {
-      return;
+    if (recipe != null) {
+      _titleController.text = recipe.title;
+      _summaryController.text = recipe.summary;
+      _prepTimeController.text = recipe.prepTime;
+      _cookTimeController.text = recipe.cookTime;
+      _servingsController.text = recipe.servings.toString();
+      _stepsController.text = recipe.steps.join('\n');
+      _selectedIngredients.addAll(recipe.ingredients);
+      _selectedTags.addAll(recipe.tags);
     }
+    _loadCustomTags();
+    _loadPrivateNote();
+  }
 
-    _titleController.text = recipe.title;
-    _summaryController.text = recipe.summary;
-    _prepTimeController.text = recipe.prepTime;
-    _cookTimeController.text = recipe.cookTime;
-    _servingsController.text = recipe.servings.toString();
-    _stepsController.text = recipe.steps.join('\n');
-    _selectedIngredients.addAll(recipe.ingredients);
-    _selectedTags.addAll(recipe.tags);
+  Future<void> _loadCustomTags() async {
+    final tags = await _customTagService.loadTags();
+    if (mounted) {
+      setState(() => _customTags = tags);
+    }
+  }
+
+  Future<void> _loadPrivateNote() async {
+    final recipe = widget.existingRecipe;
+    if (recipe == null) return;
+    final note = await _notesService.getNote(
+      id: recipe.id,
+      title: recipe.title,
+    );
+    if (mounted && note.isNotEmpty) {
+      _notesController.text = note;
+    }
   }
 
   Future<void> _pickImage() async {
@@ -151,7 +177,14 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (result != null) {
-        Navigator.of(context).pop(result);
+        // Save private note
+        final noteText = _notesController.text.trim();
+        await _notesService.saveNote(
+          id: result.id,
+          title: result.title,
+          note: noteText,
+        );
+        if (mounted) Navigator.of(context).pop(result);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -173,6 +206,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     _servingsController.dispose();
     _ingredientSearchController.dispose();
     _stepsController.dispose();
+    _notesController.dispose();
+    _customTagController.dispose();
     super.dispose();
   }
 
@@ -272,6 +307,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       title: 'Cuisine',
                       options: _kCuisineTags,
                     ),
+                    const SizedBox(height: 12),
+                    _buildCustomTagSection(context),
                     const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -362,6 +399,37 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                           border: OutlineInputBorder()),
                       maxLines: 5,
                     ),
+                    const SizedBox(height: 16),
+                    // Private Notes
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outline,
+                              size: 18, color: Color(0xFF888888)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Private Notes',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Only visible to you. Not shared with the recipe.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Add private notes...',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 4,
+                    ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
@@ -424,6 +492,174 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       checkmarkColor: Colors.white,
       labelStyle: TextStyle(
         color: selected ? Colors.white : null,
+      ),
+    );
+  }
+
+  Widget _buildCustomTagSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Custom Tags',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _customTagController,
+                decoration: const InputDecoration(
+                  hintText: 'New tag name...',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF74BC42),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onPressed: () async {
+                final name = _customTagController.text.trim();
+                if (name.isEmpty) return;
+                final added = await _customTagService.addTag(name);
+                if (!added && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Tag already exists.')),
+                  );
+                  return;
+                }
+                _customTagController.clear();
+                await _loadCustomTags();
+              },
+              child: const Text('Add',
+                  style: TextStyle(color: Colors.white, fontSize: 14)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_customTags.isEmpty)
+          const Text(
+            'No custom tags yet.',
+            style: TextStyle(fontSize: 13, color: Colors.grey),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _customTags.map((tag) {
+              final selected = _selectedTags.contains(tag);
+              return GestureDetector(
+                onLongPress: () => _showCustomTagOptions(tag),
+                child: FilterChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(tag),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.more_vert,
+                        size: 14,
+                        color: selected ? Colors.white70 : Colors.grey,
+                      ),
+                    ],
+                  ),
+                  selected: selected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _selectedTags.add(tag);
+                      } else {
+                        _selectedTags.remove(tag);
+                      }
+                    });
+                  },
+                  selectedColor: const Color(0xFF74BC42),
+                  checkmarkColor: Colors.white,
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : null,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  void _showCustomTagOptions(String tag) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text('Edit "$tag"'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _editCustomTag(tag);
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: Text('Delete "$tag"',
+                  style: const TextStyle(color: Colors.redAccent)),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                _selectedTags.remove(tag);
+                await _customTagService.deleteTag(tag);
+                await _loadCustomTags();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editCustomTag(String tag) {
+    final controller = TextEditingController(text: tag);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Tag'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Tag name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = controller.text.trim();
+              if (newName.isEmpty) return;
+              // Update the selected tags set if this tag was selected
+              final wasSelected = _selectedTags.remove(tag);
+              await _customTagService.renameTag(tag, newName);
+              if (wasSelected) _selectedTags.add(newName);
+              await _loadCustomTags();
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

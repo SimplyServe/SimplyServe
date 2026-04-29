@@ -11,6 +11,7 @@ class ShoppingListView extends StatefulWidget {
 
 class _ShoppingListViewState extends State<ShoppingListView> {
   final _service = ShoppingListService();
+  final _customIngredientController = TextEditingController();
 
   static const Color _brandGreen = Color(0xFF74BC42);
   static const Color _surfaceGreen = Color(0xFFF4FAF1);
@@ -24,10 +25,25 @@ class _ShoppingListViewState extends State<ShoppingListView> {
   @override
   void dispose() {
     _service.removeListener(_onChanged);
+    _customIngredientController.dispose();
     super.dispose();
   }
 
   void _onChanged() => setState(() {});
+
+  void _addCustomIngredient() {
+    final name = _customIngredientController.text.trim();
+    if (name.isEmpty) return;
+    _service.addIngredients([name]);
+    _customIngredientController.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('"$name" added to shopping list'),
+        backgroundColor: _brandGreen,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   String _formatPlannedDate(DateTime date) {
     final now = DateTime.now();
@@ -189,6 +205,66 @@ class _ShoppingListViewState extends State<ShoppingListView> {
         color: _surfaceGreen,
         child: Column(
           children: [
+            // Custom ingredient input
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    // ignore: deprecated_member_use
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _customIngredientController,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _addCustomIngredient(),
+                      decoration: InputDecoration(
+                        hintText: 'Add custom ingredient...',
+                        prefixIcon: Icon(Icons.add_circle_outline,
+                            color: _brandGreen, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: _brandGreen),
+                        ),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _brandGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: _addCustomIngredient,
+                    child: const Text('Add',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 14)),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: items.isEmpty && !hasRecipes
                   ? const Center(
@@ -205,7 +281,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            'Add ingredients from a recipe to get started.',
+                            'Add ingredients from a recipe or use the input above.',
                             style:
                                 TextStyle(fontSize: 13, color: Colors.grey),
                           ),

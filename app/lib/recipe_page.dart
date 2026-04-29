@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simplyserve/services/favourites_service.dart';
 import 'package:simplyserve/services/recipe_service.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
+import 'package:simplyserve/services/private_notes_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 
 class IngredientEntry {
@@ -106,7 +107,9 @@ class RecipePage extends StatefulWidget {
 class _RecipePageState extends State<RecipePage> {
   bool _isFavourited = false;
   RecipeModel? _currentRecipe;
+  String _privateNote = '';
   final FavouritesService _favouritesService = FavouritesService();
+  final PrivateNotesService _notesService = PrivateNotesService();
 
   static const Color _brand = Color(0xFF74BC42);
 
@@ -115,6 +118,17 @@ class _RecipePageState extends State<RecipePage> {
     super.initState();
     _currentRecipe = widget.recipe;
     _loadFavouriteState();
+    _loadPrivateNote();
+  }
+
+  Future<void> _loadPrivateNote() async {
+    final recipe = _currentRecipe ?? widget.recipe;
+    if (recipe == null) return;
+    final note = await _notesService.getNote(
+      id: recipe.id,
+      title: recipe.title,
+    );
+    if (mounted) setState(() => _privateNote = note);
   }
 
   Future<void> _loadFavouriteState() async {
@@ -260,6 +274,40 @@ class _RecipePageState extends State<RecipePage> {
                       const _SectionHeader(title: 'Instructions'),
                       const SizedBox(height: 16),
                       _InstructionsList(steps: _recipe.steps),
+                      if (_privateNote.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        const _SectionHeader(title: 'Private Notes'),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8E1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFFFFE082),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.lock_outline,
+                                  size: 18, color: Color(0xFFFF8F00)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _privateNote,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF5D4037),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 48),
                     ],
                   ),
@@ -307,6 +355,7 @@ class _RecipePageState extends State<RecipePage> {
                 setState(() {
                   _currentRecipe = updated;
                 });
+                _loadPrivateNote();
               }
             },
             tooltip: 'Edit Recipe',
