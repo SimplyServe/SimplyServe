@@ -580,7 +580,7 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (!totals.hasData) ...[
+                  if (!_mealLogService.hasAnyMeals) ...[
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
@@ -656,7 +656,8 @@ class _DashboardViewState extends State<DashboardView> {
                         ],
                       ),
                     ),
-                  ] else ...[
+                  ],
+                  if (totals.hasData) ...[
                     ...meals.map(
                       (meal) => _LoggedMealTile(
                         meal: meal,
@@ -664,6 +665,15 @@ class _DashboardViewState extends State<DashboardView> {
                           _mealLogService.removeMeal(
                               DateTime.now(), meal.recipeTitle);
                         },
+                      ),
+                    ),
+                  ] else if (_mealLogService.hasAnyMeals) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'No meals logged for today.',
+                        style: TextStyle(
+                            color: const Color(0xFF5F7559), fontSize: 13),
                       ),
                     ),
                   ],

@@ -67,6 +67,7 @@ class DailyNutritionTotals {
   });
 
   bool get hasData => totalServings > 0;
+
 }
 
 class MealLogService extends ChangeNotifier {
@@ -124,6 +125,8 @@ class MealLogService extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  bool get hasAnyMeals => _mealsByDay.isNotEmpty;
 
   void clearDay(DateTime date) {
     final key = dayKey(date);
