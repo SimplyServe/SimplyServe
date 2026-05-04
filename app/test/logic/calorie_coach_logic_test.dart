@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_declarations
+
 import 'package:flutter_test/flutter_test.dart';
 
 // These functions mirror the private calculation methods in CalorieCoachView.

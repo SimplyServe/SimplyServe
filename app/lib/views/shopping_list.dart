@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/shopping_list_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
