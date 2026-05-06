@@ -71,7 +71,7 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('Add ingredients from a recipe to get started.'),
+        find.text('Add ingredients from a recipe or use the input above.'),
         findsOneWidget,
       );
     });
@@ -142,7 +142,8 @@ void main() {
 
     // ── Common ingredient grouping ────────────────────────────────────────
 
-    testWidgets('shows Common ingredients section when an item is in multiple recipes',
+    testWidgets(
+        'shows Common ingredients section when an item is in multiple recipes',
         (WidgetTester tester) async {
       final service = ShoppingListService();
       service.addIngredients(['Flour'], recipeTitle: 'Bread');
@@ -172,7 +173,8 @@ void main() {
       expect(find.text('Common ingredients'), findsOneWidget);
     });
 
-    testWidgets('does not show Common ingredients section for single-recipe items',
+    testWidgets(
+        'does not show Common ingredients section for single-recipe items',
         (WidgetTester tester) async {
       ShoppingListService()
           .addIngredients(['Eggs', 'Butter'], recipeTitle: 'Omelette');
