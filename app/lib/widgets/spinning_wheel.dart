@@ -173,7 +173,20 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
       _selectedMeal = '';
     });
 
-    await _audioPlayer.play(AssetSource('sounds/spin.mp3'));
+    // Play audio immediately, adjusted to finish when spinner stops (1000ms delay + 4600ms animation).
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.setSource(AssetSource('sounds/spinner_sound.mp3'));
+      final audioDuration = await _audioPlayer.getDuration();
+      if (audioDuration != null && audioDuration.inMilliseconds > 0) {
+        final rate = (audioDuration.inMilliseconds / 7800).clamp(0.5, 4.0);
+        await _audioPlayer.setPlaybackRate(rate);
+      }
+      await _audioPlayer.setVolume(1);
+      _audioPlayer.resume();
+    } catch (_) {}
+
+    await Future.delayed(const Duration(milliseconds: 2000));
 
     final random = math.Random();
     final targetOffset = random.nextInt(_meals.length);
@@ -190,7 +203,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
     final finalTarget = phase1Target + 5 * _meals.length + targetOffset;
     await _scrollController.animateToItem(
       finalTarget,
-      duration: const Duration(milliseconds: 3200),
+      duration: const Duration(milliseconds: 4400),
       curve: const _CasinoCurve(),
     );
 
