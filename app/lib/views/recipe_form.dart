@@ -533,6 +533,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                 if (name.isEmpty) return;
                 final added = await _customTagService.addTag(name);
                 if (!added && mounted) {
+                  // ignore: use_build_context_synchronously
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Tag already exists.')),
                   );
