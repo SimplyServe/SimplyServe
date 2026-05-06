@@ -8,22 +8,45 @@ Prerequisites
 
 - Flutter SDK
 - Python 3.11+
-- pip/uv (for backend dependencies)
+- Poetry (for backend dependency management)
 
 Local Setup
 -----------
 
-Frontend
-~~~~~~~~
-
-1. Go to ``app/``.
-2. Install dependencies.
-3. Run the Flutter app.
-
 Backend
 ~~~~~~~
 
-1. Go to ``backend/``.
-2. Create and activate a virtual environment.
-3. Install dependencies.
-4. Run the API server.
+1. Navigate to the ``backend/`` directory::
+
+    cd backend
+
+2. Activate the Poetry virtual environment::
+
+    poetry env activate
+
+3. Install dependencies::
+
+    poetry install
+
+4. Start the FastAPI server::
+
+    uvicorn main:app --reload
+
+   The API will be available at ``http://127.0.0.1:8000``.
+
+Frontend
+~~~~~~~~
+
+1. Navigate to the ``app/`` directory::
+
+    cd app
+
+2. Install Flutter dependencies::
+
+    flutter pub get
+
+3. Run the Flutter app::
+
+    flutter run
+
+   Select your target device when prompted (e.g. Chrome, an Android emulator, or a connected device).
