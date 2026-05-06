@@ -16,7 +16,7 @@ class _CasinoCurve extends Curve {
   @override
   double transformInternal(double t) => 1.0 - math.pow(1.0 - t, 5).toDouble();
 }
-// test commit
+
 class SpinningWheelWidget extends StatefulWidget {
   const SpinningWheelWidget({super.key});
 
@@ -338,9 +338,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 14,
-                      color: Colors.grey[500]),
+                  Icon(Icons.info_outline, size: 14, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Text(
                     '${_rolledToday.length} recipe${_rolledToday.length == 1 ? '' : 's'} rolled today',
