@@ -8,6 +8,7 @@ Welcome to the project documentation.
    :caption: Contents
 
    getting-started
+   requirements
    architecture
    frontend
    backend
