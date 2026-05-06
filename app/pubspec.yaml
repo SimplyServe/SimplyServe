@@ -18,6 +18,7 @@ dependencies:
   image_picker: ^1.2.1
   http_parser: ^4.1.2
   flutter_dotenv: ^6.0.0
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -32,3 +33,4 @@ flutter:
     - .env
     - assets/images/
     - assets/data/
+    - assets/sounds/

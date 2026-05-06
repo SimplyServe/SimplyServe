@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:simplyserve/recipe_page.dart';
@@ -28,6 +29,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   final RecipeService _recipeService = RecipeService();
   final AllergyService _allergyService = AllergyService();
   final RerollAvoidanceService _rerollService = RerollAvoidanceService();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isLoading = true;
   bool _isSpinning = false;
   Set<String> _rolledToday = {};
@@ -159,6 +161,7 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -169,6 +172,8 @@ class _SpinningWheelWidgetState extends State<SpinningWheelWidget>
       _isSpinning = true;
       _selectedMeal = '';
     });
+
+    await _audioPlayer.play(AssetSource('sounds/spin.mp3'));
 
     final random = math.Random();
     final targetOffset = random.nextInt(_meals.length);
