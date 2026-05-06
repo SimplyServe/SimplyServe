@@ -820,7 +820,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
             _summaryRow(Icons.local_fire_department_outlined, 'BMR', bmr),
             _summaryRow(Icons.bolt_outlined, 'Daily calories', calories),
             const SizedBox(height: 8),
-            Text('Daily Macros',
+            const Text('Daily Macros',
                 style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -985,10 +985,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     const double avatarSize = 36;
 
     Widget fallbackUserAvatar() {
-      return CircleAvatar(
+      return const CircleAvatar(
         radius: avatarSize / 2,
         backgroundColor: _brandGreen,
-        child: const Icon(Icons.person,
+        child: Icon(Icons.person,
             color: Colors.white, size: avatarSize * 0.45),
       );
     }
@@ -1066,7 +1066,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: m.isTyping
-            ? Row(
+            ? const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
@@ -1075,8 +1075,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: _brandGreen),
                   ),
-                  const SizedBox(width: 8),
-                  const Text('…'),
+                  SizedBox(width: 8),
+                  Text('…'),
                 ],
               )
             : Text(
@@ -1693,8 +1693,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (selected)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 5),
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 5),
                                       child: Icon(Icons.check_circle,
                                           size: 14, color: _brandGreen),
                                     ),
@@ -2248,9 +2248,9 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                       }).toList(),
                     ),
                     const SizedBox(height: 6),
-                    Divider(
+                    const Divider(
                         height: 1,
-                        color: const Color(0xFFE7EEE2)),
+                        color: Color(0xFFE7EEE2)),
                   ],
                 ),
               ),

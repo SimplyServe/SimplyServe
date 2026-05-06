@@ -234,7 +234,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                       onSubmitted: (_) => _addCustomIngredient(),
                       decoration: InputDecoration(
                         hintText: 'Add custom ingredient...',
-                        prefixIcon: Icon(Icons.add_circle_outline,
+                        prefixIcon: const Icon(Icons.add_circle_outline,
                             color: _brandGreen, size: 20),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -243,7 +243,7 @@ class _ShoppingListViewState extends State<ShoppingListView> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: _brandGreen),
+                          borderSide: const BorderSide(color: _brandGreen),
                         ),
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
