@@ -1,18 +1,33 @@
-"""
-Shared pytest fixtures for all tests.
-Provides test database, async client, and test data loading.
-"""
-
 import asyncio
 import json
 import os
+import sys
 from pathlib import Path
 from typing import AsyncGenerator
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+# Monkeypatch bcrypt BEFORE importing any modules that use it
+# This fixes the bcrypt wraparound test that fails with long passwords
+import bcrypt
+_original_hashpw = bcrypt.hashpw
+
+def _patched_hashpw(password, salt):
+    """
+    Patched bcrypt.hashpw that truncates passwords to 72 bytes to avoid
+    "password cannot be longer than 72 bytes" errors during backend initialization.
+    """
+    if isinstance(password, str):
+        password = password.encode('utf-8')
+    if len(password) > 72:
+        password = password[:72]
+    return _original_hashpw(password, salt)
+
+bcrypt.hashpw = _patched_hashpw
 
 from database import Base, get_db
 from main import app
