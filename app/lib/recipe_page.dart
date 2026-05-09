@@ -10,10 +10,23 @@ class IngredientEntry {
   final double quantity;
   final String unit;
 
+  /// Nutritional values per 100g/ml of this ingredient (only set for custom
+  /// ingredients the backend cannot look up).
+  final double calories;
+  final double protein;
+  final double carbs;
+  final double fats;
+  final bool isCustom;
+
   const IngredientEntry({
     required this.name,
     required this.quantity,
     required this.unit,
+    this.calories = 0,
+    this.protein = 0,
+    this.carbs = 0,
+    this.fats = 0,
+    this.isCustom = false,
   });
 
   String get displayLabel {
@@ -34,6 +47,13 @@ class IngredientEntry {
         'ingredient_name': name,
         'quantity': quantity,
         'unit': unit,
+        if (isCustom) ...{
+          'calories': calories,
+          'protein': protein,
+          'carbs': carbs,
+          'fats': fats,
+          'is_custom': true,
+        },
       };
 
   factory IngredientEntry.fromJson(Map<String, dynamic> json) {
@@ -41,6 +61,11 @@ class IngredientEntry {
       name: (json['ingredient_name'] ?? json['name'] ?? '').toString(),
       quantity: (json['quantity'] as num?)?.toDouble() ?? 1,
       unit: (json['unit'] ?? 'pcs').toString(),
+      calories: (json['calories'] as num?)?.toDouble() ?? 0,
+      protein: (json['protein'] as num?)?.toDouble() ?? 0,
+      carbs: (json['carbs'] as num?)?.toDouble() ?? 0,
+      fats: (json['fats'] as num?)?.toDouble() ?? 0,
+      isCustom: (json['is_custom'] as bool?) ?? false,
     );
   }
 
@@ -79,6 +104,24 @@ class RecipeModel {
     this.tags = const [],
     this.id,
   });
+
+  RecipeModel copyWith({NutritionInfo? nutrition}) {
+    return RecipeModel(
+      title: title,
+      summary: summary,
+      imageUrl: imageUrl,
+      prepTime: prepTime,
+      cookTime: cookTime,
+      totalTime: totalTime,
+      servings: servings,
+      difficulty: difficulty,
+      nutrition: nutrition ?? this.nutrition,
+      ingredients: ingredients,
+      steps: steps,
+      tags: tags,
+      id: id,
+    );
+  }
 }
 
 class NutritionInfo {
