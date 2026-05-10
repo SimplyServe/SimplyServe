@@ -80,36 +80,26 @@ Because the webhook connection may not always trigger automatically, the project
 4. Check that the build uses the newest GitHub commit.
 5. Confirm that the build status is successful.
 
-Testing Commands
-----------------
+Testing and Validation
+----------------------
 
-Frontend tests:
+Backend automated tests are run using ``pytest``. These tests validate API endpoints, authentication, database behaviour, helper functions, and error handling.
 
-.. code-block:: bash
-
-   cd app
-   flutter test
-
-Frontend coverage:
-
-.. code-block:: bash
-
-   cd app
-   flutter test --coverage
-
-Backend tests:
+Backend tests can be run with:
 
 .. code-block:: bash
 
    cd backend
-   pytest tests/
+   poetry run pytest tests/
 
-Backend coverage:
+Backend coverage can be generated with:
 
 .. code-block:: bash
 
    cd backend
-   pytest --cov=backend --cov-report=html tests/
+   poetry run pytest tests/ --cov=. --cov-report=term-missing --cov-report=html:htmlcov --html=pytest-report.html --self-contained-html
+
+Frontend behaviour is validated through the test plan, manual functional testing, and the final video demonstration. The automated coverage evidence submitted for this coursework focuses on the backend because the backend tests provide the clearest measurable coverage evidence.
 
 Documentation build:
 
