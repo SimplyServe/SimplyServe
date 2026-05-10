@@ -2,8 +2,8 @@ from datetime import datetime
 
 project = "SimplyServe"
 author = "SimplyServe Team"
-copyright = f"{datetime.now().year}, {author}"
-release = "0.1.0"
+copyright = "2026, Team 2D"
+release = "1.0"
 
 extensions = [
     "myst_parser",
