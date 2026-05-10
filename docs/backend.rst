@@ -1,96 +1,162 @@
 Backend
 =======
 
-The SimplyServe backend is implemented using FastAPI. It provides authentication, recipe management, ingredient search, deleted recipe management, user profile management, and database persistence.
+The SimplyServe backend is implemented using FastAPI. It provides authentication, user profile management, recipe management, deleted recipe recovery, avatar upload, ingredient search, and database access.
 
 Backend Responsibilities
 ------------------------
 
 The backend is responsible for:
 
-* Creating and authenticating users.
-* Issuing JWT access tokens.
+* Registering users.
+* Hashing passwords.
+* Authenticating users.
+* Creating JWT bearer tokens.
 * Validating protected routes.
+* Managing user profile data.
 * Managing recipe CRUD operations.
-* Managing soft-deleted recipes.
+* Supporting soft delete, restore, and permanent delete.
 * Searching ingredients.
-* Storing structured data in PostgreSQL.
-* Calculating recipe nutrition from ingredient values.
-* Handling user profile updates and avatar uploads.
+* Calculating nutrition information.
+* Persisting structured data through SQLAlchemy models.
 
-Authentication
---------------
+Authentication Flow
+-------------------
 
-Authentication uses a custom JWT implementation.
+The authentication flow uses JWT bearer tokens.
 
-The main authentication flow is:
-
-1. A user registers through ``POST /register``.
-2. The backend stores the user with a bcrypt-hashed password.
+1. The user registers through ``POST /register``.
+2. The backend hashes the password using bcrypt.
 3. The user logs in through ``POST /token``.
-4. The backend returns a JWT bearer token.
-5. The Flutter frontend stores the token in ``SharedPreferences``.
-6. Protected requests include the token in the ``Authorization`` header.
-7. FastAPI validates the token before allowing access to protected endpoints.
+4. The backend verifies the credentials.
+5. The backend returns a JWT access token.
+6. The frontend stores the token.
+7. Protected requests include ``Authorization: Bearer <token>``.
+8. The backend validates the token before returning protected data.
 
-Database Layer
---------------
-
-The backend uses SQLAlchemy models with PostgreSQL.
-
-Main data models include:
+Database Models
+---------------
 
 User
 ~~~~
 
-Stores user account information, including email, hashed password, display name, and profile data.
+Stores user account information, including email, hashed password, display name, and profile-related fields.
 
 Recipe
 ~~~~~~
 
-Stores recipe details such as title, summary, steps, servings, image information, soft-delete status, and calculated nutrition values.
+Stores recipe title, summary, servings, instructions, image reference, soft-delete status, tags, and nutrition values.
 
-Ingredients
-~~~~~~~~~~~
+Ingredient
+~~~~~~~~~~
 
-Stores ingredient data, including average calories, protein, carbohydrates, fats, and cost values.
+Stores ingredient names and nutritional values such as calories, protein, carbohydrates, and fats.
 
 RecipeIngredient
 ~~~~~~~~~~~~~~~~
 
-Stores the relationship between recipes and ingredients, including quantity and unit information.
+Stores the relationship between recipes and ingredients, including quantity and unit.
 
 Tag
 ~~~
 
-Stores recipe tags such as dietary tags, cuisine tags, meal-type tags, and budget-related tags.
+Stores recipe tags, including meal type, dietary tags, cuisine tags, and budget-friendly labels.
 
-ShoppingList and ShoppingListIngredient
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ShoppingList
+~~~~~~~~~~~~
 
-Defined in the database schema to support future server-side shopping list persistence. The current Iteration 2 shopping list is primarily handled client-side.
+Defined for future or partial shopping-list persistence. The current frontend shopping-list behaviour is mainly handled by ``ShoppingListService``.
 
-Backend Helper Functions
-------------------------
+Core Backend Functions
+----------------------
+
+create_access_token
+~~~~~~~~~~~~~~~~~~~
+
+Purpose:
+Creates a signed JWT access token for an authenticated user.
+
+Input:
+User identity and expiry information.
+
+Output:
+JWT bearer token.
+
+Used by:
+``POST /token``.
+
+get_current_user
+~~~~~~~~~~~~~~~~
+
+Purpose:
+Validates the JWT token and retrieves the currently authenticated user.
+
+Input:
+Authorization bearer token.
+
+Output:
+Authenticated user object.
+
+Used by:
+Protected user and recipe endpoints.
 
 _normalize_unit
 ~~~~~~~~~~~~~~~
 
-Normalises ingredient units so that different user inputs can be handled consistently.
+Purpose:
+Normalises ingredient units so that equivalent units are stored consistently.
+
+Input:
+Raw unit string entered by the user.
+
+Output:
+Normalised unit value.
+
+Used by:
+Recipe creation and ingredient processing.
 
 _parse_ingredient_text
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Parses ingredient text entered by the user and extracts structured ingredient information where possible.
+Purpose:
+Parses ingredient text into structured information.
+
+Input:
+Ingredient string.
+
+Output:
+Ingredient name, quantity, and unit where possible.
+
+Used by:
+Recipe creation and recipe editing.
 
 _build_nutrition_info
 ~~~~~~~~~~~~~~~~~~~~~
 
-Calculates nutrition information for a recipe using ingredient nutrition values and serving counts.
+Purpose:
+Calculates recipe nutrition values from ingredient nutrition data and serving counts.
+
+Input:
+Recipe ingredients, quantities, and serving count.
+
+Output:
+Nutrition summary containing calories, protein, carbohydrates, and fats.
+
+Used by:
+Recipe creation, recipe update, and nutritional display.
 
 Soft Delete Logic
 -----------------
 
-Recipes are not immediately removed when deleted. Instead, the backend sets an ``is_deleted`` flag. Soft-deleted recipes are hidden from the main recipe list but can be restored from the Deleted Recipes view.
+Recipes are not immediately removed from the database. The delete endpoint sets an ``is_deleted`` flag. Soft-deleted recipes are hidden from the main recipe catalogue but remain available in the Deleted Recipes screen.
 
-Permanent deletion is available when the user confirms that the recipe should be removed completely.
+This supports:
+
+* Accidental deletion recovery.
+* Restore behaviour.
+* Permanent deletion only when the user confirms removal.
+
+Backend Testing
+---------------
+
+Backend tests are written using ``pytest``. API tests cover authentication, user profile endpoints, recipe CRUD, deleted recipe recovery, avatar upload, ingredient search, and helper functions.

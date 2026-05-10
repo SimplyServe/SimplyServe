@@ -23,3 +23,5 @@ Contents
    backend
    api
    development
+   testing
+   code-reference
