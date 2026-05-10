@@ -98,7 +98,7 @@ Final Backend Test Evidence
 
 The screenshot below shows the final backend automated test run and backend coverage evidence used before submission.
 
-.. figure:: assets/images/tests.png
+.. figure:: assets/images/backend_tests.webp
    :alt: Screenshot showing backend tests and backend coverage passing
    :align: center
    :width: 100%
@@ -111,27 +111,3 @@ Traceability
 The backend automated tests support the test plan by providing executable evidence for authentication, recipe management, user profile management, deleted recipe recovery, ingredient search, and backend helper functions.
 
 Frontend validation is documented separately through the test plan, manual functional testing, and the video demonstration rather than through frontend coverage evidence.
-
-Backend Coverage Evidence
--------------------------
-
-Backend coverage was generated using ``pytest`` and ``pytest-cov``. The full command used to generate the report is documented in the Development Guide.
-
-The coverage process produced two backend reports:
-
-.. code-block:: text
-
-   backend/htmlcov/index.html
-   backend/pytest-report.html
-
-The ``htmlcov/index.html`` report shows the backend coverage percentage and line-by-line coverage details. The ``pytest-report.html`` report shows the backend test execution results.
-
-Final Backend Test and Coverage Evidence
-----------------------------------------
-
-The screenshot below shows the final backend automated test run and backend coverage evidence used before submission.
-
-.. figure:: assets/images/backend_tests.png
-   :alt: Screenshot showing backend tests passing and backend coverage report
-   :align: center
-   :width: 100%
