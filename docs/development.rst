@@ -83,20 +83,6 @@ Because the webhook connection may not always trigger automatically, the project
 Testing Commands
 ----------------
 
-Frontend tests:
-
-.. code-block:: bash
-
-   cd app
-   flutter test
-
-Frontend coverage:
-
-.. code-block:: bash
-
-   cd app
-   flutter test --coverage
-
 Backend tests:
 
 .. code-block:: bash

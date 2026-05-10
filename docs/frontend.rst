@@ -215,8 +215,3 @@ PrivateNotesService
 ~~~~~~~~~~~~~~~~~~~
 
 Stores local private notes linked to recipes.
-
-Frontend Testing
-----------------
-
-Frontend behaviour is tested through Flutter unit tests, widget tests, and integration tests. These cover service-layer logic, screen rendering, navigation, form behaviour, and end-to-end user flows.
