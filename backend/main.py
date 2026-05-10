@@ -31,6 +31,15 @@ app.add_middleware(
 )
 
 def _normalize_unit(unit: str) -> str:
+    """Return a standardised ingredient unit.
+    
+    Args:
+        unit: Raw unit text supplied by a recipe ingredient, such as
+            "grams", "g", "tablespoons", or "tbsp".
+    
+    Returns:
+        A normalised unit string accepted by the application. Unknown units
+        are converted to "pcs" so ingredient records remain valid."""
     unit = (unit or "").strip().lower()
     mapping = {
         "tablespoon": "tbsp", "tablespoons": "tbsp", "tbsps": "tbsp",
@@ -54,6 +63,15 @@ def _normalize_unit(unit: str) -> str:
 
 
 def _parse_ingredient_text(raw: str) -> dict:
+    """Parse a free-text ingredient string into structured ingredient data.
+    
+    Args:
+        raw: Ingredient text such as "1 cup flour" or "200 g chicken".
+    
+    Returns:
+        A dictionary containing the ingredient name, numeric quantity, and
+        normalised unit. If the text cannot be fully parsed, the function
+        safely falls back to a quantity of 1 and unit of "pcs"."""
     raw = raw.strip()
     quantity = 1.0
     unit = "pcs"
@@ -94,6 +112,14 @@ def _parse_ingredient_text(raw: str) -> dict:
 
 
 async def _find_or_create_ingredient(db: AsyncSession, name: str) -> models.Ingredients:
+    """Find an ingredient by normalised name or create it if missing.
+    
+    Args:
+        db: Active asynchronous database session.
+        name: Ingredient name supplied by a recipe or seed data.
+    
+    Returns:
+        The existing or newly-created Ingredients database record."""
     normalized = name.strip().lower()
     res = await db.execute(
         select(models.Ingredients).where(models.Ingredients.normalized_name == normalized)
@@ -111,6 +137,13 @@ async def _find_or_create_ingredient(db: AsyncSession, name: str) -> models.Ingr
 
 
 async def _seed_base_ingredients_catalog(db: AsyncSession):
+    """Seed the database with base ingredient nutrition records.
+    
+    Args:
+        db: Active asynchronous database session.
+    
+    The seed data is read from data/base_ingredients.json and inserted only
+    when an ingredient with the same normalised name is not already present."""
     base_file = Path(__file__).resolve().parent / "data" / "base_ingredients.json"
     if not base_file.exists():
         return
@@ -140,6 +173,13 @@ async def _seed_base_ingredients_catalog(db: AsyncSession):
 
 
 async def _normalize_existing_ingredient_data(db: AsyncSession):
+    """Normalise units for existing recipe ingredient rows.
+    
+    Args:
+        db: Active asynchronous database session.
+    
+    This is used during application startup to correct legacy rows where
+    units may have been stored in inconsistent formats."""
     valid = {"tsp", "tbsp", "cup", "ml", "l", "g", "kg", "oz", "lb", "pcs"}
     result = await db.execute(select(models.RecipeIngredient))
     rows = result.scalars().all()
@@ -151,6 +191,12 @@ async def _normalize_existing_ingredient_data(db: AsyncSession):
 
 
 async def _ensure_ingredient_table_columns():
+    """Ensure database tables contain the columns required by the current app.
+    
+    The function performs lightweight migration-style ALTER TABLE operations
+    for user profile fields, soft deletion, ingredient quantities, normalised
+    ingredient names, and nutrition/cost columns. Existing columns are ignored
+    so startup remains safe across repeated runs."""
     async with engine.begin() as conn:
         # User profile columns
         for col, col_type in [("name", "TEXT"), ("profile_image_url", "TEXT")]:
@@ -193,6 +239,16 @@ async def _ensure_ingredient_table_columns():
 
 
 async def _calculate_recipe_nutrition_totals(db: AsyncSession, recipe_id: int) -> dict:
+    """Calculate total nutrition values for a recipe.
+    
+    Args:
+        db: Active asynchronous database session.
+        recipe_id: Database ID of the recipe whose ingredients should be
+            totalled.
+    
+    Returns:
+        A dictionary containing total calories, protein, carbohydrates, and
+        fats before dividing by serving count."""
     result = await db.execute(
         select(
             models.Ingredients.avg_calories,
@@ -215,6 +271,16 @@ async def _calculate_recipe_nutrition_totals(db: AsyncSession, recipe_id: int) -
 
 
 def _build_nutrition_info(totals: dict, servings: int) -> dict:
+    """Build per-serving nutrition information for API responses.
+    
+    Args:
+        totals: Total recipe nutrition values for calories, protein, carbs,
+            and fats.
+        servings: Number of servings used to calculate per-serving values.
+    
+    Returns:
+        A dictionary formatted for the frontend recipe model, including
+        calories as an integer and macro values as gram strings."""
     s = max(servings, 1)
     return {
         "calories": int(round(totals["calories"] / s)),
@@ -226,6 +292,11 @@ def _build_nutrition_info(totals: dict, servings: int) -> dict:
 
 @app.on_event("startup")
 async def startup():
+    """Initialise the database and seed required ingredient data on app startup.
+    
+    The startup task creates database tables, ensures newer columns exist,
+    loads the base ingredient catalogue, attaches ingredient records to seeded
+    recipes, and normalises legacy recipe ingredient units."""
     async with engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
 
@@ -265,6 +336,19 @@ async def startup():
 
 
 def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
+    """Validate and parse the ingredients_json payload from recipe forms.
+    
+    Args:
+        ingredients_json: JSON string submitted from the Flutter recipe form.
+            The payload may contain ingredient strings or ingredient objects.
+    
+    Returns:
+        A de-duplicated list of dictionaries containing ingredient_name,
+        quantity, and unit.
+    
+    Raises:
+        HTTPException: If the JSON is invalid, not an array, contains invalid
+        quantity values, or contains non-positive quantities."""
     try:
         payload = json.loads(ingredients_json)
     except json.JSONDecodeError as exc:
@@ -315,11 +399,31 @@ def _parse_ingredient_payload(ingredients_json: str) -> list[dict]:
     return parsed
 
 async def seed_user_data(user_id: int, db: AsyncSession):
+    """Placeholder for adding default data for a newly registered user.
+    
+    Args:
+        user_id: ID of the newly-created user.
+        db: Active asynchronous database session.
+    
+    This hook is currently unused but kept to support future onboarding or
+    sample-data behaviour."""
     pass
 
 
 @app.post("/register", response_model=schemas.User)
 async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(database.get_db)):
+    """Register a new user account.
+
+    Args:
+        user: Submitted registration data containing email, password, and
+            optional name.
+        db: Active asynchronous database session.
+    
+    Returns:
+        The newly-created user record.
+    
+    Raises:
+        HTTPException: If the submitted email address is already registered."""
     result = await db.execute(select(models.User).where(models.User.email == user.email))
     db_user = result.scalars().first()
     if db_user:
@@ -337,6 +441,18 @@ async def create_user(user: schemas.UserCreate, db: AsyncSession = Depends(datab
 
 @app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(database.get_db)):
+    """Authenticate a user and return a JWT bearer token.
+    
+    Args:
+        form_data: OAuth2 password-flow form containing username/email and
+            password.
+        db: Active asynchronous database session.
+    
+    Returns:
+        A token response containing the access token and bearer token type.
+    
+    Raises:
+        HTTPException: If the email does not exist or the password is invalid."""
     result = await db.execute(select(models.User).where(models.User.email == form_data.username))
     user = result.scalars().first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
@@ -353,6 +469,13 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.get("/users/me", response_model=schemas.User)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+    """Return the currently authenticated user's profile.
+    
+    Args:
+        current_user: User resolved from the JWT bearer token dependency.
+    
+    Returns:
+        The authenticated user record."""
     return current_user
 
 @app.patch("/users/me", response_model=schemas.User)
@@ -361,6 +484,15 @@ async def update_user_me(
     current_user: models.User = Depends(auth.get_current_user),
     db: AsyncSession = Depends(database.get_db),
 ):
+    """Partially update the authenticated user's profile.
+    
+    Args:
+        update: Submitted profile fields to update.
+        current_user: User resolved from the JWT bearer token dependency.
+        db: Active asynchronous database session.
+    
+    Returns:
+        The updated user record after changes are committed."""
     if update.name is not None:
         current_user.name = update.name.strip()
     db.add(current_user)
@@ -374,6 +506,18 @@ async def upload_avatar(
     current_user: models.User = Depends(auth.get_current_user),
     db: AsyncSession = Depends(database.get_db),
 ):
+    """Upload and attach a profile avatar for the authenticated user.
+    
+    Args:
+        image: Uploaded image file supplied as multipart form data.
+        current_user: User resolved from the JWT bearer token dependency.
+        db: Active asynchronous database session.
+    
+    Returns:
+        The updated user record with the profile image URL.
+    
+    Raises:
+        HTTPException: If the uploaded file type is not supported."""
     allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     if image.content_type not in allowed:
         raise HTTPException(status_code=400, detail="Unsupported image type")
@@ -396,6 +540,18 @@ async def update_users_me(
     current_user: models.User = Depends(auth.get_current_user),
     db: AsyncSession = Depends(database.get_db),
 ):
+    """Replace the authenticated user's display name.
+    
+    Args:
+        payload: Request body containing the new display name.
+        current_user: User resolved from the JWT bearer token dependency.
+        db: Active asynchronous database session.
+    
+    Returns:
+        The updated user record.
+    
+    Raises:
+        HTTPException: If the submitted name is empty after trimming."""
     trimmed_name = payload.name.strip()
     if not trimmed_name:
         raise HTTPException(status_code=400, detail="Name cannot be empty")
@@ -415,6 +571,14 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.get("/recipes", response_model=list[schemas.Recipe])
 async def list_recipes(db: AsyncSession = Depends(database.get_db)):
+    """Return all non-deleted recipes for the recipe catalogue.
+    
+    Args:
+        db: Active asynchronous database session.
+    
+    Returns:
+        A list of recipe response objects including tags, ingredients,
+        structured recipe_ingredients, steps, nutrition, and image URLs."""
     result = await db.execute(
         select(models.Recipe).where(models.Recipe.is_deleted != True)
     )
@@ -479,6 +643,16 @@ async def search_ingredients(
     base_only: bool = False,
     db: AsyncSession = Depends(database.get_db),
 ):
+    """Search ingredients by name for the recipe form.
+    
+    Args:
+        q: Optional search text.
+        limit: Maximum number of results to return, clamped between 1 and 50.
+        base_only: When true, restricts results to base catalogue ingredients.
+        db: Active asynchronous database session.
+    
+    Returns:
+        Matching ingredient records ordered by base ingredient status and name."""
     trimmed_query = q.strip()
     if limit < 1:
         limit = 1
@@ -513,6 +687,25 @@ async def create_recipe(
     steps_json: str = Form("[]"),
     image: Optional[UploadFile] = File(None)
 ):
+    """Create a new recipe with tags, ingredients, steps, nutrition, and image data.
+    
+    Args:
+        db: Active asynchronous database session.
+        title: Recipe title submitted from the form.
+        summary: Short recipe description.
+        prep_time: Preparation time text.
+        cook_time: Cooking time text.
+        total_time: Total time text supplied by the frontend.
+        servings: Number of servings for nutrition calculation.
+        difficulty: Difficulty label supplied by the frontend.
+        tags_json: JSON array of recipe tag names.
+        ingredients_json: JSON array of ingredient strings or objects.
+        steps_json: JSON array of recipe instruction steps.
+        image: Optional uploaded recipe image.
+    
+    Returns:
+        The newly-created recipe response, including calculated nutrition and
+        structured ingredient data."""
     image_url = None
     if image:
         ext = image.filename.split(".")[-1]
@@ -615,6 +808,28 @@ async def update_recipe(
     steps_json: str = Form("[]"),
     image: Optional[UploadFile] = File(None),
 ):
+    """Update an existing recipe and recalculate its nutrition.
+    
+    Args:
+        recipe_id: ID of the recipe to update.
+        db: Active asynchronous database session.
+        title: Updated recipe title.
+        summary: Updated recipe summary.
+        prep_time: Updated preparation time text.
+        cook_time: Updated cooking time text.
+        total_time: Updated total time text supplied by the frontend.
+        servings: Updated serving count.
+        difficulty: Updated difficulty label.
+        tags_json: JSON array of updated tag names.
+        ingredients_json: JSON array of updated ingredients.
+        steps_json: JSON array of updated instruction steps.
+        image: Optional replacement recipe image.
+    
+    Returns:
+        The updated recipe response.
+    
+    Raises:
+        HTTPException: If the recipe ID does not exist."""
     recipe_res = await db.execute(
         select(models.Recipe).where(models.Recipe.recipe_id == recipe_id)
     )
@@ -705,6 +920,17 @@ async def update_recipe(
 
 @app.delete("/recipes/{recipe_id}")
 async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_db)):
+    """Soft-delete a recipe by hiding it from the main catalogue.
+    
+    Args:
+        recipe_id: ID of the recipe to soft-delete.
+        db: Active asynchronous database session.
+    
+    Returns:
+        A success message after setting is_deleted to true.
+    
+    Raises:
+        HTTPException: If the recipe ID does not exist."""
     res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_id == recipe_id))
     recipe = res.scalars().first()
     if not recipe:
@@ -716,6 +942,14 @@ async def delete_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_
 
 @app.get("/recipes/deleted", response_model=list[schemas.Recipe])
 async def list_deleted_recipes(db: AsyncSession = Depends(database.get_db)):
+    """Return recipes that have been soft-deleted.
+    
+    Args:
+        db: Active asynchronous database session.
+    
+    Returns:
+        A list of deleted recipe response objects that can be restored or
+        permanently deleted from the Deleted Recipes screen."""
     result = await db.execute(
         select(models.Recipe).where(models.Recipe.is_deleted == True)
     )
@@ -771,6 +1005,17 @@ async def list_deleted_recipes(db: AsyncSession = Depends(database.get_db)):
 
 @app.post("/recipes/{recipe_id}/restore")
 async def restore_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_db)):
+    """Restore a soft-deleted recipe to the main catalogue.
+    
+    Args:
+        recipe_id: ID of the recipe to restore.
+        db: Active asynchronous database session.
+    
+    Returns:
+        A success message after setting is_deleted to false.
+    
+    Raises:
+        HTTPException: If the recipe ID does not exist."""
     res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_id == recipe_id))
     recipe = res.scalars().first()
     if not recipe:
@@ -781,6 +1026,17 @@ async def restore_recipe(recipe_id: int, db: AsyncSession = Depends(database.get
 
 @app.delete("/recipes/{recipe_id}/permanent")
 async def permanent_delete_recipe(recipe_id: int, db: AsyncSession = Depends(database.get_db)):
+    """Permanently delete a recipe record from the database.
+    
+    Args:
+        recipe_id: ID of the recipe to permanently remove.
+        db: Active asynchronous database session.
+    
+    Returns:
+        A success message after the recipe is removed.
+    
+    Raises:
+        HTTPException: If the recipe ID does not exist."""
     res = await db.execute(select(models.Recipe).where(models.Recipe.recipe_id == recipe_id))
     recipe = res.scalars().first()
     if not recipe:
