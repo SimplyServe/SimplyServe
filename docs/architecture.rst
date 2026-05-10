@@ -1,89 +1,85 @@
 Architecture
 ============
 
-SimplyServe uses a layered client-server architecture. The frontend is implemented in Flutter, the backend is implemented using FastAPI, and structured server-side data is stored in PostgreSQL.
+SimplyServe uses a layered client-server architecture. The frontend is implemented in Flutter, the backend is implemented with FastAPI, and structured data is stored through SQLAlchemy models.
 
-Architecture Overview
----------------------
+Architecture Diagram
+--------------------
 
 .. code-block:: text
 
-   Flutter Frontend
-   ├── Views and Widgets
-   │   ├── LoginPage
-   │   ├── DashboardView
-   │   ├── RecipesView
-   │   ├── RecipeFormView
-   │   ├── SpinWheelView
-   │   ├── CalorieCoachView
-   │   ├── NutritionalDashboardView
-   │   ├── ShoppingListView
-   │   ├── MealCalendarView
-   │   └── SettingsView
-   │
-   ├── Application Services
-   │   ├── AuthService
-   │   ├── RecipeService
-   │   ├── AllergyService
-   │   ├── AllergenFilterService
-   │   ├── ShoppingListService
-   │   ├── MealPlanService
-   │   ├── MealLogService
-   │   ├── RerollAvoidanceService
-   │   ├── CustomTagService
-   │   └── PrivateNotesService
-   │
-   ├── Local Persistence
-   │   └── SharedPreferences
-   │
-   └── HTTP API Calls
-       ↓
-   FastAPI Backend
-   ├── Authentication Endpoints
-   ├── Recipe Endpoints
-   ├── Ingredient Endpoints
-   ├── User Profile Endpoints
-   ├── SQLAlchemy Models
-   └── Helper Functions
-       ↓
-   PostgreSQL Database
+   +--------------------------------------------------+
+   |                  Flutter Frontend                |
+   |--------------------------------------------------|
+   | Views: LoginPage, DashboardView, RecipesView,    |
+   | RecipeFormView, SpinWheelView, MealCalendarView  |
+   | ShoppingListView, SettingsView                   |
+   +---------------------------+----------------------+
+                               |
+                               v
+   +--------------------------------------------------+
+   |              Flutter Service Layer               |
+   |--------------------------------------------------|
+   | AuthService, RecipeService, AllergyService,      |
+   | AllergenFilterService, ShoppingListService,      |
+   | MealPlanService, MealLogService,                 |
+   | RerollAvoidanceService                           |
+   +---------------------------+----------------------+
+                |                              |
+                v                              v
+   +--------------------------+       +----------------------+
+   | SharedPreferences        |       | HTTP API Requests    |
+   | Local session/preferences|       | to FastAPI backend   |
+   +--------------------------+       +----------+-----------+
+                                                 |
+                                                 v
+   +--------------------------------------------------+
+   |                 FastAPI Backend                  |
+   |--------------------------------------------------|
+   | Authentication, Users, Recipes, Ingredients,     |
+   | Deleted Recipes, Avatar Upload                   |
+   +---------------------------+----------------------+
+                               |
+                               v
+   +--------------------------------------------------+
+   |                 SQLAlchemy Models                |
+   |--------------------------------------------------|
+   | User, Recipe, Ingredient, RecipeIngredient, Tag  |
+   +---------------------------+----------------------+
+                               |
+                               v
+   +--------------------------------------------------+
+   |                    Database                      |
+   +--------------------------------------------------+
 
 Frontend Layer
 --------------
 
-The frontend layer contains the Flutter views, widgets, navigation, form validation, and user interaction logic. It is responsible for displaying recipes, collecting user input, showing the meal spinner, managing settings, and displaying meal planning and nutrition data.
+The frontend layer contains the Flutter views and widgets that users interact with. It handles navigation, form input, validation, display logic, and local UI state.
 
-Application Service Layer
--------------------------
+Service Layer
+-------------
 
-The service layer contains client-side business logic. It separates the UI from data handling and feature-specific logic.
+The service layer separates business logic from UI code. For example, ``AllergenFilterService`` handles allergy filtering, ``ShoppingListService`` handles list aggregation, and ``RerollAvoidanceService`` prevents repeated meal suggestions.
 
-Examples include:
+Backend Layer
+-------------
 
-* ``AuthService`` for token storage and authentication state.
-* ``AllergenFilterService`` for allergen detection.
-* ``ShoppingListService`` for deduplication and shopping list state.
-* ``MealLogService`` for logged meals and nutrition totals.
-* ``RerollAvoidanceService`` for preventing repeated meal suggestions.
-
-Backend API Layer
------------------
-
-The backend layer is implemented in FastAPI. It exposes REST API endpoints for authentication, users, recipes, ingredients, deleted recipes, and profile images.
+The backend layer exposes FastAPI endpoints for authentication, user profiles, recipes, ingredients, deleted recipes, and avatar uploads.
 
 Persistence Layer
 -----------------
 
-SimplyServe uses two persistence mechanisms:
+Two persistence mechanisms are used:
 
-* PostgreSQL for shared structured data such as users, recipes, ingredients, recipe ingredients, and tags.
-* SharedPreferences for local user-specific preferences such as allergen choices, favourites, custom tags, private notes, calorie coach values, and session tokens.
+* ``SharedPreferences`` stores local user preferences, session tokens, allergy selections, and other device-level data.
+* The backend database stores shared structured data such as users, recipes, ingredients, and tags.
 
-Main Architectural Changes from CW1
------------------------------------
+Architectural Changes from CW1
+------------------------------
 
-The main change from CW1 is the removal of Firebase. Authentication was moved to a custom JWT-based FastAPI implementation. This reduced dependency on third-party cloud services and made local development and testing easier.
+The main architectural change from CW1 was the removal of Firebase authentication. Authentication was moved to a custom FastAPI JWT implementation. This made the system easier to test locally and reduced reliance on external cloud services.
 
-The smart suggestion logic was also split into clearer service responsibilities. The spinner interface handles user interaction, while allergen filtering and reroll avoidance are handled by separate services.
+The suggestion logic was also separated into smaller services. The spinner UI handles display and interaction, while allergen filtering and reroll avoidance are handled by dedicated services. This reduces coupling and makes the feature easier to test.
 
-Budget tracking was descoped, which simplified the architecture because no cost-calculation endpoint or price-tracking frontend component was required.
+Budget tracking was descoped, so no cost-calculation API or cost-tracking UI was implemented. Instead, budget awareness is represented by a ``Budget Friendly`` recipe tag.
