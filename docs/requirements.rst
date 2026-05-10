@@ -1,78 +1,140 @@
-User Requirements
-=================
+Requirements
+============
 
-This section documents the user requirements gathered during the design phase, how each was implemented in SimplyServe, and any changes made during development.
+This page summarises the implemented system requirements for SimplyServe in Coursework Iteration 2.
 
-Implemented Requirements
-------------------------
+Functional Requirements
+-----------------------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 5 40 30 25
+SR-1: Smart Meal Suggestions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-   * - ID
-     - Requirement
-     - Implementation
-     - Notes
-   * - 1
-     - Users need help deciding what to cook, especially when tired, stressed, or short on time.
-     - Meal Spinner (home screen widget that randomly selects a recipe).
-     -
-   * - 3 & 5
-     - Users want to filter suggestions by dietary preferences (e.g. vegetarian, high protein) and search or filter recipes by metadata such as cuisine, cost, prep time, and complexity.
-     - Advanced Search in the Recipes page.
-     - Requirements 3 and 5 were merged into a single advanced search feature.
-   * - 4
-     - Users want to exclude disliked ingredients and personalise recipe choices.
-     - Allergy / ingredient exclusion settings in Account Settings.
-     -
-   * - 6
-     - Users want options to tag or categorise recipes to match personal preferences.
-     - Create Recipe flow in the Recipes page allows custom tags and categories.
-     -
-   * - 7
-     - Users want to save recipes and keep personal notes to replicate meals accurately.
-     - Favourite Recipes section in the Recipes page.
-     -
-   * - 8
-     - Users want access to a variety of meal types (quick, healthy, cultural, meat-based, vegetarian, complex recipes).
-     - Recipes page with diverse pre-loaded recipe catalogue.
-     -
-   * - 9
-     - Users want automatic or easily editable shopping lists linked to recipes they choose.
-     - Shopping List page, generated from selected recipes.
-     -
-   * - 13
-     - Users want nutritional information such as calories, macros, and protein content.
-     - Nutritional breakdown displayed on each recipe detail page.
-     -
-   * - 14
-     - Some users want meal suggestions tailored to fitness or high-protein goals.
-     - Calorie Coach screen provides goal-based meal output.
-     -
-   * - 15
-     - Users want a simple, uncluttered, easy-to-navigate interface.
-     - Applied app-wide through consistent layout and navigation design.
-     -
-   * - 16
-     - Users want the app to feel quick and responsive with minimal delays.
-     - App-wide performance optimisation and smooth animations.
-     -
-   * - 17
-     - Users want access to core features even without reliable internet.
-     - Offline support applied across core app features.
-     -
+The system provides smart, non-duplicate meal suggestions through an interactive spinning wheel.
 
-Changed Requirements
---------------------
+Implemented units:
 
-.. list-table::
-   :header-rows: 1
-   :widths: 5 40 55
+* ``SpinWheelView``
+* ``SpinningWheelWidget``
+* ``AllergenFilterService``
+* ``RerollAvoidanceService``
 
-   * - ID
-     - Original Requirement
-     - Change
-   * - 2
-     - Users want smart meal suggestions that avoid repetition and match their preferences, and adapt to what ingredients they have.
-     - Smart meal suggestion is partially implemented via the Calorie Coach, which provides goal-based recommendations. However, ingredient-aware suggestions (adapting to what the user currently has at home) were **not implemented** due to scope constraints.
+The user can spin the wheel to receive a random meal recommendation. The system applies meal-type filtering, removes recipes containing selected allergens, and prevents the same recipe from being suggested twice in the same day.
+
+SR-2: Dietary Filters and Allergen Settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The system allows users to configure dietary restrictions through the Settings view.
+
+Implemented units:
+
+* ``SettingsView``
+* ``AllergyService``
+* ``AllergenFilterService``
+
+Thirteen allergen categories are supported, including gluten, dairy, eggs, peanuts, tree nuts, fish, shellfish, soy, sesame, mustard, celery, sulphites, and lupin. Each allergen category is mapped to synonym keywords to improve detection.
+
+SR-3: Calorie Coach
+~~~~~~~~~~~~~~~~~~~
+
+The system includes a Calorie Coach feature that calculates personalised calorie and macro targets.
+
+Implemented units:
+
+* ``CalorieCoachView``
+* BMR and TDEE calculation logic
+* Macro target calculation logic
+
+The feature collects age, height, weight, gender, activity level, and fitness goal. It then calculates a daily calorie target and macro split.
+
+SR-4: Recipe Management
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The system supports full recipe management.
+
+Implemented units:
+
+* ``RecipesView``
+* ``RecipePage``
+* ``RecipeFormView``
+* ``DeletedRecipesView``
+* ``RecipeService``
+
+Users can create, view, edit, search, soft-delete, restore, and permanently delete recipes. Recipe data includes title, summary, ingredients, quantities, units, steps, servings, tags, custom tags, and private notes.
+
+SR-5: Shopping List
+~~~~~~~~~~~~~~~~~~~
+
+The system generates and manages shopping lists.
+
+Implemented units:
+
+* ``ShoppingListView``
+* ``ShoppingListService``
+* Add-to-shopping-list modal
+
+Users can add recipe ingredients to a shopping list, add custom items, check off items, clear the list, and merge duplicate ingredients case-insensitively.
+
+SR-6: Meal Calendar
+~~~~~~~~~~~~~~~~~~~
+
+The system provides a Meal Calendar for planning and logging meals.
+
+Implemented units:
+
+* ``MealCalendarView``
+* ``MealPlanService``
+* ``MealLogService``
+
+Users can plan meals for future dates, log meals for past dates, set serving counts, and remove entries by setting servings to zero.
+
+SR-7: Budget Awareness
+~~~~~~~~~~~~~~~~~~~~~~
+
+The system supports limited budget awareness through a ``Budget Friendly`` recipe tag.
+
+Implemented units:
+
+* Budget Friendly tag
+* ``RecipesView`` tag filter
+
+Full cost tracking and price-range filtering were descoped. The implemented version allows recipes to be tagged and filtered as budget friendly.
+
+SR-8: Authentication and User Management
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The system supports registration, login, profile retrieval, profile update, avatar upload, and session persistence.
+
+Implemented units:
+
+* ``AuthService``
+* ``POST /register``
+* ``POST /token``
+* ``GET /users/me``
+* ``PUT /users/me``
+* ``PATCH /users/me``
+* ``POST /users/me/avatar``
+
+Authentication uses JWT bearer tokens. Tokens are stored in ``SharedPreferences`` on the Flutter client and validated by the FastAPI backend.
+
+Non-Functional Requirements
+---------------------------
+
+NFR-1: Usability and Offline Access
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The application provides a clear Flutter user interface and supports limited offline access using local fallback data and ``SharedPreferences``.
+
+NFR-2: Security and Data Protection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The system protects user data through hashed passwords, JWT authentication, protected API routes, and separation between user preference data and shared recipe data.
+
+NFR-3: Performance and Responsiveness
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The application aims to keep common actions responsive. Image loading uses Flutter placeholders and the recipe catalogue has local fallback behaviour when the API is unavailable.
+
+NFR-4: Persistence
+~~~~~~~~~~~~~~~~~~
+
+Server-side data is stored in PostgreSQL through SQLAlchemy models. Client-side preferences are stored using ``SharedPreferences``.
