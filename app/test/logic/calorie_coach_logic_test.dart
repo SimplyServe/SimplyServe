@@ -145,7 +145,7 @@ void main() {
 
       test('protein never exceeds 35% of calories regardless of body weight', () {
         final protein = _computeProteinTarget(1500, 100, 'gain');
-        final maxAllowed = (1500 * 0.35) / 4;
+        const maxAllowed = (1500 * 0.35) / 4;
         expect(protein, lessThanOrEqualTo(maxAllowed));
       });
 
