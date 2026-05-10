@@ -154,14 +154,18 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       imageUrl: widget.existingRecipe?.imageUrl ?? '',
       prepTime: prepTime,
       cookTime: cookTime,
-      totalTime: '$prepTime + $cookTime', // stored as display string, not a computed sum
+      totalTime:
+          '$prepTime + $cookTime', // stored as display string, not a computed sum
       servings: servings,
       difficulty: 'Medium',
       nutrition: const NutritionInfo(
           calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
       ingredients: List<IngredientEntry>.from(_selectedIngredients),
       steps: steps,
-      tags: _selectedTags.isEmpty ? const ['New'] : _selectedTags.toList(), // 'New' is a sentinel so the backend never receives an empty tag list
+      tags: _selectedTags.isEmpty
+          ? const ['New']
+          : _selectedTags
+              .toList(), // 'New' is a sentinel so the backend never receives an empty tag list
       id: widget.existingRecipe?.id,
     );
 
@@ -186,7 +190,28 @@ class _RecipeFormViewState extends State<RecipeFormView> {
           title: result.title,
           note: noteText,
         );
-        if (mounted) Navigator.of(context).pop(result);
+
+        // Add custom ingredient nutrition on top of what the backend returned
+        final customIngredients =
+            _selectedIngredients.where((i) => i.isCustom).toList();
+        final patchedResult = customIngredients.isEmpty
+            ? result
+            : result.copyWith(
+                nutrition: NutritionInfo(
+                  calories: result.nutrition.calories +
+                      customIngredients
+                          .fold<double>(0, (s, i) => s + i.calories)
+                          .round(),
+                  protein:
+                      '${(_parseGrams(result.nutrition.protein) + customIngredients.fold<double>(0, (s, i) => s + i.protein)).toStringAsFixed(1)}g',
+                  carbs:
+                      '${(_parseGrams(result.nutrition.carbs) + customIngredients.fold<double>(0, (s, i) => s + i.carbs)).toStringAsFixed(1)}g',
+                  fats:
+                      '${(_parseGrams(result.nutrition.fats) + customIngredients.fold<double>(0, (s, i) => s + i.fats)).toStringAsFixed(1)}g',
+                ),
+              );
+
+        if (mounted) Navigator.of(context).pop(patchedResult);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -695,11 +720,15 @@ class _RecipeFormViewState extends State<RecipeFormView> {
               dense: true,
               leading: const Icon(Icons.add_circle_outline),
               title: Text('Add "$query" as new ingredient'),
-              onTap: () => _selectIngredient(query),
+              onTap: () => _selectIngredient(query, isCustom: true),
             ),
         ],
       ),
     );
+  }
+
+  double _parseGrams(String value) {
+    return double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
   }
 
   Future<void> _searchIngredients(String query) async {
@@ -730,9 +759,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     });
   }
 
-  Future<void> _selectIngredient(String ingredientName) async {
+  Future<void> _selectIngredient(String ingredientName,
+      {bool isCustom = false}) async {
     final IngredientEntry? ingredient =
-        await _showIngredientDetailDialog(ingredientName);
+        await _showIngredientDetailDialog(ingredientName, isCustom: isCustom);
     if (ingredient == null || !mounted) {
       return;
     }
@@ -762,12 +792,27 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   Future<IngredientEntry?> _showIngredientDetailDialog(
     String ingredientName, {
     IngredientEntry? initialIngredient,
+    bool isCustom = false,
   }) {
+    final bool showNutrition = isCustom || (initialIngredient?.isCustom ?? false);
+
     final nameController = TextEditingController(
       text: initialIngredient?.name ?? ingredientName,
     );
     final quantityController = TextEditingController(
       text: (initialIngredient?.quantity ?? 1).toString(),
+    );
+    final caloriesController = TextEditingController(
+      text: (initialIngredient?.calories ?? 0).toString(),
+    );
+    final proteinController = TextEditingController(
+      text: (initialIngredient?.protein ?? 0).toString(),
+    );
+    final carbsController = TextEditingController(
+      text: (initialIngredient?.carbs ?? 0).toString(),
+    );
+    final fatsController = TextEditingController(
+      text: (initialIngredient?.fats ?? 0).toString(),
     );
     final formKey = GlobalKey<FormState>();
     final initialUnit =
@@ -784,60 +829,151 @@ class _RecipeFormViewState extends State<RecipeFormView> {
               title: Text(initialIngredient == null
                   ? 'Add $ingredientName'
                   : 'Edit Ingredient'),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Ingredient',
-                        border: OutlineInputBorder(),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Ingredient',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if ((value ?? '').trim().isEmpty) {
+                            return 'Enter an ingredient name';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        if ((value ?? '').trim().isEmpty) {
-                          return 'Enter an ingredient name';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: quantityController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Quantity',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: quantityController,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Quantity',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          final parsed = double.tryParse((value ?? '').trim());
+                          if (parsed == null || parsed <= 0) {
+                            return 'Enter a valid quantity';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        final parsed = double.tryParse((value ?? '').trim());
-                        if (parsed == null || parsed <= 0) {
-                          return 'Enter a valid quantity';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedUnit,
-                      items: _allowedUnits
-                          .map((unit) => DropdownMenuItem<String>(
-                              value: unit, child: Text(unit)))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setDialogState(() {
-                          selectedUnit = value;
-                        });
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Unit',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedUnit,
+                        items: _allowedUnits
+                            .map((unit) => DropdownMenuItem<String>(
+                                value: unit, child: Text(unit)))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() {
+                            selectedUnit = value;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Unit',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-                  ],
+                      if (showNutrition) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Nutrition (per serving)',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: caloriesController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Calories',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                validator: (v) {
+                                  if (double.tryParse((v ?? '').trim()) == null) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                controller: proteinController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Protein (g)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                validator: (v) {
+                                  if (double.tryParse((v ?? '').trim()) == null) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: carbsController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Carbs (g)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                validator: (v) {
+                                  if (double.tryParse((v ?? '').trim()) == null) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                controller: fatsController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: const InputDecoration(
+                                  labelText: 'Fats (g)',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                                validator: (v) {
+                                  if (double.tryParse((v ?? '').trim()) == null) {
+                                    return 'Invalid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -857,6 +993,19 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         name: nameController.text.trim(),
                         quantity: quantity,
                         unit: selectedUnit,
+                        isCustom: showNutrition,
+                        calories: showNutrition
+                            ? (double.tryParse(caloriesController.text.trim()) ?? 0)
+                            : 0,
+                        protein: showNutrition
+                            ? (double.tryParse(proteinController.text.trim()) ?? 0)
+                            : 0,
+                        carbs: showNutrition
+                            ? (double.tryParse(carbsController.text.trim()) ?? 0)
+                            : 0,
+                        fats: showNutrition
+                            ? (double.tryParse(fatsController.text.trim()) ?? 0)
+                            : 0,
                       ),
                     );
                   },
