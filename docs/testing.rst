@@ -131,7 +131,7 @@ Final Backend Test and Coverage Evidence
 
 The screenshot below shows the final backend automated test run and backend coverage evidence used before submission.
 
-.. figure:: assets/images/backend_tests.png
+.. figure:: assets/images/backend_tests.webp
    :alt: Screenshot showing backend tests passing and backend coverage report
    :align: center
    :width: 100%
