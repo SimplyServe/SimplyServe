@@ -1,5 +1,3 @@
-from datetime import datetime
-
 project = "SimplyServe"
 author = "SimplyServe Team"
 copyright = "2026, Team 2D"
