@@ -1,78 +1,137 @@
 Testing
 =======
 
-The SimplyServe test strategy combines requirement-based testing, equivalence partitioning, boundary value analysis, positive testing, negative testing, widget testing, service testing, integration testing, and backend API testing.
+The SimplyServe automated testing evidence focuses on the FastAPI backend, where API behaviour, database operations, authentication, recipe management, and error handling can be tested consistently using pytest.
 
 Testing Methodology
 -------------------
 
-The test plan was produced by decomposing each system requirement into implemented units of code. Each unit was then tested using valid, invalid, boundary, and error-state input partitions.
+The backend test strategy uses requirement-based testing, equivalence partitioning, boundary value analysis, positive testing, negative testing, and error-state testing.
 
-The test plan includes:
+Each backend test is mapped to an implemented API endpoint, helper function, or backend behaviour. The tests check both successful requests and expected failure cases, including invalid input, duplicate data, missing authentication, invalid IDs, and malformed requests.
 
-* Test ID.
-* System requirement.
-* Unit of code.
-* Test type.
-* Methodology.
-* Test data.
-* Expected output.
-* Valid or invalid classification.
-* Evidence reference.
+Backend Test Areas
+------------------
 
-Test Types
-----------
-
-Flutter Unit Tests
-~~~~~~~~~~~~~~~~~~
-
-Used to test service-layer logic in isolation, including calorie calculations, shopping-list logic, allergen filtering, and authentication state.
-
-Flutter Widget Tests
+Authentication Tests
 ~~~~~~~~~~~~~~~~~~~~
 
-Used to test UI rendering and interaction for pages such as LoginPage, DashboardView, RecipesView, ShoppingListView, SettingsView, MealCalendarView, CalorieCoachView, and SpinWheelView.
+Authentication tests cover:
 
-Flutter Integration Tests
-~~~~~~~~~~~~~~~~~~~~~~~~~
+* User registration.
+* Duplicate email handling.
+* Login with valid credentials.
+* Login with invalid credentials.
+* JWT token generation.
+* Protected route access.
+* Missing or invalid bearer token handling.
 
-Used to test full user flows such as app launch, login, navigation, and user interaction across multiple screens.
+User Profile Tests
+~~~~~~~~~~~~~~~~~~
 
-Backend API Tests
-~~~~~~~~~~~~~~~~~
+User profile tests cover:
 
-Used to test FastAPI endpoints, authentication flows, recipe CRUD, deleted recipe recovery, profile updates, avatar upload, and helper functions.
+* Retrieving the authenticated user's profile.
+* Updating the user's profile name.
+* Rejecting empty or invalid profile updates.
+* Avatar upload validation where applicable.
 
-Coverage Evidence
------------------
+Recipe API Tests
+~~~~~~~~~~~~~~~~
 
-Frontend coverage can be generated with:
+Recipe tests cover:
 
-.. code-block:: bash
+* Listing recipes.
+* Creating recipes.
+* Updating recipes.
+* Soft-deleting recipes.
+* Listing deleted recipes.
+* Restoring deleted recipes.
+* Permanently deleting recipes.
+* Handling nonexistent recipe IDs.
 
-   cd app
-   flutter test --coverage
+Ingredient Tests
+~~~~~~~~~~~~~~~~
 
-Backend coverage can be generated with:
+Ingredient tests cover:
+
+* Searching ingredients.
+* Empty search results.
+* Query limits.
+* Base ingredient filtering where applicable.
+
+Helper Function Tests
+~~~~~~~~~~~~~~~~~~~~~
+
+Helper function tests cover:
+
+* Unit normalisation.
+* Ingredient text parsing.
+* Ingredient payload validation.
+* Nutrition calculation.
+* Duplicate ingredient handling.
+* Invalid quantity handling.
+
+Backend Coverage
+----------------
+
+Backend coverage is generated using ``pytest`` and ``pytest-cov``.
+
+The command used to generate the backend coverage report is:
 
 .. code-block:: bash
 
    cd backend
-   pytest --cov=backend --cov-report=html tests/
+   poetry run pytest tests/ --cov=. --cov-report=term-missing --cov-report=html:htmlcov --html=pytest-report.html --self-contained-html
+
+This produces:
+
+.. code-block:: text
+
+   backend/htmlcov/index.html
+   backend/pytest-report.html
+
+``htmlcov/index.html`` shows the backend coverage report, while ``pytest-report.html`` shows the detailed pytest execution report.
+
+Final Backend Test Evidence
+---------------------------
+
+The screenshot below shows the final backend automated test run and backend coverage evidence used before submission.
+
+.. figure:: assets/images/tests.png
+   :alt: Screenshot showing backend tests and backend coverage passing
+   :align: center
+   :width: 100%
+
+   Final backend test run and coverage evidence before submission.
 
 Traceability
 ------------
 
-Each automated test is mapped back to a requirement and unit of code. This ensures the tests do not only check isolated behaviours but also provide coverage evidence for the implemented system requirements.
+The backend automated tests support the test plan by providing executable evidence for authentication, recipe management, user profile management, deleted recipe recovery, ingredient search, and backend helper functions.
 
-Final Test Run Evidence
------------------------
+Frontend validation is documented separately through the test plan, manual functional testing, and the video demonstration rather than through frontend coverage evidence.
 
-The screenshot below shows the final automated test run used as evidence that the implemented test suite passed before submission.
+Backend Coverage Evidence
+-------------------------
 
-.. figure:: assets/images/tests.png
-   :alt: Screenshot showing the final SimplyServe tests passing
+Backend coverage was generated using ``pytest`` and ``pytest-cov``. The full command used to generate the report is documented in the Development Guide.
+
+The coverage process produced two backend reports:
+
+.. code-block:: text
+
+   backend/htmlcov/index.html
+   backend/pytest-report.html
+
+The ``htmlcov/index.html`` report shows the backend coverage percentage and line-by-line coverage details. The ``pytest-report.html`` report shows the backend test execution results.
+
+Final Backend Test and Coverage Evidence
+----------------------------------------
+
+The screenshot below shows the final backend automated test run and backend coverage evidence used before submission.
+
+.. figure:: assets/images/backend_tests.png
+   :alt: Screenshot showing backend tests passing and backend coverage report
    :align: center
    :width: 100%
-
-   Final automated test run showing all tests passing before submission.
