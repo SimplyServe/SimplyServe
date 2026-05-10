@@ -64,3 +64,15 @@ Traceability
 ------------
 
 Each automated test is mapped back to a requirement and unit of code. This ensures the tests do not only check isolated behaviours but also provide coverage evidence for the implemented system requirements.
+
+Final Test Run Evidence
+-----------------------
+
+The screenshot below shows the final automated test run used as evidence that the implemented test suite passed before submission.
+
+.. figure:: assets/images/tests.png
+   :alt: Screenshot showing the final SimplyServe tests passing
+   :align: center
+   :width: 100%
+
+   Final automated test run showing all tests passing before submission.

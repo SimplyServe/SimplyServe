@@ -1,7 +1,7 @@
 {
   "Tuscan Salmon": {
     "summary": "Seared salmon fillets in a rich, creamy garlic sauce with sun-dried tomatoes and fresh spinach — an Italian-inspired dinner ready in 35 minutes.",
-    "imageUrl": "assets/images/image.png",
+    "imageUrl": "assets/images/Tuscan Salmon.png",
     "prepTime": "10 mins",
     "cookTime": "25 mins",
     "totalTime": "35 mins",
@@ -17,7 +17,7 @@
   },
   "Carbonara": {
     "summary": "A classic Roman pasta dish with crispy pancetta, silky egg and Pecorino sauce, and plenty of black pepper — simple, indulgent, and deeply satisfying.",
-    "imageUrl": "assets/images/image.png",
+    "imageUrl": "assets/images/Carbonara.png",
     "prepTime": "5 mins",
     "cookTime": "20 mins",
     "totalTime": "25 mins",
@@ -33,7 +33,7 @@
   },
   "Chicken Tacos": {
     "summary": "Smoky spiced chicken in warm flour tortillas with fresh salsa, creamy avocado, and sour cream — a crowd-pleasing weeknight favourite.",
-    "imageUrl": "assets/images/image.png",
+    "imageUrl": "assets/images/Chicken Tacos.png",
     "prepTime": "10 mins",
     "cookTime": "15 mins",
     "totalTime": "25 mins",
