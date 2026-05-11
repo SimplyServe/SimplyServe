@@ -65,6 +65,33 @@ A cross-platform Flutter meal planning and nutrition tracking application with a
 - Responsive, modern UI with brand colour (#74BC42)
 
 ## Screenshots
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/f730fec1-46a5-464a-a5d0-ae4ca3e03f29" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/60bc0f0b-2c03-4043-913d-966127ed2a21" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/395214e3-c573-4333-bc06-590b45c060ed" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/4734e66d-2a9b-49f8-a9dd-f39dabc87878" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/9eb45bd7-e8c7-4f6d-8ee8-2ebb1fb847f7" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/f876bdea-46ee-4470-9f7a-ee0a3ddbd865" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/aff564e1-d75b-46d0-bac5-866dc1b8c253" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/e916155c-7529-4e4b-be99-55bf06893dcd" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/b0bdd37e-93e8-4174-91f9-49e54e4ffa7b" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/2e3acb7f-e1d0-4741-8657-b941df0bfc79" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/db775731-f1f9-4a3e-b483-86be3c65ca5d" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/2a715705-e7f6-4e65-b109-b163b248a7c5" />
+
+<img width="254" height="551" alt="image" src="https://github.com/user-attachments/assets/263e13b8-18bc-4c10-b072-a217ea97d792" />
+
+
 
 <!--
 Add screenshots of the app here. Recommended screenshots:

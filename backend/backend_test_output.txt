@@ -1,11 +1,12 @@
-﻿collected 225 items                                                                                                                                                
+collected 342 items                                                                                                                                                
 
-tests\test_auth.py .....................                                                                                                                     [  9%]
-tests\test_coverage_boost.py ...........................................................................                                                     [ 42%]
-tests\test_helpers.py ............................................................                                                                           [ 69%]
-tests\test_main.py ............                                                                                                                              [ 74%]
-tests\test_recipe_management.py .................                                                                                                            [ 82%]
-tests\test_recipes.py ......................                                                                                                                 [ 92%]
+tests\test_auth.py .....................                                                                                                                     [  6%]
+tests\test_coverage_boost.py ............................................................................................................................... [ 43%]
+.................................................................                                                                                            [ 62%]
+tests\test_helpers.py ............................................................                                                                           [ 79%]
+tests\test_main.py ............                                                                                                                              [ 83%]
+tests\test_recipe_management.py .................                                                                                                            [ 88%]
+tests\test_recipes.py ......................                                                                                                                 [ 94%]
 tests\test_user_profile.py ..................                                                                                                                [100%]
 
 ========================================================================= tests coverage ==========================================================================
@@ -22,14 +23,12 @@ schemas.py                           70      0   100%
 tests\__init__.py                     0      0   100%
 tests\conftest.py                    81      4    95%   102, 122, 161, 175
 tests\test_auth.py                  110      0   100%
-tests\test_coverage_boost.py        572      0   100%
+tests\test_coverage_boost.py       1492      1    99%   1340
 tests\test_helpers.py                87      0   100%
 tests\test_main.py                   65      0   100%
 tests\test_recipe_management.py     127      0   100%
 tests\test_recipes.py               175      0   100%
 tests\test_user_profile.py           90      0   100%
 ---------------------------------------------------------------
-TOTAL                              1960    152    92%
-Coverage HTML written to dir htmlcov
-- Generated html report: file:///C:/Users/sujan/OneDrive/Documents/University/Year%202%20Content/Software%20Engineering/Coursework%202/frontend/frontend_test/backend/pytest-report.html -
-================================================================= 225 passed in 87.28s (0:01:27) ==================================================================
+TOTAL                              2880    153    95%
+================================================================= 342 passed in 103.43s (0:01:43) =================================================================
