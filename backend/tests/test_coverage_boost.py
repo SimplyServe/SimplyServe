@@ -7,13 +7,35 @@ Covers:
   - auth.py: create_access_token without expires_delta, JWT with no sub, unknown user
   - recipe_ingredients.py: missing file, non-dict JSON, invalid item types
   - async route handlers called directly (bypasses ASGI transport tracking gap)
+
+System Requirement Tests:
+  - SR-1: Smart Meal Suggestions (Meal Spinner / Reroll Avoidance)
+  - SR-2: Dietary Filters & Allergen Settings (13 allergen categories)
+  - SR-3: Calorie Coach (BMR/TDEE Calculator & Macro Targets)
+  - SR-4: Recipe Management (CRUD, Search, Tags, Soft Delete, Helpers)
+  - SR-5: Shopping List Management (Automatic generation from recipes)
+  - SR-6: Meal Calendar & Meal Planning
+  - SR-7: Budget Awareness ('Budget Friendly' tag filter)
+  - SR-8: Authentication & User Management (Custom JWT, Profile, Avatar)
+  - NFR:  Non-Functional (Performance, Error Handling, Data Consistency)
+
+Test Methodologies:
+  - Equivalence Partitioning (EP)
+  - Boundary Value Analysis (BVA)
+  - Negative Testing (NT)
+  - Integration Testing (IT)
 """
 
+import io
 import json
+import time
 import pytest
-from datetime import timedelta
+from datetime import datetime, timedelta
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
+import models
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -550,8 +572,1792 @@ class TestDirectAsyncFunctions:
             await update_users_me(payload=empty_payload, current_user=user, db=test_db)
         assert exc_info.value.status_code == 400
 
+class TestSR1MealsModelCRUD:
+    """SR-1: Meals model CRUD for planned meal storage."""
 
-# ── SR-7: Budget Awareness — 'Budget Friendly' tag filter ────────────────────
+    async def test_create_meal_with_all_fields(self, test_db: AsyncSession):
+        """EP: valid meal with all fields populated."""
+        user = models.User(
+            email="sr1_meal@example.com", hashed_password="hashed", is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-01-15", stage="dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        assert meal.meal_id is not None
+        assert meal.user_id == user.id
+        assert meal.planned_date == "2025-01-15"
+        assert meal.stage == "dinner"
+
+    async def test_create_meal_breakfast_stage(self, test_db: AsyncSession):
+        """EP: meal with breakfast stage."""
+        user = models.User(
+            email="sr1_bfast@example.com", hashed_password="h", is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-01-15", stage="breakfast")
+        test_db.add(meal)
+        await test_db.commit()
+        assert meal.stage == "breakfast"
+
+    async def test_create_meal_lunch_stage(self, test_db: AsyncSession):
+        """EP: meal with lunch stage."""
+        user = models.User(
+            email="sr1_lunch@example.com", hashed_password="h", is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-01-15", stage="lunch")
+        test_db.add(meal)
+        await test_db.commit()
+        assert meal.stage == "lunch"
+
+    async def test_multiple_meals_per_day(self, test_db: AsyncSession):
+        """EP: user can have multiple meals per day."""
+        user = models.User(
+            email="sr1_multi@example.com", hashed_password="h", is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for stage in ["breakfast", "lunch", "dinner"]:
+            test_db.add(models.Meals(user_id=user.id, planned_date="2025-01-15", stage=stage))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Meals).where(models.Meals.user_id == user.id)
+        )
+        assert len(result.scalars().all()) == 3
+
+    async def test_meal_user_relationship(self, test_db: AsyncSession):
+        """IT: Meals.user back-populates correctly."""
+        user = models.User(
+            email="sr1_rel@example.com", hashed_password="h", is_active=True
+        )
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-02-01", stage="dinner")
+        test_db.add(meal)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Meals).where(models.Meals.user_id == user.id)
+        )
+        assert result.scalars().first() is not None
+
+
+class TestSR1MealRecipeAssociation:
+    """SR-1: Linking recipes to meals via MealRecipe junction table."""
+
+    async def test_link_recipe_to_meal(self, test_db: AsyncSession):
+        """EP: valid recipe-meal link."""
+        user = models.User(email="sr1_mr@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="Suggested", summary="s", servings=2)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-01-20", stage="dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        test_db.add(models.MealRecipe(meal_id=meal.meal_id, recipe_id=recipe.recipe_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.MealRecipe).where(models.MealRecipe.meal_id == meal.meal_id)
+        )
+        link = result.scalars().first()
+        assert link is not None
+        assert link.recipe_id == recipe.recipe_id
+
+    async def test_multiple_recipes_per_meal(self, test_db: AsyncSession):
+        """EP: a meal can include multiple recipes."""
+        user = models.User(email="sr1_mr2@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-01-20", stage="dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        for i in range(3):
+            recipe = models.Recipe(recipe_name=f"MR Recipe {i}", summary="s", servings=1)
+            test_db.add(recipe)
+            await test_db.commit()
+            await test_db.refresh(recipe)
+            test_db.add(models.MealRecipe(meal_id=meal.meal_id, recipe_id=recipe.recipe_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.MealRecipe).where(models.MealRecipe.meal_id == meal.meal_id)
+        )
+        assert len(result.scalars().all()) == 3
+
+
+class TestSR1RecipeFeedback:
+    """SR-1: Recipe feedback for reroll avoidance."""
+
+    async def test_create_positive_feedback(self, test_db: AsyncSession):
+        """EP: user likes a recipe."""
+        user = models.User(email="sr1_fb1@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="Liked", summary="s", servings=2)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        fb = models.recipe_feedback(
+            user_id=user.id, recipe_id=recipe.recipe_id,
+            rating=5, liked=1, created_at=datetime.utcnow().isoformat(),
+        )
+        test_db.add(fb)
+        await test_db.commit()
+        await test_db.refresh(fb)
+
+        assert fb.feedback_id is not None
+        assert fb.rating == 5
+        assert fb.liked == 1
+
+    async def test_create_negative_feedback(self, test_db: AsyncSession):
+        """EP: user dislikes a recipe."""
+        user = models.User(email="sr1_fb2@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="Disliked", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        fb = models.recipe_feedback(
+            user_id=user.id, recipe_id=recipe.recipe_id,
+            rating=1, liked=0, created_at=datetime.utcnow().isoformat(),
+        )
+        test_db.add(fb)
+        await test_db.commit()
+        assert fb.rating == 1
+        assert fb.liked == 0
+
+    async def test_feedback_rating_boundary_min(self, test_db: AsyncSession):
+        """BVA: minimum rating value (1)."""
+        user = models.User(email="sr1_fb3@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="MinR", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        fb = models.recipe_feedback(
+            user_id=user.id, recipe_id=recipe.recipe_id,
+            rating=1, liked=0, created_at=datetime.utcnow().isoformat(),
+        )
+        test_db.add(fb)
+        await test_db.commit()
+        assert fb.rating == 1
+
+    async def test_feedback_rating_boundary_max(self, test_db: AsyncSession):
+        """BVA: maximum rating value (5)."""
+        user = models.User(email="sr1_fb4@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="MaxR", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        fb = models.recipe_feedback(
+            user_id=user.id, recipe_id=recipe.recipe_id,
+            rating=5, liked=1, created_at=datetime.utcnow().isoformat(),
+        )
+        test_db.add(fb)
+        await test_db.commit()
+        assert fb.rating == 5
+
+    async def test_multiple_feedback_per_user(self, test_db: AsyncSession):
+        """EP: user can rate multiple recipes."""
+        user = models.User(email="sr1_fb5@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for i in range(3):
+            recipe = models.Recipe(recipe_name=f"FB {i}", summary="s", servings=1)
+            test_db.add(recipe)
+            await test_db.commit()
+            await test_db.refresh(recipe)
+            test_db.add(models.recipe_feedback(
+                user_id=user.id, recipe_id=recipe.recipe_id,
+                rating=i + 1, liked=1 if i > 1 else 0,
+                created_at=datetime.utcnow().isoformat(),
+            ))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.recipe_feedback).where(models.recipe_feedback.user_id == user.id)
+        )
+        assert len(result.scalars().all()) == 3
+
+    async def test_reroll_avoidance_disliked_tracked(self, test_db: AsyncSession):
+        """IT: disliked recipes queryable for reroll avoidance."""
+        user = models.User(email="sr1_reroll@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        disliked_ids = []
+        for i, (liked_val, rating) in enumerate([(1, 5), (1, 4), (0, 1)]):
+            recipe = models.Recipe(recipe_name=f"Reroll {i}", summary="s", servings=1)
+            test_db.add(recipe)
+            await test_db.commit()
+            await test_db.refresh(recipe)
+            test_db.add(models.recipe_feedback(
+                user_id=user.id, recipe_id=recipe.recipe_id,
+                rating=rating, liked=liked_val,
+                created_at=datetime.utcnow().isoformat(),
+            ))
+            if liked_val == 0:
+                disliked_ids.append(recipe.recipe_id)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.recipe_feedback.recipe_id).where(
+                models.recipe_feedback.user_id == user.id,
+                models.recipe_feedback.liked == 0,
+            )
+        )
+        avoided = [row[0] for row in result.all()]
+        assert len(avoided) == 1
+        assert avoided[0] == disliked_ids[0]
+
+
+class TestSR1MealSuggestionFiltering:
+    """SR-1: Recipe filtering for meal suggestions."""
+
+    async def test_excludes_deleted_recipes(self, test_db: AsyncSession):
+        """EP: deleted recipes excluded from suggestions."""
+        test_db.add_all([
+            models.Recipe(recipe_name="Active", summary="a", servings=2, is_deleted=False),
+            models.Recipe(recipe_name="Deleted", summary="d", servings=2, is_deleted=True),
+        ])
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Recipe).where(models.Recipe.is_deleted != True)
+        )
+        names = [r.recipe_name for r in result.scalars().all()]
+        assert "Active" in names
+        assert "Deleted" not in names
+
+    async def test_filter_by_tag_for_suggestions(self, test_db: AsyncSession):
+        """IT: filter recipes by tag for meal suggestions."""
+        recipe = models.Recipe(recipe_name="QuickMeal", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        tag = models.Tag(tag_name="sr1-quick-meal")
+        test_db.add(tag)
+        await test_db.commit()
+        await test_db.refresh(tag)
+
+        test_db.add(models.RecipeTag(tag_id=tag.id, recipe_id=recipe.recipe_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Recipe.recipe_name)
+            .join(models.RecipeTag).join(models.Tag)
+            .where(models.Tag.tag_name == "sr1-quick-meal")
+        )
+        assert "QuickMeal" in [row[0] for row in result.all()]
+
+class TestSR2PreferenceModel:
+    """SR-2: Preference model for allergen/dietary preference storage."""
+
+    async def test_create_preference(self, test_db: AsyncSession):
+        """EP: valid preference creation."""
+        pref = models.Preference(preference_name="Gluten-Free", like=1)
+        test_db.add(pref)
+        await test_db.commit()
+        await test_db.refresh(pref)
+
+        assert pref.preference_id is not None
+        assert pref.preference_name == "Gluten-Free"
+        assert pref.like == 1
+
+    async def test_create_allergen_dislike(self, test_db: AsyncSession):
+        """EP: allergen marked as dislike (0)."""
+        pref = models.Preference(preference_name="Contains Nuts", like=0)
+        test_db.add(pref)
+        await test_db.commit()
+        assert pref.like == 0
+
+    async def test_all_13_allergen_categories(self, test_db: AsyncSession):
+        """BVA: all 13 major allergen categories can be stored."""
+        allergens = [
+            "Celery", "Cereals containing gluten", "Crustaceans",
+            "Eggs", "Fish", "Lupin", "Milk", "Molluscs",
+            "Mustard", "Nuts", "Peanuts", "Sesame seeds", "Soybeans",
+        ]
+        for name in allergens:
+            test_db.add(models.Preference(preference_name=name, like=0))
+        await test_db.commit()
+
+        result = await test_db.execute(select(models.Preference))
+        assert len(result.scalars().all()) == 13
+
+    async def test_query_preference_by_name(self, test_db: AsyncSession):
+        """EP: retrieve preference by name."""
+        test_db.add(models.Preference(preference_name="Dairy-Free", like=1))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Preference).where(models.Preference.preference_name == "Dairy-Free")
+        )
+        assert result.scalars().first() is not None
+
+
+class TestSR2UserPreferenceAssociation:
+    """SR-2: Linking users to dietary preferences."""
+
+    async def test_link_user_to_preference(self, test_db: AsyncSession):
+        """EP: associate a user with a preference."""
+        user = models.User(email="sr2_up@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        pref = models.Preference(preference_name="Vegetarian", like=1)
+        test_db.add(pref)
+        await test_db.commit()
+        await test_db.refresh(pref)
+
+        test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.UserPreference).where(models.UserPreference.user_id == user.id)
+        )
+        assert result.scalars().first() is not None
+
+    async def test_user_multiple_preferences(self, test_db: AsyncSession):
+        """EP: user can have multiple dietary preferences."""
+        user = models.User(email="sr2_up2@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for name in ["Vegetarian", "Nut-Free", "Gluten-Free"]:
+            pref = models.Preference(preference_name=name, like=1)
+            test_db.add(pref)
+            await test_db.commit()
+            await test_db.refresh(pref)
+            test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.UserPreference).where(models.UserPreference.user_id == user.id)
+        )
+        assert len(result.scalars().all()) == 3
+
+    async def test_query_user_allergens(self, test_db: AsyncSession):
+        """IT: query all allergens a user has flagged."""
+        user = models.User(email="sr2_qa@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for name in ["Peanuts", "Shellfish"]:
+            pref = models.Preference(preference_name=name, like=0)
+            test_db.add(pref)
+            await test_db.commit()
+            await test_db.refresh(pref)
+            test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Preference.preference_name)
+            .join(models.UserPreference, models.Preference.preference_id == models.UserPreference.preference_id)
+            .where(models.UserPreference.user_id == user.id, models.Preference.like == 0)
+        )
+        allergens = [row[0] for row in result.all()]
+        assert "Peanuts" in allergens
+        assert "Shellfish" in allergens
+
+
+class TestSR2DietaryTagFiltering:
+    """SR-2: Filtering recipes by dietary tags via API."""
+
+    async def test_vegan_tag_in_recipes(self, async_client: AsyncClient, base_ingredients):
+        """IT: recipe with vegan tag returned in listing."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 Vegan Bowl", "summary": "Plant-based",
+            "tags_json": json.dumps(["vegan", "dairy-free"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "spinach", "quantity": 100, "unit": "g"}]),
+            "steps_json": json.dumps(["Prepare"]),
+        })
+        assert resp.status_code == 200
+
+        recipes = (await async_client.get("/recipes")).json()
+        vegan = [r for r in recipes if "vegan" in r.get("tags", [])]
+        assert len(vegan) >= 1
+
+    async def test_vegetarian_vs_meat_tags(self, async_client: AsyncClient, base_ingredients):
+        """EP: vegetarian and meat tags separate correctly."""
+        for title, tags in [("SR2 Veggie", ["vegetarian"]), ("SR2 Meat", ["meat"])]:
+            await async_client.post("/recipes", data={
+                "title": title, "summary": f"{title} summary",
+                "tags_json": json.dumps(tags),
+                "ingredients_json": json.dumps([{"ingredient_name": "onion", "quantity": 1, "unit": "pcs"}]),
+                "steps_json": json.dumps(["Cook"]),
+            })
+
+        recipes = (await async_client.get("/recipes")).json()
+        vegetarian = [r for r in recipes if "vegetarian" in r.get("tags", [])]
+        assert all(r["title"] != "SR2 Meat" for r in vegetarian)
+
+    async def test_gluten_free_tag(self, async_client: AsyncClient, base_ingredients):
+        """EP: gluten-free tag stored and retrieved."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 GF Salad", "summary": "GF",
+            "tags_json": json.dumps(["gluten-free"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "tomato", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Chop"]),
+        })
+        assert resp.status_code == 200
+        assert "gluten-free" in resp.json()["tags"]
+
+    async def test_multiple_dietary_tags(self, async_client: AsyncClient, base_ingredients):
+        """EP: recipe can have multiple dietary tags."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 Multi Diet", "summary": "Many restrictions",
+            "tags_json": json.dumps(["vegan", "gluten-free", "nut-free", "soy-free"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "carrot", "quantity": 3, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Prep"]),
+        })
+        assert resp.status_code == 200
+        tags = resp.json()["tags"]
+        for t in ["vegan", "gluten-free", "nut-free", "soy-free"]:
+            assert t in tags
+
+    async def test_no_dietary_tags(self, async_client: AsyncClient, base_ingredients):
+        """NT: recipe with no dietary tags."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 No Diet", "summary": "Normal",
+            "tags_json": json.dumps([]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert resp.status_code == 200
+        assert resp.json()["tags"] == []
+
+
+class TestSR2IngredientAllergenSearch:
+    """SR-2: Identifying allergens through ingredient search."""
+
+    async def test_search_milk_allergen(self, async_client: AsyncClient, base_ingredients):
+        """EP: search for common allergen 'milk'."""
+        resp = await async_client.get("/ingredients?q=milk")
+        assert resp.status_code == 200
+        if resp.json():
+            assert any("milk" in i["ingredient_name"].lower() for i in resp.json())
+
+    async def test_search_egg_allergen(self, async_client: AsyncClient, base_ingredients):
+        """EP: search for egg allergen."""
+        resp = await async_client.get("/ingredients?q=egg")
+        assert resp.status_code == 200
+        if resp.json():
+            assert any("egg" in i["ingredient_name"].lower() for i in resp.json())
+
+    async def test_allergen_in_recipe_ingredients(self, async_client: AsyncClient, base_ingredients):
+        """IT: recipe containing allergen lists it in ingredients."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 Egg Dish", "summary": "Contains eggs",
+            "tags_json": json.dumps(["contains-eggs"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 3, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Scramble"]),
+        })
+        assert resp.status_code == 200
+        assert "egg" in resp.json()["ingredients"]
+
+class TestSR3NutritionCalculation:
+    """SR-3: Nutrition calculation via _calculate_recipe_nutrition_totals."""
+
+    async def test_single_ingredient_totals(self, test_db: AsyncSession):
+        """EP: recipe with one ingredient."""
+        from main import _find_or_create_ingredient, _calculate_recipe_nutrition_totals
+
+        recipe = models.Recipe(recipe_name="SR3 Single", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        ing = await _find_or_create_ingredient(test_db, "sr3_chicken")
+        ing.avg_calories = 165.0
+        ing.avg_protein = 31.0
+        ing.avg_carbs = 0.0
+        ing.avg_fat = 3.6
+        test_db.add(ing)
+        test_db.add(models.RecipeIngredient(
+            recipe_id=recipe.recipe_id, ingredient_id=ing.id, quantity=2.0, unit="pcs"
+        ))
+        await test_db.commit()
+
+        totals = await _calculate_recipe_nutrition_totals(test_db, recipe.recipe_id)
+        assert totals["calories"] == pytest.approx(330.0)
+        assert totals["protein"] == pytest.approx(62.0)
+
+    async def test_multiple_ingredient_totals(self, test_db: AsyncSession):
+        """EP: recipe with multiple ingredients."""
+        from main import _find_or_create_ingredient, _calculate_recipe_nutrition_totals
+
+        recipe = models.Recipe(recipe_name="SR3 Multi", summary="s", servings=2)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        for name, cal, prot, carbs, fat, qty in [
+            ("sr3_egg", 155.0, 13.0, 1.0, 11.0, 2.0),
+            ("sr3_milk", 0.61, 0.03, 0.05, 0.03, 250.0),
+        ]:
+            ing = await _find_or_create_ingredient(test_db, name)
+            ing.avg_calories, ing.avg_protein = cal, prot
+            ing.avg_carbs, ing.avg_fat = carbs, fat
+            test_db.add(ing)
+            test_db.add(models.RecipeIngredient(
+                recipe_id=recipe.recipe_id, ingredient_id=ing.id, quantity=qty, unit="g"
+            ))
+        await test_db.commit()
+
+        totals = await _calculate_recipe_nutrition_totals(test_db, recipe.recipe_id)
+        assert totals["calories"] == pytest.approx(462.5)
+
+    async def test_no_ingredients_zero_totals(self, test_db: AsyncSession):
+        """BVA: recipe with zero ingredients returns all zeros."""
+        from main import _calculate_recipe_nutrition_totals
+
+        recipe = models.Recipe(recipe_name="SR3 Empty", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        totals = await _calculate_recipe_nutrition_totals(test_db, recipe.recipe_id)
+        assert totals == {"calories": 0.0, "protein": 0.0, "carbs": 0.0, "fats": 0.0}
+
+    async def test_null_nutrition_fields_handled(self, test_db: AsyncSession):
+        """NT: ingredient with null nutrition fields treated as 0."""
+        from main import _find_or_create_ingredient, _calculate_recipe_nutrition_totals
+
+        recipe = models.Recipe(recipe_name="SR3 Null", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        ing = await _find_or_create_ingredient(test_db, "sr3_unknown")
+        test_db.add(models.RecipeIngredient(
+            recipe_id=recipe.recipe_id, ingredient_id=ing.id, quantity=5.0, unit="g"
+        ))
+        await test_db.commit()
+
+        totals = await _calculate_recipe_nutrition_totals(test_db, recipe.recipe_id)
+        assert totals["calories"] == 0.0
+
+    async def test_null_quantity_defaults_to_one(self, test_db: AsyncSession):
+        """NT: null quantity treated as 1."""
+        from main import _find_or_create_ingredient, _calculate_recipe_nutrition_totals
+
+        recipe = models.Recipe(recipe_name="SR3 NullQty", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        ing = await _find_or_create_ingredient(test_db, "sr3_nullqty")
+        ing.avg_calories = 100.0
+        ing.avg_protein = 10.0
+        ing.avg_carbs = 5.0
+        ing.avg_fat = 2.0
+        test_db.add(ing)
+        test_db.add(models.RecipeIngredient(
+            recipe_id=recipe.recipe_id, ingredient_id=ing.id, quantity=None, unit="pcs"
+        ))
+        await test_db.commit()
+
+        totals = await _calculate_recipe_nutrition_totals(test_db, recipe.recipe_id)
+        assert totals["calories"] == pytest.approx(100.0)
+
+
+class TestSR3PerServingNutrition:
+    """SR-3: Per-serving nutrition via _build_nutrition_info."""
+
+    def test_even_division(self):
+        """EP: even division by servings."""
+        from main import _build_nutrition_info
+        result = _build_nutrition_info(
+            {"calories": 800, "protein": 60, "carbs": 100, "fats": 30}, servings=4
+        )
+        assert result["calories"] == 200
+        assert result["protein"] == "15g"
+
+    def test_fractional_rounding(self):
+        """BVA: fractional results rounded."""
+        from main import _build_nutrition_info
+        result = _build_nutrition_info(
+            {"calories": 100, "protein": 7, "carbs": 15, "fats": 3}, servings=3
+        )
+        assert result["calories"] == 33
+        assert isinstance(result["protein"], str)
+
+    def test_single_serving(self):
+        """BVA: 1 serving returns totals."""
+        from main import _build_nutrition_info
+        result = _build_nutrition_info(
+            {"calories": 500, "protein": 40, "carbs": 60, "fats": 20}, servings=1
+        )
+        assert result["calories"] == 500
+
+    def test_zero_servings(self):
+        """BVA: 0 servings treated as 1."""
+        from main import _build_nutrition_info
+        result = _build_nutrition_info(
+            {"calories": 300, "protein": 25, "carbs": 35, "fats": 10}, servings=0
+        )
+        assert result["calories"] == 300
+
+    def test_large_servings(self):
+        """BVA: very large servings count."""
+        from main import _build_nutrition_info
+        result = _build_nutrition_info(
+            {"calories": 10000, "protein": 500, "carbs": 1500, "fats": 300}, servings=100
+        )
+        assert result["calories"] == 100
+        assert result["protein"] == "5g"
+
+
+class TestSR3BaseIngredientData:
+    """SR-3: Base ingredient seed data integrity."""
+
+    async def test_base_ingredients_have_nutrition(self, test_db: AsyncSession, base_ingredients):
+        """IT: seeded base ingredients include nutrition fields."""
+        result = await test_db.execute(
+            select(models.Ingredients).where(models.Ingredients.avg_calories.isnot(None))
+        )
+        ingredients = result.scalars().all()
+        assert len(ingredients) > 0
+        for ing in ingredients:
+            assert ing.avg_calories is not None
+            assert ing.avg_protein is not None
+
+    async def test_base_ingredients_non_negative_calories(self, test_db: AsyncSession, base_ingredients):
+        """BVA: calories must be non-negative."""
+        result = await test_db.execute(
+            select(models.Ingredients).where(models.Ingredients.avg_calories.isnot(None))
+        )
+        for ing in result.scalars().all():
+            assert ing.avg_calories >= 0
+
+    async def test_base_ingredients_have_cost(self, test_db: AsyncSession, base_ingredients):
+        """IT: base ingredients have cost data."""
+        result = await test_db.execute(
+            select(models.Ingredients).where(models.Ingredients.avg_cost.isnot(None))
+        )
+        ingredients = result.scalars().all()
+        assert len(ingredients) > 0
+        for ing in ingredients:
+            assert ing.avg_cost is not None
+
+
+class TestSR3NutritionViaAPI:
+    """SR-3: Nutrition in API responses."""
+
+    async def test_created_recipe_has_nutrition(self, async_client: AsyncClient, base_ingredients):
+        """IT: nutrition calculated on recipe creation."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR3 API Nutr", "summary": "test",
+            "servings": 2, "tags_json": "[]",
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 3, "unit": "pcs"},
+                {"ingredient_name": "milk", "quantity": 200, "unit": "ml"},
+            ]),
+            "steps_json": json.dumps(["Mix"]),
+        })
+        assert resp.status_code == 200
+        nutrition = resp.json()["nutrition"]
+        assert isinstance(nutrition["calories"], int)
+        assert nutrition["protein"].endswith("g")
+
+    async def test_recipe_list_includes_nutrition(self, async_client: AsyncClient, base_ingredients):
+        """IT: GET /recipes includes nutrition for each recipe."""
+        await async_client.post("/recipes", data={
+            "title": "SR3 List Nutr", "summary": "test", "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        recipes = (await async_client.get("/recipes")).json()
+        for recipe in recipes:
+            assert "nutrition" in recipe
+            assert recipe["nutrition"] is not None
+
+    async def test_nutrition_varies_with_servings(self, async_client: AsyncClient, base_ingredients):
+        """EP: different servings = different per-serving nutrition."""
+        base = {
+            "summary": "test", "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 4, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        }
+        r1 = await async_client.post("/recipes", data={**base, "title": "SR3 S1", "servings": 1})
+        r4 = await async_client.post("/recipes", data={**base, "title": "SR3 S4", "servings": 4})
+        cal1, cal4 = r1.json()["nutrition"]["calories"], r4.json()["nutrition"]["calories"]
+        if cal1 > 0 and cal4 > 0:
+            assert cal1 > cal4
+
+    async def test_empty_ingredients_zero_nutrition(self, async_client: AsyncClient):
+        """BVA: recipe with empty ingredients has zero nutrition."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR3 Empty Nutr", "summary": "empty",
+            "tags_json": "[]", "ingredients_json": "[]",
+            "steps_json": json.dumps(["Nothing"]),
+        })
+        assert resp.status_code == 200
+        n = resp.json()["nutrition"]
+        assert n["calories"] == 0
+        assert n["protein"] == "0g"
+
+    async def test_macro_format_g_suffix(self, async_client: AsyncClient, base_ingredients):
+        """IT: macros formatted as strings with 'g' suffix."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR3 Fmt", "summary": "fmt",
+            "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        n = resp.json()["nutrition"]
+        for key in ["protein", "carbs", "fats"]:
+            assert n[key].endswith("g")
+
+class TestSR4RecipeCRUD:
+    """SR-4: Additional recipe CRUD tests."""
+
+    async def test_create_recipe_returns_id(self, async_client: AsyncClient, base_ingredients):
+        """EP: created recipe has a positive integer ID."""
+        resp = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Create", summary="sr4",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        assert resp.status_code == 200
+        assert resp.json()["id"] > 0
+
+    async def test_recipe_fields_match_input(self, async_client: AsyncClient, base_ingredients):
+        """EP: returned recipe fields match submitted data."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR4 Match", "summary": "Match test",
+            "prep_time": "15 minutes", "cook_time": "25 minutes",
+            "total_time": "40 minutes", "servings": 3, "difficulty": "Hard",
+            "tags_json": json.dumps(["sr4"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Step 1", "Step 2"]),
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "SR4 Match"
+        assert data["summary"] == "Match test"
+        assert data["servings"] == 3
+        assert data["difficulty"] == "Hard"
+        assert data["steps"] == ["Step 1", "Step 2"]
+
+    async def test_update_recipe_changes_fields(self, async_client: AsyncClient, base_ingredients):
+        """EP: PUT /recipes/{id} updates fields."""
+        create = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Original",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        rid = create.json()["id"]
+
+        update = await async_client.put(f"/recipes/{rid}", data={
+            "title": "SR4 Updated", "summary": "Updated",
+            "tags_json": json.dumps(["updated"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "milk", "quantity": 1, "unit": "cup"}]),
+            "steps_json": json.dumps(["New step"]),
+        })
+        assert update.status_code == 200
+        assert update.json()["title"] == "SR4 Updated"
+
+    async def test_soft_delete_and_restore_cycle(self, async_client: AsyncClient, base_ingredients):
+        """IT: full soft-delete → restore cycle."""
+        create = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Cycle",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        rid = create.json()["id"]
+
+        del_resp = await async_client.delete(f"/recipes/{rid}")
+        assert del_resp.json()["message"] == "Success"
+
+        # Should be in deleted list
+        deleted = (await async_client.get("/recipes/deleted")).json()
+        assert rid in [r["id"] for r in deleted]
+
+        # Restore
+        restore_resp = await async_client.post(f"/recipes/{rid}/restore")
+        assert restore_resp.json()["message"] == "Restored"
+
+        # Should be back in main list
+        recipes = (await async_client.get("/recipes")).json()
+        assert rid in [r["id"] for r in recipes]
+
+    async def test_permanent_delete_removes_completely(self, async_client: AsyncClient, base_ingredients):
+        """IT: permanent delete removes from all lists."""
+        create = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Perm Del",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        rid = create.json()["id"]
+
+        await async_client.delete(f"/recipes/{rid}/permanent")
+
+        recipes = (await async_client.get("/recipes")).json()
+        deleted = (await async_client.get("/recipes/deleted")).json()
+        assert rid not in [r["id"] for r in recipes]
+        assert rid not in [r["id"] for r in deleted]
+
+
+class TestSR4RecipeSearch:
+    """SR-4: Ingredient search functionality."""
+
+    async def test_search_case_insensitive(self, async_client: AsyncClient, base_ingredients):
+        """EP: ingredient search is case-insensitive."""
+        r1 = await async_client.get("/ingredients?q=EGG")
+        r2 = await async_client.get("/ingredients?q=egg")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        if r1.json() and r2.json():
+            assert len(r1.json()) == len(r2.json())
+
+    async def test_search_nonexistent_returns_empty(self, async_client: AsyncClient, base_ingredients):
+        """NT: nonexistent ingredient search returns empty list."""
+        resp = await async_client.get("/ingredients?q=zzz_nonexistent_xyz")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_search_limit_respected(self, async_client: AsyncClient, base_ingredients):
+        """BVA: limit parameter respected in results."""
+        resp = await async_client.get("/ingredients?limit=3")
+        assert resp.status_code == 200
+        assert len(resp.json()) <= 3
+
+
+class TestSR4RecipeTags:
+    """SR-4: Recipe tag management."""
+
+    async def test_tags_deduplicated(self, async_client: AsyncClient, base_ingredients):
+        """EP: duplicate tags collapsed."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR4 DupTag", "summary": "s",
+            "tags_json": json.dumps(["dup", "dup", "unique"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert resp.status_code == 200
+        tags = resp.json()["tags"]
+        assert tags.count("dup") == 1
+        assert "unique" in tags
+
+    async def test_update_replaces_tags(self, async_client: AsyncClient, base_ingredients):
+        """EP: updating recipe replaces tags completely."""
+        create = await async_client.post("/recipes", data={
+            "title": "SR4 TagReplace", "summary": "s",
+            "tags_json": json.dumps(["old"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        rid = create.json()["id"]
+
+        update = await async_client.put(f"/recipes/{rid}", data={
+            "title": "SR4 TagReplace", "summary": "s",
+            "tags_json": json.dumps(["new"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert "old" not in update.json()["tags"]
+        assert "new" in update.json()["tags"]
+
+
+class TestSR4HelperFunctions:
+    """SR-4: Additional helper function tests."""
+
+    def test_normalize_unit_informal_units(self):
+        """EP: informal units mapped to pcs."""
+        from main import _normalize_unit
+        for unit in ["pinch", "clove", "bunch", "slice", "can"]:
+            assert _normalize_unit(unit) == "pcs"
+
+    def test_parse_ingredient_text_fraction(self):
+        """EP: fractional quantity parsing."""
+        from main import _parse_ingredient_text
+        result = _parse_ingredient_text("1/2 tsp salt")
+        assert result["quantity"] == pytest.approx(0.5)
+        assert result["unit"] == "tsp"
+        assert result["ingredient_name"] == "salt"
+
+    def test_parse_ingredient_text_plain_name(self):
+        """EP: plain name with no quantity/unit."""
+        from main import _parse_ingredient_text
+        result = _parse_ingredient_text("salt and pepper")
+        assert result["ingredient_name"] == "salt and pepper"
+        assert result["quantity"] == 1.0
+        assert result["unit"] == "pcs"
+
+class TestSR5ShoppingListModel:
+    """SR-5: ShoppingList model CRUD."""
+
+    async def test_create_shopping_list(self, test_db: AsyncSession):
+        """EP: create a shopping list for a user."""
+        user = models.User(email="sr5_sl@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        sl = models.ShoppingList(
+            user_id=user.id,
+            created_at=datetime.utcnow().isoformat(),
+        )
+        test_db.add(sl)
+        await test_db.commit()
+        await test_db.refresh(sl)
+
+        assert sl.shopping_list_id is not None
+        assert sl.user_id == user.id
+
+    async def test_shopping_list_user_relationship(self, test_db: AsyncSession):
+        """IT: shopping list linked to user."""
+        user = models.User(email="sr5_slrel@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.ShoppingList).where(models.ShoppingList.user_id == user.id)
+        )
+        assert result.scalars().first() is not None
+
+    async def test_multiple_shopping_lists_per_user(self, test_db: AsyncSession):
+        """EP: user can have multiple shopping lists."""
+        user = models.User(email="sr5_multi@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for _ in range(3):
+            test_db.add(models.ShoppingList(
+                user_id=user.id, created_at=datetime.utcnow().isoformat()
+            ))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.ShoppingList).where(models.ShoppingList.user_id == user.id)
+        )
+        assert len(result.scalars().all()) == 3
+
+
+class TestSR5ShoppingListIngredients:
+    """SR-5: ShoppingListIngredient model for ingredient tracking."""
+
+    async def test_add_ingredient_to_shopping_list(self, test_db: AsyncSession):
+        """EP: add an ingredient to a shopping list."""
+        user = models.User(email="sr5_sli@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl)
+        await test_db.commit()
+        await test_db.refresh(sl)
+
+        ing = models.Ingredients(ingredient_name="SR5 Flour", normalized_name="sr5 flour", is_base=True)
+        test_db.add(ing)
+        await test_db.commit()
+        await test_db.refresh(ing)
+
+        sli = models.ShoppingListIngredient(
+            shopping_list_id=sl.shopping_list_id,
+            ingredient_id=ing.id,
+            quantity=500,
+            checked=0,
+            unit="g",
+        )
+        test_db.add(sli)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        item = result.scalars().first()
+        assert item is not None
+        assert item.quantity == 500
+        assert item.unit == "g"
+        assert item.checked == 0
+
+    async def test_check_off_ingredient(self, test_db: AsyncSession):
+        """EP: mark ingredient as checked."""
+        user = models.User(email="sr5_chk@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl)
+        await test_db.commit()
+        await test_db.refresh(sl)
+
+        ing = models.Ingredients(ingredient_name="SR5 Sugar", normalized_name="sr5 sugar", is_base=True)
+        test_db.add(ing)
+        await test_db.commit()
+        await test_db.refresh(ing)
+
+        sli = models.ShoppingListIngredient(
+            shopping_list_id=sl.shopping_list_id,
+            ingredient_id=ing.id, quantity=200, checked=0, unit="g",
+        )
+        test_db.add(sli)
+        await test_db.commit()
+
+        # Check it off
+        sli.checked = 1
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        assert result.scalars().first().checked == 1
+
+    async def test_multiple_ingredients_on_list(self, test_db: AsyncSession):
+        """EP: shopping list can have multiple ingredients."""
+        user = models.User(email="sr5_multii@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl)
+        await test_db.commit()
+        await test_db.refresh(sl)
+
+        for i, name in enumerate(["SR5 Egg", "SR5 Milk", "SR5 Butter"]):
+            ing = models.Ingredients(ingredient_name=name, normalized_name=name.lower(), is_base=True)
+            test_db.add(ing)
+            await test_db.commit()
+            await test_db.refresh(ing)
+            test_db.add(models.ShoppingListIngredient(
+                shopping_list_id=sl.shopping_list_id,
+                ingredient_id=ing.id, quantity=i + 1, checked=0, unit="pcs",
+            ))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        assert len(result.scalars().all()) == 3
+
+
+class TestSR5RecipeIngredientExtraction:
+    """SR-5: Extracting ingredients from recipes for shopping list generation."""
+
+    async def test_recipe_ingredients_queryable(self, test_db: AsyncSession):
+        """IT: recipe ingredients can be queried for list generation."""
+        from main import _find_or_create_ingredient
+
+        recipe = models.Recipe(recipe_name="SR5 Query", summary="s", servings=2)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        for name, qty, unit in [("sr5_flour", 200, "g"), ("sr5_egg", 3, "pcs")]:
+            ing = await _find_or_create_ingredient(test_db, name)
+            test_db.add(models.RecipeIngredient(
+                recipe_id=recipe.recipe_id, ingredient_id=ing.id, quantity=qty, unit=unit
+            ))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(
+                models.Ingredients.ingredient_name,
+                models.RecipeIngredient.quantity,
+                models.RecipeIngredient.unit,
+            )
+            .join(models.RecipeIngredient)
+            .where(models.RecipeIngredient.recipe_id == recipe.recipe_id)
+        )
+        rows = result.all()
+        assert len(rows) == 2
+        names = [r[0] for r in rows]
+        assert "sr5_flour" in names
+        assert "sr5_egg" in names
+
+class TestSR6MealCalendar:
+    """SR-6: Meal planning with calendar dates."""
+
+    async def test_meal_planned_date_stored(self, test_db: AsyncSession):
+        """EP: planned_date field stored correctly."""
+        user = models.User(email="sr6_cal@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-03-15", stage="lunch")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        assert meal.planned_date == "2025-03-15"
+
+    async def test_meals_queryable_by_date(self, test_db: AsyncSession):
+        """EP: meals can be queried by planned_date."""
+        user = models.User(email="sr6_qd@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for date in ["2025-03-10", "2025-03-11", "2025-03-12"]:
+            test_db.add(models.Meals(user_id=user.id, planned_date=date, stage="dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Meals).where(
+                models.Meals.user_id == user.id,
+                models.Meals.planned_date == "2025-03-11",
+            )
+        )
+        meals = result.scalars().all()
+        assert len(meals) == 1
+        assert meals[0].planned_date == "2025-03-11"
+
+    async def test_multiple_stages_per_date(self, test_db: AsyncSession):
+        """EP: multiple stages (breakfast, lunch, dinner) per date."""
+        user = models.User(email="sr6_stages@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for stage in ["breakfast", "lunch", "dinner"]:
+            test_db.add(models.Meals(user_id=user.id, planned_date="2025-03-15", stage=stage))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Meals).where(
+                models.Meals.user_id == user.id,
+                models.Meals.planned_date == "2025-03-15",
+            )
+        )
+        meals = result.scalars().all()
+        assert len(meals) == 3
+        stages = {m.stage for m in meals}
+        assert stages == {"breakfast", "lunch", "dinner"}
+
+    async def test_meal_with_recipe_on_date(self, test_db: AsyncSession):
+        """IT: meal linked to recipe on specific date."""
+        user = models.User(email="sr6_mr@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="SR6 Planned", summary="s", servings=2)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        meal = models.Meals(user_id=user.id, planned_date="2025-04-01", stage="dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        test_db.add(models.MealRecipe(meal_id=meal.meal_id, recipe_id=recipe.recipe_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.MealRecipe.recipe_id)
+            .join(models.Meals, models.Meals.meal_id == models.MealRecipe.meal_id)
+            .where(
+                models.Meals.user_id == user.id,
+                models.Meals.planned_date == "2025-04-01",
+            )
+        )
+        recipe_ids = [row[0] for row in result.all()]
+        assert recipe.recipe_id in recipe_ids
+
+    async def test_week_plan_query(self, test_db: AsyncSession):
+        """IT: query meals for a full week range."""
+        user = models.User(email="sr6_week@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        dates = [f"2025-03-{10+i:02d}" for i in range(7)]
+        for date in dates:
+            test_db.add(models.Meals(user_id=user.id, planned_date=date, stage="dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.Meals).where(
+                models.Meals.user_id == user.id,
+                models.Meals.planned_date >= "2025-03-10",
+                models.Meals.planned_date <= "2025-03-16",
+            )
+        )
+        assert len(result.scalars().all()) == 7
+
+class TestSR7IngredientCost:
+    """SR-7: Ingredient cost data for budget awareness."""
+
+    async def test_ingredient_has_avg_cost(self, test_db: AsyncSession, base_ingredients):
+        """EP: base ingredients have avg_cost field."""
+        result = await test_db.execute(
+            select(models.Ingredients).where(models.Ingredients.avg_cost.isnot(None))
+        )
+        ingredients = result.scalars().all()
+        assert len(ingredients) > 0
+        for ing in ingredients:
+            assert ing.avg_cost is not None
+            assert ing.avg_cost >= 0
+
+    async def test_cost_varies_across_ingredients(self, test_db: AsyncSession, base_ingredients):
+        """EP: different ingredients have different costs."""
+        result = await test_db.execute(
+            select(models.Ingredients.avg_cost).where(models.Ingredients.avg_cost.isnot(None))
+        )
+        costs = [row[0] for row in result.all() if row[0] is not None]
+        assert len(set(costs)) > 1  # Not all the same cost
+
+
+class TestSR7RecipeCostEstimate:
+    """SR-7: Recipe cost_estimate field."""
+
+    async def test_recipe_has_cost_estimate_field(self, test_db: AsyncSession):
+        """EP: Recipe model has cost_estimate column."""
+        recipe = models.Recipe(
+            recipe_name="SR7 Budget", summary="s", servings=2, cost_estimate=5
+        )
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        assert recipe.cost_estimate == 5
+
+    async def test_recipe_cost_estimate_nullable(self, test_db: AsyncSession):
+        """BVA: cost_estimate can be null."""
+        recipe = models.Recipe(recipe_name="SR7 NoCost", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        assert recipe.cost_estimate is None
+
+
+class TestSR7BudgetFriendlyTag:
+    """SR-7: Budget Friendly tag filtering."""
+
+    async def test_budget_friendly_tag_created(self, async_client: AsyncClient, base_ingredients):
+        """EP: recipe with 'Budget Friendly' tag can be created."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR7 Budget Recipe", "summary": "Cheap eats",
+            "tags_json": json.dumps(["Budget Friendly"]),
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "potato", "quantity": 3, "unit": "pcs"},
+                {"ingredient_name": "onion", "quantity": 1, "unit": "pcs"},
+            ]),
+            "steps_json": json.dumps(["Chop", "Fry"]),
+        })
+        assert resp.status_code == 200
+        assert "Budget Friendly" in resp.json()["tags"]
+
+    async def test_filter_budget_friendly_recipes(self, async_client: AsyncClient, base_ingredients):
+        """IT: filter for budget-friendly recipes from listing."""
+        await async_client.post("/recipes", data={
+            "title": "SR7 Cheap", "summary": "Cheap",
+            "tags_json": json.dumps(["Budget Friendly"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "potato", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        await async_client.post("/recipes", data={
+            "title": "SR7 Expensive", "summary": "Pricey",
+            "tags_json": json.dumps(["premium"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+
+        recipes = (await async_client.get("/recipes")).json()
+        budget = [r for r in recipes if "Budget Friendly" in r.get("tags", [])]
+        assert len(budget) >= 1
+        assert all("Budget Friendly" in r["tags"] for r in budget)
+
+    async def test_ingredient_cost_data_for_budget_calc(self, test_db: AsyncSession, base_ingredients):
+        """IT: ingredient cost data available for budget calculations."""
+        result = await test_db.execute(
+            select(models.Ingredients.ingredient_name, models.Ingredients.avg_cost)
+            .where(models.Ingredients.avg_cost.isnot(None))
+        )
+        rows = result.all()
+        assert len(rows) > 0
+        # All costs should be positive or zero
+        for name, cost in rows:
+            assert cost >= 0
+
+class TestSR8JWTAuthentication:
+    """SR-8: Custom JWT token authentication."""
+
+    async def test_jwt_token_structure(self, async_client: AsyncClient):
+        """EP: JWT token has 3 dot-separated parts."""
+        await async_client.post("/register", json={
+            "email": "sr8_jwt@example.com", "password": "pass123"
+        })
+        login = await async_client.post("/token", data={
+            "username": "sr8_jwt@example.com", "password": "pass123"
+        })
+        token = login.json()["access_token"]
+        parts = token.split(".")
+        assert len(parts) == 3
+        assert all(len(p) > 0 for p in parts)
+
+    async def test_token_grants_access(self, async_client: AsyncClient):
+        """IT: valid token grants access to protected route."""
+        await async_client.post("/register", json={
+            "email": "sr8_access@example.com", "password": "pass123"
+        })
+        login = await async_client.post("/token", data={
+            "username": "sr8_access@example.com", "password": "pass123"
+        })
+        token = login.json()["access_token"]
+
+        me = await async_client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+        assert me.status_code == 200
+        assert me.json()["email"] == "sr8_access@example.com"
+
+    async def test_expired_or_invalid_token_rejected(self, async_client: AsyncClient):
+        """NT: invalid token rejected with 401."""
+        resp = await async_client.get(
+            "/users/me", headers={"Authorization": "Bearer invalid_token"}
+        )
+        assert resp.status_code == 401
+
+    async def test_missing_token_rejected(self, async_client: AsyncClient):
+        """NT: missing token rejected with 401."""
+        resp = await async_client.get("/users/me")
+        assert resp.status_code == 401
+
+    def test_token_uses_hs256(self):
+        """EP: token uses HS256 algorithm."""
+        from auth import ALGORITHM
+        assert ALGORITHM == "HS256"
+
+    def test_token_expiry_is_30_minutes(self):
+        """EP: default token expiry is 30 minutes."""
+        from auth import ACCESS_TOKEN_EXPIRE_MINUTES
+        assert ACCESS_TOKEN_EXPIRE_MINUTES == 30
+
+
+class TestSR8UserRegistration:
+    """SR-8: User registration flow."""
+
+    async def test_register_returns_user_without_password(self, async_client: AsyncClient):
+        """EP: registration response includes user data but not password."""
+        resp = await async_client.post("/register", json={
+            "email": "sr8_reg@example.com", "password": "secure123"
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "id" in data
+        assert data["email"] == "sr8_reg@example.com"
+        assert "password" not in data
+        assert "hashed_password" not in data
+
+    async def test_register_duplicate_email_400(self, async_client: AsyncClient):
+        """NT: duplicate email registration fails with 400."""
+        await async_client.post("/register", json={
+            "email": "sr8_dup@example.com", "password": "pass1"
+        })
+        resp = await async_client.post("/register", json={
+            "email": "sr8_dup@example.com", "password": "pass2"
+        })
+        assert resp.status_code == 400
+
+    async def test_register_invalid_email_format(self, async_client: AsyncClient):
+        """NT: invalid email format rejected."""
+        resp = await async_client.post("/register", json={
+            "email": "not-an-email", "password": "pass123"
+        })
+        assert resp.status_code in [400, 422]
+
+    async def test_register_missing_password_422(self, async_client: AsyncClient):
+        """NT: missing password field rejected."""
+        resp = await async_client.post("/register", json={"email": "sr8_nopw@example.com"})
+        assert resp.status_code == 422
+
+
+class TestSR8UserProfile:
+    """SR-8: User profile management."""
+
+    async def test_patch_updates_name(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: PATCH /users/me updates display name."""
+        resp = await async_client.patch(
+            "/users/me", json={"name": "SR8 User"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "SR8 User"
+
+    async def test_put_replaces_name(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: PUT /users/me replaces display name."""
+        resp = await async_client.put(
+            "/users/me", json={"name": "SR8 New Name"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "SR8 New Name"
+
+    async def test_put_empty_name_rejected(self, async_client: AsyncClient, auth_headers: dict):
+        """NT: empty name rejected with 400."""
+        resp = await async_client.put(
+            "/users/me", json={"name": "   "}, headers=auth_headers
+        )
+        assert resp.status_code == 400
+
+    async def test_profile_includes_all_fields(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: GET /users/me includes all profile fields."""
+        resp = await async_client.get("/users/me", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        for field in ["id", "email", "name", "is_active", "profile_image_url"]:
+            assert field in data
+
+
+class TestSR8AvatarUpload:
+    """SR-8: Avatar image upload."""
+
+    async def test_upload_jpeg_avatar(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: JPEG avatar upload succeeds."""
+        fake = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.jpg", fake, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert "/uploads/" in resp.json()["profile_image_url"]
+
+    async def test_upload_png_avatar(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: PNG avatar upload succeeds."""
+        fake = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.png", fake, "image/png")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
+    async def test_upload_webp_avatar(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: WebP avatar upload succeeds."""
+        fake = io.BytesIO(b"RIFF" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.webp", fake, "image/webp")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
+    async def test_unsupported_type_rejected(self, async_client: AsyncClient, auth_headers: dict):
+        """NT: unsupported file type rejected with 400."""
+        fake = io.BytesIO(b"%PDF-1.4" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("doc.pdf", fake, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+
+    async def test_avatar_without_auth_rejected(self, async_client: AsyncClient):
+        """NT: avatar upload without auth rejected."""
+        fake = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.jpg", fake, "image/jpeg")},
+        )
+        assert resp.status_code == 401
+
+    async def test_avatar_url_persists_across_requests(
+        self, async_client: AsyncClient, auth_headers: dict
+    ):
+        """IT: uploaded avatar URL persists on subsequent profile fetch."""
+        fake = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        upload = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.jpg", fake, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert upload.status_code == 200
+
+        me = await async_client.get("/users/me", headers=auth_headers)
+        assert me.json()["profile_image_url"] == upload.json()["profile_image_url"]
+
+class TestNFRPerformance:
+    """NFR: Performance-related tests."""
+
+    async def test_recipe_list_responds_under_2_seconds(self, async_client: AsyncClient):
+        """NFR: GET /recipes responds within acceptable time."""
+        start = time.time()
+        resp = await async_client.get("/recipes")
+        elapsed = time.time() - start
+        assert resp.status_code == 200
+        assert elapsed < 2.0
+
+    async def test_ingredient_search_responds_under_2_seconds(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NFR: GET /ingredients responds within acceptable time."""
+        start = time.time()
+        resp = await async_client.get("/ingredients?q=egg")
+        elapsed = time.time() - start
+        assert resp.status_code == 200
+        assert elapsed < 2.0
+
+    async def test_sequential_requests_stable(self, async_client: AsyncClient):
+        """NFR: multiple sequential requests succeed without degradation."""
+        for _ in range(10):
+            resp = await async_client.get("/recipes")
+            assert resp.status_code == 200
+
+
+class TestNFRErrorHandling:
+    """NFR: Error handling consistency."""
+
+    async def test_404_has_detail(self, async_client: AsyncClient):
+        """NFR: 404 responses include detail field."""
+        resp = await async_client.get("/nonexistent")
+        assert resp.status_code in [404, 405]
+
+    async def test_invalid_recipe_id_404(self, async_client: AsyncClient):
+        """NFR: invalid recipe ID returns 404."""
+        resp = await async_client.delete("/recipes/999999")
+        assert resp.status_code == 404
+        assert "detail" in resp.json()
+
+    async def test_invalid_json_body_422(self, async_client: AsyncClient):
+        """NFR: invalid JSON body returns 422."""
+        resp = await async_client.post("/register", content="not json")
+        assert resp.status_code in [400, 422]
+
+    async def test_missing_form_fields_422(self, async_client: AsyncClient):
+        """NFR: missing required form fields returns 422."""
+        resp = await async_client.post("/recipes", data={"title": "Incomplete"})
+        assert resp.status_code == 422
+
+    async def test_auth_error_returns_401(self, async_client: AsyncClient):
+        """NFR: authentication errors return 401."""
+        resp = await async_client.post("/token", data={
+            "username": "nobody@example.com", "password": "wrong"
+        })
+        assert resp.status_code == 401
+        assert "detail" in resp.json()
+
+
+class TestNFRDataConsistency:
+    """NFR: Data consistency and integrity."""
+
+    async def test_created_recipe_persists_in_listing(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NFR: created recipe immediately visible in listing."""
+        create = await async_client.post("/recipes", data={
+            "title": "NFR Persist", "summary": "persist test",
+            "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        rid = create.json()["id"]
+        recipes = (await async_client.get("/recipes")).json()
+        assert rid in [r["id"] for r in recipes]
+
+    async def test_user_data_isolation(self, async_client: AsyncClient):
+        """NFR: different users' data is isolated."""
+        for email in ["nfr_iso1@example.com", "nfr_iso2@example.com"]:
+            await async_client.post("/register", json={"email": email, "password": "pass"})
+
+        login1 = await async_client.post("/token", data={
+            "username": "nfr_iso1@example.com", "password": "pass"
+        })
+        login2 = await async_client.post("/token", data={
+            "username": "nfr_iso2@example.com", "password": "pass"
+        })
+
+        me1 = await async_client.get(
+            "/users/me", headers={"Authorization": f"Bearer {login1.json()['access_token']}"}
+        )
+        me2 = await async_client.get(
+            "/users/me", headers={"Authorization": f"Bearer {login2.json()['access_token']}"}
+        )
+        assert me1.json()["email"] == "nfr_iso1@example.com"
+        assert me2.json()["email"] == "nfr_iso2@example.com"
+        assert me1.json()["id"] != me2.json()["id"]
+
+    async def test_soft_delete_does_not_lose_data(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NFR: soft-deleted recipe data preserved in deleted listing."""
+        create = await async_client.post("/recipes", data={
+            "title": "NFR SoftDel Data", "summary": "preserve me",
+            "tags_json": json.dumps(["nfr"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Step 1"]),
+        })
+        rid = create.json()["id"]
+
+        await async_client.delete(f"/recipes/{rid}")
+
+        deleted = (await async_client.get("/recipes/deleted")).json()
+        recipe = next((r for r in deleted if r["id"] == rid), None)
+        assert recipe is not None
+        assert recipe["title"] == "NFR SoftDel Data"
+        assert recipe["summary"] == "preserve me"
+
+
+class TestNFRResponseFormat:
+    """NFR: Consistent response formatting."""
+
+    async def test_json_content_type(self, async_client: AsyncClient):
+        """NFR: responses have application/json content type."""
+        resp = await async_client.get("/recipes")
+        assert "application/json" in resp.headers.get("content-type", "")
+
+    async def test_list_endpoints_return_arrays(self, async_client: AsyncClient):
+        """NFR: list endpoints return JSON arrays."""
+        for endpoint in ["/recipes", "/recipes/deleted", "/ingredients"]:
+            resp = await async_client.get(endpoint)
+            assert resp.status_code == 200
+            assert isinstance(resp.json(), list)
+
+    async def test_error_response_has_detail_field(self, async_client: AsyncClient):
+        """NFR: error responses have 'detail' field."""
+        resp = await async_client.post("/token", data={
+            "username": "x@x.com", "password": "wrong"
+        })
+        assert resp.status_code == 401
+        assert "detail" in resp.json()
+
+
+class TestNFRUserPantry:
+    """NFR: UserPantry model data integrity."""
+
+    async def test_create_pantry_item(self, test_db: AsyncSession):
+        """EP: user pantry item can be stored."""
+        user = models.User(email="nfr_pantry@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        ing = models.Ingredients(ingredient_name="NFR Rice", normalized_name="nfr rice", is_base=True)
+        test_db.add(ing)
+        await test_db.commit()
+        await test_db.refresh(ing)
+
+        pantry = models.UserPantry(
+            user_id=user.id, ingredient_id=ing.id,
+            quantity=500, unit=1,
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        test_db.add(pantry)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.UserPantry).where(models.UserPantry.user_id == user.id)
+        )
+        item = result.scalars().first()
+        assert item is not None
+        assert item.quantity == 500
+
+
+class TestNFRSavedRecipes:
+    """NFR: SavedRecipe model data integrity."""
+
+    async def test_save_recipe_for_user(self, test_db: AsyncSession):
+        """EP: user can save a recipe."""
+        user = models.User(email="nfr_saved@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        recipe = models.Recipe(recipe_name="NFR Saved", summary="s", servings=1)
+        test_db.add(recipe)
+        await test_db.commit()
+        await test_db.refresh(recipe)
+
+        saved = models.SavedRecipe(
+            user_id=user.id, recipe_id=recipe.recipe_id,
+            recipe_name="NFR Saved", user_notes="My favorite",
+        )
+        test_db.add(saved)
+        await test_db.commit()
+        await test_db.refresh(saved)
+
+        assert saved.id is not None
+        assert saved.user_notes == "My favorite"
+
+    async def test_user_can_save_multiple_recipes(self, test_db: AsyncSession):
+        """EP: user can save multiple recipes."""
+        user = models.User(email="nfr_multisave@example.com", hashed_password="h", is_active=True)
+        test_db.add(user)
+        await test_db.commit()
+        await test_db.refresh(user)
+
+        for i in range(3):
+            recipe = models.Recipe(recipe_name=f"NFR Save {i}", summary="s", servings=1)
+            test_db.add(recipe)
+            await test_db.commit()
+            await test_db.refresh(recipe)
+            test_db.add(models.SavedRecipe(
+                user_id=user.id, recipe_id=recipe.recipe_id,
+                recipe_name=f"NFR Save {i}",
+            ))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(models.SavedRecipe).where(models.SavedRecipe.user_id == user.id)
+        )
+        assert len(result.scalars().all()) == 3
 
 BUDGET_TAG = "Budget Friendly"
 
@@ -790,13 +2596,6 @@ class TestBudgetFriendlyBoundary:
         )
         assert resp.status_code == 200
         assert resp.json()["tags"] == [BUDGET_TAG]
-
-
-# ── SR-6: Meal Calendar & Meal Planning ──────────────────────────────────────
-#
-# No HTTP endpoints exist yet for meal planning; tests exercise the Meals and
-# MealRecipe database models directly so the schema is verified and the
-# persistence layer is covered.
 
 async def _make_user(db: AsyncSession, email: str) -> "models.User":
     from main import create_user

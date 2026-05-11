@@ -27,7 +27,6 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   mocktail: ^1.0.5
-  shared_preferences: ^2.2.2
 
 flutter:
   uses-material-design: true
