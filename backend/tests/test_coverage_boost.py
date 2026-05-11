@@ -549,3 +549,545 @@ class TestDirectAsyncFunctions:
         with pytest.raises(HTTPException) as exc_info:
             await update_users_me(payload=empty_payload, current_user=user, db=test_db)
         assert exc_info.value.status_code == 400
+
+
+# ── SR-7: Budget Awareness — 'Budget Friendly' tag filter ────────────────────
+
+BUDGET_TAG = "Budget Friendly"
+
+
+def _budget_recipe(**overrides) -> dict:
+    return {
+        "title": overrides.get("title", "Budget Friendly Recipe"),
+        "summary": overrides.get("summary", "A cheap and cheerful recipe"),
+        "prep_time": "5 minutes",
+        "cook_time": "15 minutes",
+        "total_time": "20 minutes",
+        "servings": overrides.get("servings", 2),
+        "difficulty": "Easy",
+        "tags_json": json.dumps(overrides.get("tags", [BUDGET_TAG])),
+        "ingredients_json": json.dumps(
+            overrides.get("ingredients", [
+                {"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}
+            ])
+        ),
+        "steps_json": json.dumps(overrides.get("steps", ["Cook and serve"])),
+    }
+
+
+class TestBudgetFriendlyTagCreation:
+    """SR-7: recipes can be tagged 'Budget Friendly' and the tag is returned."""
+
+    async def test_budget_friendly_tag_present_in_response(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post("/recipes", data=_budget_recipe())
+        assert resp.status_code == 200
+        assert BUDGET_TAG in resp.json()["tags"]
+
+    async def test_budget_friendly_tag_alongside_other_tags(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post(
+            "/recipes",
+            data=_budget_recipe(tags=[BUDGET_TAG, "Quick", "Easy"]),
+        )
+        assert resp.status_code == 200
+        tags = resp.json()["tags"]
+        assert BUDGET_TAG in tags
+        assert "Quick" in tags
+        assert "Easy" in tags
+
+    async def test_budget_friendly_tag_case_preserved(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """Tag name casing must be stored exactly as supplied."""
+        resp = await async_client.post("/recipes", data=_budget_recipe())
+        assert resp.status_code == 200
+        assert BUDGET_TAG in resp.json()["tags"]
+        assert "budget friendly" not in resp.json()["tags"]
+        assert "BUDGET FRIENDLY" not in resp.json()["tags"]
+
+    async def test_non_budget_recipe_does_not_have_tag(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post(
+            "/recipes",
+            data=_budget_recipe(tags=["Fancy", "Expensive"]),
+        )
+        assert resp.status_code == 200
+        assert BUDGET_TAG not in resp.json()["tags"]
+
+
+class TestBudgetFriendlyTagFiltering:
+    """SR-7: the tag data returned by GET /recipes supports client-side filtering."""
+
+    async def test_budget_recipe_visible_in_recipe_list(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        create_resp = await async_client.post("/recipes", data=_budget_recipe())
+        recipe_id = create_resp.json()["id"]
+
+        list_resp = await async_client.get("/recipes")
+        assert list_resp.status_code == 200
+        ids = [r["id"] for r in list_resp.json()]
+        assert recipe_id in ids
+
+    async def test_budget_tag_present_on_recipe_in_list(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        create_resp = await async_client.post("/recipes", data=_budget_recipe())
+        recipe_id = create_resp.json()["id"]
+
+        list_resp = await async_client.get("/recipes")
+        recipe = next(r for r in list_resp.json() if r["id"] == recipe_id)
+        assert BUDGET_TAG in recipe["tags"]
+
+    async def test_only_budget_recipes_have_tag(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """Mixed catalogue: only the budget recipe carries the tag."""
+        await async_client.post("/recipes", data=_budget_recipe(title="Budget One"))
+        await async_client.post(
+            "/recipes", data=_budget_recipe(title="Fancy One", tags=["Fancy"])
+        )
+
+        list_resp = await async_client.get("/recipes")
+        recipes = list_resp.json()
+
+        budget = [r for r in recipes if BUDGET_TAG in r["tags"]]
+        non_budget = [r for r in recipes if BUDGET_TAG not in r["tags"]]
+
+        assert len(budget) >= 1
+        assert all(BUDGET_TAG in r["tags"] for r in budget)
+        assert all(BUDGET_TAG not in r["tags"] for r in non_budget)
+
+    async def test_multiple_budget_recipes_all_tagged(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        for i in range(3):
+            await async_client.post(
+                "/recipes", data=_budget_recipe(title=f"Budget Recipe {i}")
+            )
+
+        list_resp = await async_client.get("/recipes")
+        budget_recipes = [r for r in list_resp.json() if BUDGET_TAG in r["tags"]]
+        assert len(budget_recipes) >= 3
+
+
+class TestBudgetFriendlyTagUpdate:
+    """SR-7: the 'Budget Friendly' tag can be added or removed via recipe update."""
+
+    async def _create(self, client, tags):
+        resp = await client.post("/recipes", data=_budget_recipe(tags=tags))
+        assert resp.status_code == 200
+        return resp.json()["id"]
+
+    async def _update(self, client, recipe_id, tags, headers):
+        data = {
+            "title": "Updated Recipe",
+            "summary": "Updated",
+            "tags_json": json.dumps(tags),
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}
+            ]),
+            "steps_json": json.dumps(["Cook"]),
+        }
+        return await client.put(f"/recipes/{recipe_id}", data=data, headers=headers)
+
+    async def test_add_budget_tag_via_update(
+        self, async_client: AsyncClient, auth_headers: dict, base_ingredients
+    ):
+        recipe_id = await self._create(async_client, ["Fancy"])
+        resp = await self._update(async_client, recipe_id, [BUDGET_TAG], auth_headers)
+        assert resp.status_code == 200
+        assert BUDGET_TAG in resp.json()["tags"]
+
+    async def test_remove_budget_tag_via_update(
+        self, async_client: AsyncClient, auth_headers: dict, base_ingredients
+    ):
+        recipe_id = await self._create(async_client, [BUDGET_TAG])
+        resp = await self._update(async_client, recipe_id, ["Fancy"], auth_headers)
+        assert resp.status_code == 200
+        assert BUDGET_TAG not in resp.json()["tags"]
+
+    async def test_budget_tag_survives_update_when_included(
+        self, async_client: AsyncClient, auth_headers: dict, base_ingredients
+    ):
+        recipe_id = await self._create(async_client, [BUDGET_TAG, "Quick"])
+        resp = await self._update(
+            async_client, recipe_id, [BUDGET_TAG, "Healthy"], auth_headers
+        )
+        assert resp.status_code == 200
+        assert BUDGET_TAG in resp.json()["tags"]
+
+    async def test_budget_tag_hidden_after_soft_delete(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """Soft-deleted budget recipes must not appear in the active list."""
+        create_resp = await async_client.post("/recipes", data=_budget_recipe())
+        recipe_id = create_resp.json()["id"]
+
+        await async_client.delete(f"/recipes/{recipe_id}")
+
+        list_resp = await async_client.get("/recipes")
+        ids = [r["id"] for r in list_resp.json()]
+        assert recipe_id not in ids
+
+    async def test_budget_tag_visible_after_restore(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """Restoring a soft-deleted budget recipe brings the tag back to the list."""
+        create_resp = await async_client.post("/recipes", data=_budget_recipe())
+        recipe_id = create_resp.json()["id"]
+
+        await async_client.delete(f"/recipes/{recipe_id}")
+        await async_client.post(f"/recipes/{recipe_id}/restore")
+
+        list_resp = await async_client.get("/recipes")
+        recipe = next((r for r in list_resp.json() if r["id"] == recipe_id), None)
+        assert recipe is not None
+        assert BUDGET_TAG in recipe["tags"]
+
+
+class TestBudgetFriendlyBoundary:
+    """SR-7: boundary and equivalence cases for the Budget Friendly tag."""
+
+    async def test_budget_tag_with_minimum_servings(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post(
+            "/recipes", data=_budget_recipe(servings=1)
+        )
+        assert resp.status_code == 200
+        assert BUDGET_TAG in resp.json()["tags"]
+
+    async def test_budget_tag_with_maximum_servings(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post(
+            "/recipes", data=_budget_recipe(servings=100)
+        )
+        assert resp.status_code == 200
+        assert BUDGET_TAG in resp.json()["tags"]
+
+    async def test_budget_tag_deduplicated_when_sent_twice(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post(
+            "/recipes",
+            data=_budget_recipe(tags=[BUDGET_TAG, BUDGET_TAG]),
+        )
+        assert resp.status_code == 200
+        tags = resp.json()["tags"]
+        assert tags.count(BUDGET_TAG) == 1
+
+    async def test_budget_tag_only_recipe_has_no_other_tags(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.post(
+            "/recipes", data=_budget_recipe(tags=[BUDGET_TAG])
+        )
+        assert resp.status_code == 200
+        assert resp.json()["tags"] == [BUDGET_TAG]
+
+
+# ── SR-6: Meal Calendar & Meal Planning ──────────────────────────────────────
+#
+# No HTTP endpoints exist yet for meal planning; tests exercise the Meals and
+# MealRecipe database models directly so the schema is verified and the
+# persistence layer is covered.
+
+async def _make_user(db: AsyncSession, email: str) -> "models.User":
+    from main import create_user
+    import schemas
+    return await create_user(
+        user=schemas.UserCreate(email=email, password="pass"), db=db
+    )
+
+async def _make_recipe(db: AsyncSession, name: str = "Plan Recipe") -> "models.Recipe":
+    import models as m
+    recipe = m.Recipe(recipe_name=name, summary="test", servings=2)
+    db.add(recipe)
+    await db.commit()
+    await db.refresh(recipe)
+    return recipe
+
+
+class TestMealModelPersistence:
+    """SR-6: Meals rows can be created and queried correctly."""
+
+    async def test_create_meal_persists(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_persist@example.com")
+        meal = m.Meals(user_id=user.id, planned_date="2026-06-01", stage="Dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        result = await test_db.execute(select(m.Meals).where(m.Meals.meal_id == meal.meal_id))
+        fetched = result.scalars().first()
+        assert fetched is not None
+        assert fetched.planned_date == "2026-06-01"
+        assert fetched.stage == "Dinner"
+
+    async def test_meal_linked_to_correct_user(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_user@example.com")
+        meal = m.Meals(user_id=user.id, planned_date="2026-06-02", stage="Lunch")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        result = await test_db.execute(
+            select(m.Meals).where(m.Meals.user_id == user.id)
+        )
+        meals = result.scalars().all()
+        assert any(me.meal_id == meal.meal_id for me in meals)
+
+    async def test_meal_stage_values(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_stages@example.com")
+        for stage in ("Breakfast", "Lunch", "Dinner"):
+            test_db.add(m.Meals(user_id=user.id, planned_date="2026-06-03", stage=stage))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(m.Meals.user_id == user.id)
+        )
+        stages = {me.stage for me in result.scalars().all()}
+        assert stages == {"Breakfast", "Lunch", "Dinner"}
+
+    async def test_multiple_meals_different_dates(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_dates@example.com")
+        dates = ["2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05",
+                 "2026-06-06", "2026-06-07"]
+        for d in dates:
+            test_db.add(m.Meals(user_id=user.id, planned_date=d, stage="Dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(m.Meals.user_id == user.id)
+        )
+        stored_dates = {me.planned_date for me in result.scalars().all()}
+        assert stored_dates == set(dates)
+
+    async def test_multiple_meals_same_date(self, test_db: AsyncSession):
+        """Multiple meal slots (Breakfast + Lunch + Dinner) on one day."""
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_same_day@example.com")
+        for stage in ("Breakfast", "Lunch", "Dinner"):
+            test_db.add(m.Meals(user_id=user.id, planned_date="2026-06-10", stage=stage))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(
+                m.Meals.user_id == user.id,
+                m.Meals.planned_date == "2026-06-10",
+            )
+        )
+        assert len(result.scalars().all()) == 3
+
+
+class TestMealRecipeAssociation:
+    """SR-6: Recipes can be linked to meal slots via MealRecipe."""
+
+    async def test_link_recipe_to_meal(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_link@example.com")
+        recipe = await _make_recipe(test_db, "Linked Recipe")
+        meal = m.Meals(user_id=user.id, planned_date="2026-06-01", stage="Lunch")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        link = m.MealRecipe(meal_id=meal.meal_id, recipe_id=recipe.recipe_id)
+        test_db.add(link)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.MealRecipe).where(m.MealRecipe.meal_id == meal.meal_id)
+        )
+        links = result.scalars().all()
+        assert len(links) == 1
+        assert links[0].recipe_id == recipe.recipe_id
+
+    async def test_multiple_recipes_linked_to_one_meal(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_multi_recipe@example.com")
+        r1 = await _make_recipe(test_db, "Recipe A")
+        r2 = await _make_recipe(test_db, "Recipe B")
+        meal = m.Meals(user_id=user.id, planned_date="2026-06-05", stage="Dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        for r in (r1, r2):
+            test_db.add(m.MealRecipe(meal_id=meal.meal_id, recipe_id=r.recipe_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.MealRecipe).where(m.MealRecipe.meal_id == meal.meal_id)
+        )
+        assert len(result.scalars().all()) == 2
+
+    async def test_same_recipe_linked_to_multiple_meals(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "recipe_multi_meal@example.com")
+        recipe = await _make_recipe(test_db, "Reused Recipe")
+
+        meal_ids = []
+        for d, stage in [("2026-06-01", "Lunch"), ("2026-06-03", "Dinner")]:
+            meal = m.Meals(user_id=user.id, planned_date=d, stage=stage)
+            test_db.add(meal)
+            await test_db.commit()
+            await test_db.refresh(meal)
+            meal_ids.append(meal.meal_id)
+
+        for mid in meal_ids:
+            test_db.add(m.MealRecipe(meal_id=mid, recipe_id=recipe.recipe_id))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.MealRecipe).where(m.MealRecipe.recipe_id == recipe.recipe_id)
+        )
+        assert len(result.scalars().all()) == 2
+
+
+class TestMealPlanningWeekView:
+    """SR-6: week-level planning — querying meals across a date range."""
+
+    async def test_query_meals_for_week(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_week@example.com")
+        week = [f"2026-06-{d:02d}" for d in range(9, 16)]  # Mon–Sun
+        for d in week:
+            test_db.add(m.Meals(user_id=user.id, planned_date=d, stage="Dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(
+                m.Meals.user_id == user.id,
+                m.Meals.planned_date >= "2026-06-09",
+                m.Meals.planned_date <= "2026-06-15",
+            )
+        )
+        assert len(result.scalars().all()) == 7
+
+    async def test_meals_outside_week_not_returned(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_outside@example.com")
+        test_db.add(m.Meals(user_id=user.id, planned_date="2026-05-01", stage="Lunch"))
+        test_db.add(m.Meals(user_id=user.id, planned_date="2026-06-09", stage="Dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(
+                m.Meals.user_id == user.id,
+                m.Meals.planned_date >= "2026-06-09",
+                m.Meals.planned_date <= "2026-06-15",
+            )
+        )
+        dates = [me.planned_date for me in result.scalars().all()]
+        assert "2026-05-01" not in dates
+        assert "2026-06-09" in dates
+
+    async def test_user_meal_isolation(self, test_db: AsyncSession):
+        """Meals for user A must not appear in queries for user B."""
+        import models as m
+        from sqlalchemy import select
+        user_a = await _make_user(test_db, "meal_iso_a@example.com")
+        user_b = await _make_user(test_db, "meal_iso_b@example.com")
+
+        test_db.add(m.Meals(user_id=user_a.id, planned_date="2026-06-01", stage="Lunch"))
+        test_db.add(m.Meals(user_id=user_b.id, planned_date="2026-06-01", stage="Dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(m.Meals.user_id == user_a.id)
+        )
+        meals = result.scalars().all()
+        assert all(me.user_id == user_a.id for me in meals)
+        assert len(meals) == 1
+
+
+class TestMealCascadeDelete:
+    """SR-6: deleting a user cascade-deletes their meal plans."""
+
+    async def test_user_delete_removes_meals(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_cascade@example.com")
+        user_id = user.id
+        for d in ("2026-06-01", "2026-06-02"):
+            test_db.add(m.Meals(user_id=user_id, planned_date=d, stage="Dinner"))
+        await test_db.commit()
+
+        await test_db.delete(user)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(m.Meals.user_id == user_id)
+        )
+        assert result.scalars().all() == []
+
+
+class TestMealBoundary:
+    """SR-6: boundary and equivalence cases for meal planning."""
+
+    async def test_meal_with_no_stage(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_no_stage@example.com")
+        meal = m.Meals(user_id=user.id, planned_date="2026-06-01", stage=None)
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+        assert meal.meal_id is not None
+
+    async def test_meal_boundary_dates(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_boundary@example.com")
+        for date in ("2026-01-01", "2026-12-31"):
+            test_db.add(m.Meals(user_id=user.id, planned_date=date, stage="Dinner"))
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.Meals).where(m.Meals.user_id == user.id)
+        )
+        dates = {me.planned_date for me in result.scalars().all()}
+        assert "2026-01-01" in dates
+        assert "2026-12-31" in dates
+
+    async def test_meal_with_linked_recipe_has_correct_ids(self, test_db: AsyncSession):
+        import models as m
+        from sqlalchemy import select
+        user = await _make_user(test_db, "meal_ids@example.com")
+        recipe = await _make_recipe(test_db, "ID Check Recipe")
+        meal = m.Meals(user_id=user.id, planned_date="2026-07-04", stage="Dinner")
+        test_db.add(meal)
+        await test_db.commit()
+        await test_db.refresh(meal)
+
+        link = m.MealRecipe(meal_id=meal.meal_id, recipe_id=recipe.recipe_id)
+        test_db.add(link)
+        await test_db.commit()
+
+        result = await test_db.execute(
+            select(m.MealRecipe).where(m.MealRecipe.meal_id == meal.meal_id)
+        )
+        fetched = result.scalars().first()
+        assert fetched.meal_id == meal.meal_id
+        assert fetched.recipe_id == recipe.recipe_id
