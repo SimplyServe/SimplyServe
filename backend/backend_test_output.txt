@@ -1,0 +1,35 @@
+﻿collected 225 items                                                                                                                                                
+
+tests\test_auth.py .....................                                                                                                                     [  9%]
+tests\test_coverage_boost.py ...........................................................................                                                     [ 42%]
+tests\test_helpers.py ............................................................                                                                           [ 69%]
+tests\test_main.py ............                                                                                                                              [ 74%]
+tests\test_recipe_management.py .................                                                                                                            [ 82%]
+tests\test_recipes.py ......................                                                                                                                 [ 92%]
+tests\test_user_profile.py ..................                                                                                                                [100%]
+
+========================================================================= tests coverage ==========================================================================
+________________________________________________________ coverage: platform win32, python 3.13.12-final-0 _________________________________________________________
+
+Name                              Stmts   Miss  Cover   Missing
+---------------------------------------------------------------
+auth.py                              39      4    90%   54-57
+database.py                           9      2    78%   16-17
+main.py                             400    142    64%   105-106, 147-172, 183-190, 200-236, 300-335, 534-535, 711-717, 730-777, 836-904
+models.py                           118      0   100%
+recipe_ingredients.py                17      0   100%
+schemas.py                           70      0   100%
+tests\__init__.py                     0      0   100%
+tests\conftest.py                    81      4    95%   102, 122, 161, 175
+tests\test_auth.py                  110      0   100%
+tests\test_coverage_boost.py        572      0   100%
+tests\test_helpers.py                87      0   100%
+tests\test_main.py                   65      0   100%
+tests\test_recipe_management.py     127      0   100%
+tests\test_recipes.py               175      0   100%
+tests\test_user_profile.py           90      0   100%
+---------------------------------------------------------------
+TOTAL                              1960    152    92%
+Coverage HTML written to dir htmlcov
+- Generated html report: file:///C:/Users/sujan/OneDrive/Documents/University/Year%202%20Content/Software%20Engineering/Coursework%202/frontend/frontend_test/backend/pytest-report.html -
+================================================================= 225 passed in 87.28s (0:01:27) ==================================================================
