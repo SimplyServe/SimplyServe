@@ -1,5 +1,33 @@
 // ignore_for_file: prefer_const_constructors
 
+// ============================================================
+// views/nutritional_dashboard.dart — Nutritional Dashboard View
+//
+// The main landing screen after login. Shows:
+//   1. A branded welcome header with the user's name + avatar.
+//   2. A "Calories Today" macro card — protein/carbs/fat totals
+//      for today, pulled live from MealLogService.
+//   3. Calorie Coach progress bars (only when targets have been
+//      set via CalorieCoachView) using LinearProgressIndicator.
+//      Bars turn red when the user exceeds their target.
+//   4. A "Your Profile" card with body stats from Calorie Coach.
+//   5. Today's logged meals as deletable tiles.
+//   6. A Calorie Coach CTA card (hidden once the Coach is done).
+//   7. "Browse Recipes" and "Meal Spinner" link buttons.
+//
+// State management pattern:
+//   AnimatedBuilder listens to MealLogService (a ChangeNotifier)
+//   so only the body rebuilds on meal changes — the scaffold chrome
+//   (AppBar, Drawer) is unaffected. This is more efficient than
+//   wrapping the whole tree in a Consumer.
+//
+// Calorie Coach data is read from SharedPreferences using the same
+// 'cc_*' keys written by CalorieCoachView. The keys are defined as
+// static const strings to ensure consistency.
+//
+// Route: '/'  (the root route — registered in main.dart)
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:simplyserve/services/meal_log_service.dart';
@@ -7,14 +35,15 @@ import 'package:simplyserve/services/profile_service.dart';
 import 'package:simplyserve/views/meal_calendar.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
+/// The main dashboard showing nutrition totals, coach targets, and today's meals.
 class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
 
+  /// Formats a double for display: uses an integer representation when the
+  /// value is whole (e.g. 200 instead of 200.0), otherwise one decimal place.
   static String _formatNumber(double value) {
     final isWhole = (value - value.roundToDouble()).abs() < 0.001;
-    if (isWhole) {
-      return value.round().toString();
-    }
+    if (isWhole) return value.round().toString();
     return value.toStringAsFixed(1);
   }
 
@@ -23,13 +52,22 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
+  /// ChangeNotifier service that holds today's logged meals. Passed to
+  /// AnimatedBuilder in build() so the dashboard reacts to meal changes.
   final MealLogService _mealLogService = MealLogService();
+
+  /// Service for fetching the user's display name and avatar URL.
   final ProfileService _profileService = ProfileService();
+
   String? _displayName;
   String? _profileImageUrl;
+
+  /// Whether to show the Calorie Coach CTA card. Hidden once the user
+  /// has completed the Coach questionnaire (cc_completed == true).
   bool _showCoachButton = false;
 
-  // Calorie Coach targets
+  // ── Coach target fields ───────────────────────────────────────────────
+  // Populated from SharedPreferences in _loadCoachData().
   double? _calorieTarget;
   double? _proteinTarget;
   double? _carbTarget;
@@ -38,14 +76,14 @@ class _DashboardViewState extends State<DashboardView> {
   static const Color _brandGreen = Color(0xFF74BC42);
   static const Color _surfaceGreen = Color(0xFFF4FAF1);
 
-  // SharedPreferences keys (must match CalorieCoachView)
+  // ── SharedPreferences keys (must match CalorieCoachView) ─────────────
   static const _kCalorieTarget = 'cc_calorie_target';
   static const _kProteinTarget = 'cc_protein_target';
   static const _kCarbTarget = 'cc_carb_target';
   static const _kFatTarget = 'cc_fat_target';
   static const _kCompleted = 'cc_completed';
 
-  // Profile keys from Calorie Coach
+  // Profile fields written by Calorie Coach
   static const _kHeight = 'cc_height';
   static const _kWeight = 'cc_weight';
   static const _kGender = 'cc_gender';
@@ -55,7 +93,7 @@ class _DashboardViewState extends State<DashboardView> {
   static const _kGoal = 'cc_goal';
   static const _kTargetWeight = 'cc_target_weight';
 
-  // Profile state
+  // ── Profile stat fields ───────────────────────────────────────────────
   double? _height;
   double? _weight;
   String? _gender;
@@ -72,11 +110,18 @@ class _DashboardViewState extends State<DashboardView> {
     _loadCoachData();
   }
 
+  // ── Data loading ──────────────────────────────────────────────────────
+
+  /// Fetches the user's display name and avatar from the backend API.
+  /// Relative image URLs returned by the server are converted to full URLs
+  /// by prepending [ProfileService.baseUrl].
   Future<void> _loadProfile() async {
     final userData = await _profileService.getCurrentUser();
     final name = (userData?['name'] ?? '').toString().trim();
-    final rawUrl = (userData?['profile_image_url'] ?? '').toString().trim();
-    final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
+    final rawUrl =
+        (userData?['profile_image_url'] ?? '').toString().trim();
+    final base =
+        _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
     final fullImageUrl = rawUrl.isEmpty
         ? null
         : (rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl');
@@ -88,16 +133,18 @@ class _DashboardViewState extends State<DashboardView> {
     });
   }
 
+  /// Reads all Calorie Coach values from SharedPreferences.
+  /// _kCompleted controls whether the CTA card is shown.
   Future<void> _loadCoachData() async {
     final prefs = await SharedPreferences.getInstance();
-    // _kCompleted is written by CalorieCoachView after finishing the questionnaire
+    // cc_completed is written by CalorieCoachView when the user finishes
+    // the questionnaire. Until then, show the CTA card.
     final completed = prefs.getBool(_kCompleted) ?? false;
     final calorieTarget = prefs.getDouble(_kCalorieTarget);
     final proteinTarget = prefs.getDouble(_kProteinTarget);
     final carbTarget = prefs.getDouble(_kCarbTarget);
     final fatTarget = prefs.getDouble(_kFatTarget);
 
-    // Load profile fields saved by Calorie Coach
     final height = prefs.getDouble(_kHeight);
     final weight = prefs.getDouble(_kWeight);
     final gender = prefs.getString(_kGender);
@@ -125,7 +172,9 @@ class _DashboardViewState extends State<DashboardView> {
     });
   }
 
-  /// Converts stored-cm height to a display string respecting the chosen unit.
+  // ── Unit formatters ───────────────────────────────────────────────────
+
+  /// Converts stored-cm height to a display string respecting [_heightUnit].
   String _formatHeight(double cm) {
     if (_heightUnit == 'ft') {
       final totalInches = cm / 2.54;
@@ -136,15 +185,13 @@ class _DashboardViewState extends State<DashboardView> {
     return '${cm.round()} cm';
   }
 
-  /// Converts stored-kg weight to a display string respecting the chosen unit.
+  /// Converts stored-kg weight to a display string respecting [_weightUnit].
   String _formatWeight(double kg) {
-    if (_weightUnit == 'lb') {
-      return '${(kg * 2.20462).round()} lb';
-    }
+    if (_weightUnit == 'lb') return '${(kg * 2.20462).round()} lb';
     return '${kg.toStringAsFixed(1)} kg';
   }
 
-  /// Human-readable goal label.
+  /// Human-readable label for the user's selected fitness goal.
   String get _goalLabel {
     switch (_goal) {
       case 'gain':
@@ -157,12 +204,13 @@ class _DashboardViewState extends State<DashboardView> {
     }
   }
 
+  /// Personalised welcome message — includes the display name if available.
   String get _welcomeMessage {
-    if (_displayName == null) {
-      return 'Welcome Back!';
-    }
+    if (_displayName == null) return 'Welcome Back!';
     return 'Welcome Back $_displayName!';
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -170,26 +218,40 @@ class _DashboardViewState extends State<DashboardView> {
       title: 'Dashboard',
       body: ColoredBox(
         color: _surfaceGreen,
+        // ── AnimatedBuilder — ChangeNotifier pattern ─────────────────
+        // AnimatedBuilder registers as a listener on _mealLogService.
+        // Whenever the service calls notifyListeners() (e.g. after a
+        // meal is added/removed), Flutter calls builder() again with
+        // the latest data. Only the body rebuilds, not the AppBar/Drawer.
         child: AnimatedBuilder(
           animation: _mealLogService,
           builder: (context, _) {
-            final totals = _mealLogService.totalsForDay(DateTime.now());
-            final meals = _mealLogService.mealsForDay(DateTime.now());
+            // Recompute today's totals and meal list on every rebuild.
+            final totals =
+                _mealLogService.totalsForDay(DateTime.now());
+            final meals =
+                _mealLogService.mealsForDay(DateTime.now());
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Welcome Header ─────────────────────────────────────
+                  // ── Welcome header ────────────────────────────────
+                  // Gradient card with the personalised welcome message
+                  // and the user's profile avatar thumbnail.
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                    padding:
+                        const EdgeInsets.fromLTRB(20, 24, 20, 28),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFF74BC42), Color(0xFF4E8A2B)],
+                        colors: [
+                          Color(0xFF74BC42),
+                          Color(0xFF4E8A2B)
+                        ],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
@@ -205,7 +267,8 @@ class _DashboardViewState extends State<DashboardView> {
                       children: [
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
                             children: [
                               Text(
                                 _welcomeMessage,
@@ -227,14 +290,17 @@ class _DashboardViewState extends State<DashboardView> {
                           ),
                         ),
                         const SizedBox(width: 12),
+                        // Avatar thumbnail — shows network image or person icon.
                         CircleAvatar(
                           radius: 26,
-                          backgroundColor: Colors.white.withValues(alpha: 0.3),
+                          backgroundColor:
+                              Colors.white.withValues(alpha: 0.3),
                           backgroundImage: _profileImageUrl != null
                               ? NetworkImage(_profileImageUrl!)
                               : null,
                           child: _profileImageUrl == null
-                              ? const Icon(Icons.person, color: Colors.white, size: 26)
+                              ? const Icon(Icons.person,
+                                  color: Colors.white, size: 26)
                               : null,
                         ),
                       ],
@@ -242,12 +308,16 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ── Macro Counter ──────────────────────────────────────
+                  // ── Macro counter card ────────────────────────────
+                  // Shows kcal consumed today (vs target if set) and a
+                  // macro row for protein/carbs/fat. When coach targets
+                  // exist, progress bars are appended below the macro row.
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE7EEE2)),
+                      border:
+                          Border.all(color: const Color(0xFFE7EEE2)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.05),
@@ -258,13 +328,17 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                     child: Column(
                       children: [
-                        // Card header
+                        // Card header with kcal pill
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 14, 16, 12),
                           decoration: const BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Color(0xFFF1FAEC), Colors.white],
+                              colors: [
+                                Color(0xFFF1FAEC),
+                                Colors.white
+                              ],
                             ),
                             borderRadius: BorderRadius.vertical(
                                 top: Radius.circular(18)),
@@ -274,8 +348,10 @@ class _DashboardViewState extends State<DashboardView> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: _brandGreen.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: _brandGreen
+                                      .withValues(alpha: 0.12),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
                                 ),
                                 child: const Text('🔥',
                                     style: TextStyle(fontSize: 18)),
@@ -291,12 +367,15 @@ class _DashboardViewState extends State<DashboardView> {
                                   ),
                                 ),
                               ),
+                              // Pill: "consumed / target kcal" or just "consumed kcal"
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: _brandGreen.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(999),
+                                  color: _brandGreen
+                                      .withValues(alpha: 0.12),
+                                  borderRadius:
+                                      BorderRadius.circular(999),
                                 ),
                                 child: Text(
                                   _calorieTarget != null
@@ -312,12 +391,14 @@ class _DashboardViewState extends State<DashboardView> {
                             ],
                           ),
                         ),
-                        // Macro row
+
+                        // Macro legend row: protein / carbs / fat
                         Padding(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 16),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceEvenly,
                             children: [
                               _MacroLegendItem(
                                 icon: '🍗',
@@ -344,14 +425,23 @@ class _DashboardViewState extends State<DashboardView> {
                           ),
                         ),
 
-                        // ── Coach progress bars (shown when targets exist) ──
-                        if (_calorieTarget != null || _proteinTarget != null)
+                        // ── Coach progress bars ──────────────────────
+                        // Only shown when the user has completed the
+                        // Calorie Coach questionnaire. Each bar uses
+                        // LinearProgressIndicator clamped to [0, 1].
+                        // The bar and remaining-label turn red when over target.
+                        if (_calorieTarget != null ||
+                            _proteinTarget != null)
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 0, 16, 16),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
-                                const Divider(height: 1, color: Color(0xFFE7EEE2)),
+                                const Divider(
+                                    height: 1,
+                                    color: Color(0xFFE7EEE2)),
                                 const SizedBox(height: 14),
                                 if (_calorieTarget != null) ...[
                                   _CoachProgressBar(
@@ -399,16 +489,24 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 24),
 
-                  // ── Your Profile Card ──────────────────────────────────
-                  if (_height != null || _weight != null || _gender != null) ...[
+                  // ── Your Profile card ─────────────────────────────
+                  // Displays height, weight, gender, activity level, and
+                  // goal from Calorie Coach. Shown only when data exists.
+                  // "Edit" link navigates to CalorieCoachView and reloads
+                  // data on return via .then(_loadCoachData).
+                  if (_height != null ||
+                      _weight != null ||
+                      _gender != null) ...[
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFE7EEE2)),
+                        border: Border.all(
+                            color: const Color(0xFFE7EEE2)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color:
+                                Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -417,13 +515,17 @@ class _DashboardViewState extends State<DashboardView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Card header
+                          // Card header with "Edit" button
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 14, 16, 12),
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Color(0xFFF1FAEC), Colors.white],
+                                colors: [
+                                  Color(0xFFF1FAEC),
+                                  Colors.white
+                                ],
                               ),
                               borderRadius: BorderRadius.vertical(
                                   top: Radius.circular(18)),
@@ -433,8 +535,10 @@ class _DashboardViewState extends State<DashboardView> {
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: _brandGreen.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: _brandGreen
+                                        .withValues(alpha: 0.12),
+                                    borderRadius:
+                                        BorderRadius.circular(12),
                                   ),
                                   child: const Icon(
                                     Icons.person_outline_rounded,
@@ -453,6 +557,8 @@ class _DashboardViewState extends State<DashboardView> {
                                     ),
                                   ),
                                 ),
+                                // "Edit" navigates to Calorie Coach and
+                                // refreshes the profile data on return.
                                 GestureDetector(
                                   onTap: () {
                                     Navigator.pushNamed(
@@ -463,8 +569,10 @@ class _DashboardViewState extends State<DashboardView> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 10, vertical: 5),
                                     decoration: BoxDecoration(
-                                      color: _brandGreen.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(999),
+                                      color: _brandGreen
+                                          .withValues(alpha: 0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(999),
                                     ),
                                     child: const Text(
                                       'Edit',
@@ -479,9 +587,10 @@ class _DashboardViewState extends State<DashboardView> {
                               ],
                             ),
                           ),
-                          // Profile stat grid
+                          // Profile stat grid (height / weight / gender / activity / goal)
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 4, 16, 16),
                             child: Column(
                               children: [
                                 Row(
@@ -491,17 +600,22 @@ class _DashboardViewState extends State<DashboardView> {
                                         child: _ProfileStatTile(
                                           icon: Icons.height_rounded,
                                           label: 'Height',
-                                          value: _formatHeight(_height!),
-                                          iconColor: const Color(0xFF42A5F5),
+                                          value: _formatHeight(
+                                              _height!),
+                                          iconColor:
+                                              const Color(0xFF42A5F5),
                                         ),
                                       ),
                                     if (_weight != null)
                                       Expanded(
                                         child: _ProfileStatTile(
-                                          icon: Icons.monitor_weight_outlined,
+                                          icon: Icons
+                                              .monitor_weight_outlined,
                                           label: 'Weight',
-                                          value: _formatWeight(_weight!),
-                                          iconColor: const Color(0xFFAB47BC),
+                                          value: _formatWeight(
+                                              _weight!),
+                                          iconColor:
+                                              const Color(0xFFAB47BC),
                                         ),
                                       ),
                                     if (_gender != null)
@@ -510,22 +624,26 @@ class _DashboardViewState extends State<DashboardView> {
                                           icon: Icons.wc_rounded,
                                           label: 'Gender',
                                           value: _gender!,
-                                          iconColor: const Color(0xFFFF8F00),
+                                          iconColor:
+                                              const Color(0xFFFF8F00),
                                         ),
                                       ),
                                   ],
                                 ),
-                                if (_activity != null || _goal != null) ...[
+                                if (_activity != null ||
+                                    _goal != null) ...[
                                   const SizedBox(height: 10),
                                   const Divider(
-                                      height: 1, color: Color(0xFFE7EEE2)),
+                                      height: 1,
+                                      color: Color(0xFFE7EEE2)),
                                   const SizedBox(height: 10),
                                   Row(
                                     children: [
                                       if (_activity != null)
                                         Expanded(
                                           child: _ProfileStatTile(
-                                            icon: Icons.directions_run_rounded,
+                                            icon: Icons
+                                                .directions_run_rounded,
                                             label: 'Activity',
                                             value: _activity!,
                                             iconColor: _brandGreen,
@@ -537,15 +655,20 @@ class _DashboardViewState extends State<DashboardView> {
                                             icon: _goal == 'gain'
                                                 ? Icons.trending_up
                                                 : _goal == 'lose'
-                                                    ? Icons.trending_down
-                                                    : Icons.balance_rounded,
+                                                    ? Icons
+                                                        .trending_down
+                                                    : Icons
+                                                        .balance_rounded,
                                             label: 'Goal',
                                             value: _goalLabel,
                                             iconColor: _goal == 'gain'
-                                                ? const Color(0xFF66BB6A)
+                                                ? const Color(
+                                                    0xFF66BB6A)
                                                 : _goal == 'lose'
-                                                    ? const Color(0xFFEF5350)
-                                                    : const Color(0xFF42A5F5),
+                                                    ? const Color(
+                                                        0xFFEF5350)
+                                                    : const Color(
+                                                        0xFF42A5F5),
                                           ),
                                         ),
                                       if (_goal != 'maintain' &&
@@ -554,8 +677,10 @@ class _DashboardViewState extends State<DashboardView> {
                                           child: _ProfileStatTile(
                                             icon: Icons.flag_rounded,
                                             label: 'Target',
-                                            value: _formatWeight(_targetWeight!),
-                                            iconColor: const Color(0xFFFF8F00),
+                                            value: _formatWeight(
+                                                _targetWeight!),
+                                            iconColor:
+                                                const Color(0xFFFF8F00),
                                           ),
                                         ),
                                     ],
@@ -570,7 +695,7 @@ class _DashboardViewState extends State<DashboardView> {
                     const SizedBox(height: 24),
                   ],
 
-                  // ── Today's Meals ──────────────────────────────────────
+                  // ── Today's meals ─────────────────────────────────
                   const Text(
                     "Today's Meals",
                     style: TextStyle(
@@ -580,16 +705,20 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // Empty state: prompt user to log meals via the calendar.
                   if (!_mealLogService.hasAnyMeals) ...[
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFE7EEE2)),
+                        border: Border.all(
+                            color: const Color(0xFFE7EEE2)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color:
+                                Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -604,11 +733,15 @@ class _DashboardViewState extends State<DashboardView> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.grey
+                                      .withValues(alpha: 0.1),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
                                 ),
-                                child: const Icon(Icons.no_meals_rounded,
-                                    color: Colors.grey, size: 20),
+                                child: const Icon(
+                                    Icons.no_meals_rounded,
+                                    color: Colors.grey,
+                                    size: 20),
                               ),
                               const SizedBox(width: 10),
                               const Text(
@@ -625,9 +758,12 @@ class _DashboardViewState extends State<DashboardView> {
                           const Text(
                             'Log meals from the Meal Calendar or Shopping List.',
                             style: TextStyle(
-                                color: Color(0xFF5F7559), fontSize: 13),
+                                color: Color(0xFF5F7559),
+                                fontSize: 13),
                           ),
                           const SizedBox(height: 14),
+                          // CTA button navigates to MealCalendarView via
+                          // MaterialPageRoute (not a named route).
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
@@ -635,19 +771,22 @@ class _DashboardViewState extends State<DashboardView> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const MealCalendarView(),
+                                    builder: (_) =>
+                                        const MealCalendarView(),
                                   ),
                                 );
                               },
                               icon: const Icon(Icons.calendar_month),
-                              label: const Text('Log meals in calendar'),
+                              label:
+                                  const Text('Log meals in calendar'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _brandGreen,
                                 foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 13),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 13),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
                                 ),
                                 elevation: 0,
                               ),
@@ -657,6 +796,8 @@ class _DashboardViewState extends State<DashboardView> {
                       ),
                     ),
                   ],
+
+                  // Logged meal tiles for today; each shows calories and servings.
                   if (totals.hasData) ...[
                     ...meals.map(
                       (meal) => _LoggedMealTile(
@@ -668,18 +809,23 @@ class _DashboardViewState extends State<DashboardView> {
                       ),
                     ),
                   ] else if (_mealLogService.hasAnyMeals) ...[
+                    // Service has meals for other days but none today.
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
                         'No meals logged for today.',
                         style: TextStyle(
-                            color: const Color(0xFF5F7559), fontSize: 13),
+                            color: const Color(0xFF5F7559),
+                            fontSize: 13),
                       ),
                     ),
                   ],
                   const SizedBox(height: 24),
 
-                  // ── Coach Button (first-time users only) ───────────────
+                  // ── Calorie Coach CTA ─────────────────────────────
+                  // Only shown before the user completes the Coach
+                  // questionnaire (_showCoachButton is set to false once
+                  // cc_completed == true in SharedPreferences).
                   if (_showCoachButton) ...[
                     Container(
                       width: double.infinity,
@@ -687,10 +833,13 @@ class _DashboardViewState extends State<DashboardView> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                            color: const Color(0xFFFFE082).withValues(alpha: 0.6)),
+                          color: const Color(0xFFFFE082)
+                              .withValues(alpha: 0.6),
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color:
+                                Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 3),
                           ),
@@ -700,11 +849,14 @@ class _DashboardViewState extends State<DashboardView> {
                         children: [
                           Container(
                             width: double.infinity,
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 14, 16, 12),
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Color(0xFFFFFDE7), Colors.white],
+                                colors: [
+                                  Color(0xFFFFFDE7),
+                                  Colors.white
+                                ],
                               ),
                               borderRadius: BorderRadius.vertical(
                                   top: Radius.circular(18)),
@@ -716,7 +868,8 @@ class _DashboardViewState extends State<DashboardView> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFF6F00)
                                         .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius:
+                                        BorderRadius.circular(12),
                                   ),
                                   child: const Icon(
                                       Icons.local_fire_department,
@@ -736,9 +889,11 @@ class _DashboardViewState extends State<DashboardView> {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 8, 16, 16),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Get personalized calorie and protein targets based on your body and goals.',
@@ -755,16 +910,22 @@ class _DashboardViewState extends State<DashboardView> {
                                       Navigator.pushNamed(
                                               context, '/calorie-coach')
                                           .then((_) {
+                                        // Reload data when the user returns
+                                        // from the Coach questionnaire.
                                         _loadCoachData();
                                       });
                                     },
-                                    icon: const Icon(Icons.arrow_forward),
-                                    label: const Text('Start Calorie Coach'),
+                                    icon: const Icon(
+                                        Icons.arrow_forward),
+                                    label: const Text(
+                                        'Start Calorie Coach'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFFF8F00),
+                                      backgroundColor:
+                                          const Color(0xFFFF8F00),
                                       foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 13),
+                                      padding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 13),
                                       shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(12),
@@ -782,7 +943,7 @@ class _DashboardViewState extends State<DashboardView> {
                     const SizedBox(height: 20),
                   ],
 
-                  // ── Action Buttons ─────────────────────────────────────
+                  // ── Meal-idea link buttons ─────────────────────────
                   const Text(
                     'Looking for meal ideas?',
                     style: TextStyle(
@@ -808,6 +969,8 @@ class _DashboardViewState extends State<DashboardView> {
 
 // ── Private helper widgets ─────────────────────────────────────────────────────
 
+/// Displays one macro nutrient (protein/carbs/fat) with an emoji icon,
+/// a label, and the consumed/target value. Used in the macro legend row.
 class _MacroLegendItem extends StatelessWidget {
   final String icon;
   final String label;
@@ -826,8 +989,8 @@ class _MacroLegendItem extends StatelessWidget {
         Text(icon, style: const TextStyle(fontSize: 26)),
         const SizedBox(height: 6),
         Text(label,
-            style:
-                const TextStyle(fontSize: 12, color: Color(0xFF5F7559))),
+            style: const TextStyle(
+                fontSize: 12, color: Color(0xFF5F7559))),
         const SizedBox(height: 2),
         Text(value,
             style: const TextStyle(
@@ -839,6 +1002,8 @@ class _MacroLegendItem extends StatelessWidget {
   }
 }
 
+/// A dismissable tile for one logged meal showing its title, serving count,
+/// and total calorie contribution. The delete icon removes it from MealLogService.
 class _LoggedMealTile extends StatelessWidget {
   final LoggedMeal meal;
   final VoidCallback onRemove;
@@ -847,14 +1012,13 @@ class _LoggedMealTile extends StatelessWidget {
 
   static String _formatNumber(double value) {
     final isWhole = (value - value.roundToDouble()).abs() < 0.001;
-    if (isWhole) {
-      return value.round().toString();
-    }
+    if (isWhole) return value.round().toString();
     return value.toStringAsFixed(1);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Total calories = calories-per-serving × number of servings.
     final totalCalories = meal.caloriesPerServing * meal.servings;
 
     return Container(
@@ -872,7 +1036,8 @@ class _LoggedMealTile extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 12),
         child: Row(
           children: [
             Container(
@@ -899,7 +1064,8 @@ class _LoggedMealTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${meal.servings} serving(s) \u2022 ${_formatNumber(totalCalories.toDouble())} kcal',
+                    // Unicode bullet (•) separates servings from kcal.
+                    '${meal.servings} serving(s) • ${_formatNumber(totalCalories.toDouble())} kcal',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF5F7559),
@@ -909,7 +1075,8 @@ class _LoggedMealTile extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_outline,
+                  color: Colors.redAccent),
               onPressed: onRemove,
               tooltip: 'Remove meal',
             ),
@@ -920,6 +1087,7 @@ class _LoggedMealTile extends StatelessWidget {
   }
 }
 
+/// Full-width button that navigates to the Recipes view.
 class _RecipeLinkButton extends StatelessWidget {
   const _RecipeLinkButton();
 
@@ -945,6 +1113,11 @@ class _RecipeLinkButton extends StatelessWidget {
   }
 }
 
+/// A labeled progress bar for one macro nutrient.
+///
+/// Uses [LinearProgressIndicator] with [clamp(0.0, 1.0)] so the bar
+/// never overflows visually. When consumed > target the label and bar
+/// both switch to [Colors.redAccent] as a warning.
 class _CoachProgressBar extends StatelessWidget {
   final String label;
   final double consumed;
@@ -962,8 +1135,11 @@ class _CoachProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = (target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0);
-    final remaining = (target - consumed).clamp(0.0, double.infinity);
+    // Clamp progress to [0, 1] — the bar itself must never exceed full.
+    final progress =
+        (target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0);
+    final remaining =
+        (target - consumed).clamp(0.0, double.infinity);
     final isOver = consumed > target;
 
     return Column(
@@ -980,13 +1156,16 @@ class _CoachProgressBar extends StatelessWidget {
                 color: Color(0xFF24421A),
               ),
             ),
+            // Show "X over" in red when the user exceeds their target.
             Text(
               isOver
                   ? '${DashboardView._formatNumber(consumed - target)}$unit over'
                   : '${DashboardView._formatNumber(remaining)}$unit remaining',
               style: TextStyle(
                 fontSize: 12,
-                color: isOver ? Colors.redAccent : const Color(0xFF5F7559),
+                color: isOver
+                    ? Colors.redAccent
+                    : const Color(0xFF5F7559),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -999,6 +1178,7 @@ class _CoachProgressBar extends StatelessWidget {
             value: progress,
             minHeight: 8,
             backgroundColor: color.withValues(alpha: 0.12),
+            // Switch to red when over target.
             valueColor: AlwaysStoppedAnimation<Color>(
               isOver ? Colors.redAccent : color,
             ),
@@ -1007,13 +1187,15 @@ class _CoachProgressBar extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           '${DashboardView._formatNumber(consumed)} / ${DashboardView._formatNumber(target)} $unit',
-          style: const TextStyle(fontSize: 11, color: Color(0xFF8A9A85)),
+          style: const TextStyle(
+              fontSize: 11, color: Color(0xFF8A9A85)),
         ),
       ],
     );
   }
 }
 
+/// A small icon + label + value tile used in the profile stats grid.
 class _ProfileStatTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1073,6 +1255,7 @@ class _ProfileStatTile extends StatelessWidget {
   }
 }
 
+/// Full-width outlined button that navigates to the Meal Spinner view.
 class _SpinnerLinkButton extends StatelessWidget {
   const _SpinnerLinkButton();
 

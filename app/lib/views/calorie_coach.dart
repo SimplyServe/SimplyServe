@@ -1,4 +1,63 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
+// ============================================================
+// views/calorie_coach.dart
+// ============================================================
+// Conversational step-machine that collects biometric data, calculates
+// personalised calorie and macro targets, and suggests matching recipes.
+//
+// ── Step machine ─────────────────────────────────────────────
+// _step drives all UI branching:
+//   0  — age (text input)
+//   1  — height unit selection (cm / ft·in)
+//   2  — height value (text input)
+//   3  — weight unit selection (kg / lb)
+//   4  — weight value (text input)
+//   5  — gender selection
+//   6  — activity level selection
+//   7  — fitness goal selection
+//   75 — dietary options (multi-select chip panel)
+//   8  — target weight (text input, skipped for 'maintain')
+//   9  — results / done
+//
+// ── BMR / TDEE calculation (Mifflin-St Jeor equation) ────────
+//   Male:   BMR = 10W + 6.25H − 5A + 5
+//   Female: BMR = 10W + 6.25H − 5A − 161
+//   TDEE = BMR × activityMultiplier
+//   where W=weight(kg), H=height(cm), A=age(years)
+//
+// ── Calorie target ───────────────────────────────────────────
+//   gain:     TDEE + 400  (lean bulk surplus)
+//   lose:     TDEE − 500  (fat-loss deficit)
+//   maintain: TDEE
+//   Floor: 1200 kcal (safe minimum)
+//
+// ── Macro split ──────────────────────────────────────────────
+//   Protein:  2.0–2.2 g/kg bodyweight (capped at 35% of calories)
+//   Fat:      25% of calories  (9 kcal/g)
+//   Carbs:    remainder        (4 kcal/g)
+//
+// ── Persistence (SharedPreferences) ──────────────────────────
+// All results are stored under 'cc_*' keys. On next open,
+// _loadSavedResults() detects a stored TDEE and jumps directly
+// to the results screen, bypassing the intro and conversation.
+//
+// ── Chat bubble pattern ───────────────────────────────────────
+// _pushBot() / _pushUser() add _ChatMessage objects to _messages.
+// _sendBot() shows a typing indicator (isTyping=true) for [delayMs]
+// ms before replacing it with the actual message — simulating a
+// realistic bot response delay.
+//
+// ── Goal reached detection ───────────────────────────────────
+// _checkGoalReached() compares current weight to target weight.
+// If reached, it sets goal→'maintain', recalculates targets, and
+// persists 'cc_goal_reached' so the celebration message appears only once.
+//
+// ── Sub-widget: _RecipeSuggestionSheet ───────────────────────
+// DraggableScrollableSheet presenting recipes filtered by the
+// user's dietary tags. Tag chips allow further in-sheet filtering.
+// _recipeField() / _recipeTags() / _recipeInt() handle both typed
+// RecipeModel objects and raw Map responses from the API.
+// ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +66,8 @@ import 'package:simplyserve/services/profile_service.dart';
 import 'package:simplyserve/services/recipe_catalog_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
+/// Main Calorie Coach screen. Shows an intro page on first visit
+/// or the results / chat history on subsequent visits.
 class CalorieCoachView extends StatefulWidget {
   const CalorieCoachView({super.key});
 
@@ -16,41 +77,57 @@ class CalorieCoachView extends StatefulWidget {
 
 class _CalorieCoachViewState extends State<CalorieCoachView> {
   final ProfileService _profileService = ProfileService();
+
+  /// Text input controller for numeric steps (age, height, weight, target weight).
   final _inputCtrl = TextEditingController();
+
+  /// Ordered list of chat messages rendered in the scrollable area.
   final List<_ChatMessage> _messages = [];
+
   // Steps: 0=age, 1=height unit, 2=height, 3=weight unit, 4=weight,
   //        5=gender, 6=activity, 7=goal, 8=target weight, 9=done
+  // Step 75 is an intermediate step for dietary options (between 7 and 8).
   int _step = 0;
 
   final ScrollController _scrollCtrl = ScrollController();
 
+  // ── Collected biometric data ──────────────────────────────────────────
   int? _age;
-  double? _height; // always stored in cm
-  double? _weight; // always stored in kg
+  double? _height; // always stored in cm regardless of display unit
+  double? _weight; // always stored in kg regardless of display unit
   String? _gender;
   String? _activity;
-  String _heightUnit = 'cm'; // 'cm' or 'ft'
-  String _weightUnit = 'kg'; // 'kg' or 'lb'
+  String _heightUnit = 'cm'; // 'cm' or 'ft' — controls parsing + display
+  String _weightUnit = 'kg'; // 'kg' or 'lb' — controls parsing + display
   String? _goal; // 'gain', 'maintain', 'lose'
   double? _targetWeight; // stored in kg
 
+  // ── Calculated values ─────────────────────────────────────────────────
   double? _bmr;
   double? _tdee;
 
-  // Avatar assets
+  // ── Avatar assets ─────────────────────────────────────────────────────
+  /// Bot avatar: brand mascot image shown next to every bot message.
   final String _botAvatarAsset = 'assets/images/image.png';
   final String? _userAvatarAsset = null;
+
+  /// User avatar: fetched from the profile API; falls back to a green circle.
   String? _userAvatarUrl;
+
+  // ── Targets (written to SharedPreferences and used by NutritionalDashboard)
   double? _calorieTarget;
   double? _proteinTarget;
   double? _carbTarget;
   double? _fatTarget;
 
+  /// True when the weight-update sub-flow is active (re-uses the text input).
   bool _isWeightUpdateMode = false;
+
+  /// True until the user taps "Let's Go" or saved results are detected.
   bool _showIntro = true;
 
-  // Dietary options — step 7.5
-  // Steps: ..., 7=goal, 7.5=dietary (handled as _step==75), 8=target weight, 9=done
+  // ── Dietary options (step 75) ──────────────────────────────────────────
+  // Steps: ..., 7=goal, 75=dietary (handled as _step==75), 8=target weight, 9=done
   final List<String> _dietaryOptions = [];
 
   // These must exactly match the tag strings used in the recipe catalog
@@ -72,6 +149,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   static const Color _textDark = Color(0xFF24421A);
   static const Color _textMuted = Color(0xFF5F7559);
 
+  // ── Activity level multipliers for TDEE calculation ───────────────────
+  // Keys match the display labels shown to the user.
   static const Map<String, double> _activityMultipliers = {
     'Sedentary': 1.2,
     'Lightly active': 1.375,
@@ -79,6 +158,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     'Very active': 1.725,
   };
 
+  /// Subtitle descriptions shown in the activity selection card.
   static const Map<String, String> _activityDescriptions = {
     'Sedentary': 'Little or no exercise, desk job',
     'Lightly active': 'Light exercise 1–3 days/week',
@@ -87,7 +167,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     'Extra active': 'Very hard exercise or physical job',
   };
 
-  // SharedPreferences keys
+  // ── SharedPreferences keys (all prefixed 'cc_') ───────────────────────
+  // These keys are also read by NutritionalDashboard and ProfileView.
   static const _kAge = 'cc_age';
   static const _kHeight = 'cc_height';
   static const _kWeight = 'cc_weight';
@@ -111,10 +192,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   void initState() {
     super.initState();
     _loadUserAvatar();
-    // attempt to load saved results; if none, start normal conversation
+    // Try to restore a previous session; if none found, stay on the intro screen.
     _loadSavedResults();
   }
 
+  /// Fetches the user's profile image URL from the API and normalises it.
+  /// Relative paths from the backend are prefixed with the base URL.
   Future<void> _loadUserAvatar() async {
     final userData = await _profileService.getCurrentUser();
     final rawUrl = (userData?['profile_image_url'] ?? '').toString().trim();
@@ -125,21 +208,27 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       return;
     }
 
+    // Ensure relative paths like '/media/avatars/x.png' become absolute URLs
     final base = _profileService.baseUrl.replaceAll(RegExp(r'/$'), '');
     final normalized = rawUrl.startsWith('http') ? rawUrl : '$base$rawUrl';
     setState(() => _userAvatarUrl = normalized);
   }
 
+  /// Restores saved Calorie Coach results from SharedPreferences.
+  ///
+  /// If cc_tdee exists, the user has completed the coach before.
+  /// We skip the intro, jump to step 9, and replay their results as
+  /// chat messages (so the context is visible without re-answering).
   Future<void> _loadSavedResults() async {
     final prefs = await SharedPreferences.getInstance();
     final storedTdee = prefs.getDouble(_kTdee);
     if (storedTdee == null) {
-      // no saved results — show intro screen
+      // No saved results — show intro screen for first-time users
       setState(() => _showIntro = true);
       return;
     }
 
-    // Skip intro for returning users; jump straight to step 9 (results screen)
+    // Returning user: skip intro and go straight to results (step 9)
     setState(() {
       _showIntro = false;
       _age = prefs.getInt(_kAge);
@@ -168,9 +257,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
     _messages.clear();
 
-    // Check if goal was reached
+    // Check whether the user has reached their target weight since last session
     await _checkGoalReached();
 
+    // Replay summary as bot messages (no typing delay — immediate on return)
     _pushBot('Welcome back — here are your Calorie Coach results.');
     _pushBot('Age: ${_age ?? 'N/A'}');
     _pushBot(
@@ -198,6 +288,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _pushBot('Tap "Suggest Recipes" to see meals matched to your goals and diet.');
   }
 
+  /// Persists all Calorie Coach results to SharedPreferences.
+  /// Called at the end of _calculateAndShowResults(). Also sets
+  /// 'cc_completed' = true, which NutritionalDashboard reads to hide the CTA.
   Future<void> _saveResults() async {
     final prefs = await SharedPreferences.getInstance();
     if (_age != null) prefs.setInt(_kAge, _age!);
@@ -224,9 +317,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       prefs.setDouble(_kFatTarget, _fatTarget!);
     }
     prefs.setStringList(_kDietaryOptions, _dietaryOptions);
-    prefs.setBool(_kCompleted, true);
+    prefs.setBool(_kCompleted, true); // signals NutritionalDashboard to hide CTA
   }
 
+  /// Removes all cc_* keys from SharedPreferences, resetting the coach.
+  /// Called at the start of _startConversation() before clearing in-memory state.
   Future<void> _clearSavedResults() async {
     final prefs = await SharedPreferences.getInstance();
     for (final key in [
@@ -255,6 +350,13 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // ── Goal tracking ────────────────────────────────────────────────────
 
+  /// Checks whether the user has hit their target weight.
+  ///
+  /// If they have:
+  ///   • Sets cc_goal_reached = true (so the message doesn't repeat).
+  ///   • Switches goal → 'maintain'.
+  ///   • Recalculates calorie + protein targets for maintenance.
+  ///   • Pushes a congratulations chat message.
   Future<void> _checkGoalReached() async {
     final prefs = await SharedPreferences.getInstance();
     final goal = prefs.getString(_kGoal);
@@ -267,7 +369,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         goal == 'maintain' ||
         targetWeight == null ||
         currentWeight == null) {
-      return;
+      return; // nothing to check
     }
 
     bool reached = false;
@@ -278,10 +380,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       await prefs.setBool(_kGoalReached, true);
       await prefs.setString(_kGoal, 'maintain');
 
-      // Recalculate for maintenance
+      // Recalculate targets for maintenance mode
       final tdee = _tdee ?? prefs.getDouble(_kTdee);
       if (tdee != null) {
-        final proteinTarget = currentWeight * 1.8;
+        final proteinTarget = currentWeight * 1.8; // 1.8 g/kg for maintenance
         await prefs.setDouble(_kCalorieTarget, tdee);
         await prefs.setDouble(_kProteinTarget, proteinTarget);
         setState(() {
@@ -299,6 +401,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // ── Conversation flow ────────────────────────────────────────────────
 
+  /// Resets all in-memory state and SharedPreferences, then starts the
+  /// conversation from step 0 (age question).
   Future<void> _startConversation() async {
     await _clearSavedResults();
 
@@ -324,11 +428,13 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _pushBot('This will only take a moment. How old are you? (years)');
   }
 
+  /// Called when the user taps "Let's Go" on the intro screen.
   Future<void> _letsGo() async {
     setState(() => _showIntro = false);
     await _startConversation();
   }
 
+  /// Appends a user message immediately (no delay).
   void _pushUser(String text) {
     setState(() {
       _messages.add(_ChatMessage(text: text, fromUser: true));
@@ -336,6 +442,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _scrollToBottom();
   }
 
+  /// Appends a bot message immediately (no delay, used for loading saved results).
   void _pushBot(String text) {
     setState(() {
       _messages.add(_ChatMessage(text: text, fromUser: false));
@@ -343,6 +450,13 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _scrollToBottom();
   }
 
+  /// Appends a bot message with a typing indicator that lasts [delayMs] ms.
+  ///
+  /// Pattern:
+  ///   1. Add a _ChatMessage with isTyping=true (shows "…" + spinner).
+  ///   2. Wait for delayMs.
+  ///   3. Remove the typing message and replace it with the real text.
+  /// This simulates a realistic conversational bot response delay.
   Future<void> _sendBot(String text, {int delayMs = 800}) async {
     setState(() {
       _messages.add(_ChatMessage(text: '…', fromUser: false, isTyping: true));
@@ -352,6 +466,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     await Future.delayed(Duration(milliseconds: delayMs));
 
     setState(() {
+      // Find and replace the last typing indicator
       final idx = _messages.lastIndexWhere((m) => m.isTyping == true);
       if (idx != -1) _messages.removeAt(idx);
       _messages.add(_ChatMessage(text: text, fromUser: false));
@@ -359,6 +474,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _scrollToBottom();
   }
 
+  /// Scrolls the chat list to the bottom after the current frame renders.
+  /// Uses addPostFrameCallback so the scroll happens after ListView rebuilds.
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollCtrl.hasClients) return;
@@ -374,6 +491,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // ── Input handling ───────────────────────────────────────────────────
 
+  /// Hint text for the text input field, changing per step.
   String get _inputHintText {
     if (_isWeightUpdateMode) {
       return _weightUnit == 'lb'
@@ -398,6 +516,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
   }
 
+  /// True when the text input field should be visible.
+  /// Shown only for numeric steps (0, 2, 4, 8) and weight update mode.
+  /// Hidden during selection steps (1, 3, 5, 6, 7, 75, 9).
   bool get _showTextInput =>
       (_step == 0 ||
       _step == 2 ||
@@ -405,6 +526,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _step == 8 ||
       _isWeightUpdateMode) && _step != 75;
 
+  /// Handles text input submission for all numeric steps.
+  ///
+  /// Each case validates the input (range checks, unit conversion),
+  /// stores the canonical value (always cm/kg internally), advances _step,
+  /// and fires the next bot message via _sendBot.
   Future<void> _handleSubmitText() async {
     final text = _inputCtrl.text.trim();
     if (text.isEmpty) return;
@@ -425,7 +551,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           return;
         }
         _age = n;
-        _step = 1;
+        _step = 1; // → height unit selection panel
         await _sendBot(
             'Would you like to enter your height in centimeters or feet and inches?');
         setState(() {});
@@ -442,8 +568,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           }
           return;
         }
-        _height = cm;
-        _step = 3;
+        _height = cm; // store as cm regardless of input unit
+        _step = 3; // → weight unit selection panel
         await _sendBot(
             'Would you like to enter your weight in kilograms or pounds?');
         setState(() {});
@@ -462,8 +588,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
               : 'Please enter a realistic weight in kg (e.g. 70).');
           return;
         }
-        _weight = kg;
-        _step = 5;
+        _weight = kg; // store as kg regardless of input unit
+        _step = 5; // → gender selection panel
         await _sendBot('Which gender should I use for the calculation?');
         setState(() {});
         break;
@@ -479,6 +605,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           await _sendBot('Please enter a realistic target weight.');
           return;
         }
+        // Validate target direction relative to current weight
         if (_goal == 'gain' && targetKg <= _weight!) {
           await _sendBot(
               'Your target weight should be higher than your current weight for a weight gain goal.');
@@ -490,7 +617,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           return;
         }
         _targetWeight = targetKg;
-        _step = 9;
+        _step = 9; // → results
         await _calculateAndShowResults();
         break;
 
@@ -501,10 +628,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // ── Selection handlers ───────────────────────────────────────────────
 
+  /// User selects a height unit. Advances to step 2 (height value input).
   Future<void> _selectHeightUnit(String unit) async {
     _pushUser(unit == 'cm' ? 'Centimeters' : 'Feet & Inches');
     _heightUnit = unit;
-    _step = 2;
+    _step = 2; // → height value text input
     if (unit == 'ft') {
       await _sendBot(
           'Enter your height as feet and inches separated by a space (e.g. 5 10).');
@@ -514,10 +642,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     setState(() {});
   }
 
+  /// User selects a weight unit. Advances to step 4 (weight value input).
   Future<void> _selectWeightUnit(String unit) async {
     _pushUser(unit == 'kg' ? 'Kilograms' : 'Pounds');
     _weightUnit = unit;
-    _step = 4;
+    _step = 4; // → weight value text input
     if (unit == 'lb') {
       await _sendBot('What is your weight in pounds?');
     } else {
@@ -526,23 +655,27 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     setState(() {});
   }
 
+  /// User selects gender. Advances to step 6 (activity level selection).
   Future<void> _selectGender(String g) async {
     _pushUser(g);
     _gender = g;
-    _step = 6;
+    _step = 6; // → activity selection panel
     await _sendBot('Thanks. Now choose your typical activity level:');
     setState(() {});
   }
 
+  /// User selects an activity level. Advances to step 7 (goal selection).
   Future<void> _selectActivity(String a) async {
     _pushUser(a);
     _activity = a;
-    _step = 7;
+    _step = 7; // → goal selection panel
     await _sendBot(
         'What is your fitness goal? All plans include high protein to support muscle.');
     setState(() {});
   }
 
+  /// User selects a fitness goal. Advances to step 75 (dietary options).
+  /// Dietary options are always collected before the target weight step.
   Future<void> _selectGoal(String goal) async {
     final labels = {
       'gain': 'Gain Weight',
@@ -552,13 +685,16 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     _pushUser(labels[goal]!);
     _goal = goal;
 
-    // Always go to dietary options step first
-    _step = 75;
+    // Always go to dietary options step first, regardless of goal
+    _step = 75; // dietary multi-select panel
     await _sendBot(
         'Great! Do you have any dietary requirements or preferences? Select all that apply, then tap "Continue".');
     setState(() {});
   }
 
+  /// User confirms dietary options. Routes to:
+  ///   • step 9 (results) if goal is 'maintain' (no target weight needed).
+  ///   • step 8 (target weight input) for gain/lose goals.
   Future<void> _confirmDietaryOptions() async {
     final display = _dietaryOptions.isEmpty || _dietaryOptions.contains('No restrictions')
         ? 'No restrictions'
@@ -567,9 +703,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
     if (_goal == 'maintain') {
       _step = 9;
-      await _calculateAndShowResults();
+      await _calculateAndShowResults(); // no target weight needed
     } else {
-      _step = 8;
+      _step = 8; // → target weight text input
       final action = _goal == 'gain' ? 'gain' : 'lose';
       final unitLabel = _weightUnit == 'lb' ? 'pounds' : 'kg';
       await _sendBot(
@@ -579,7 +715,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   }
 
   // ── Weight update sub-flow ───────────────────────────────────────────
+  // Allows the user to log a new weight after the initial setup, triggering
+  // a recalculation of BMR/TDEE and checking for goal completion.
 
+  /// Activates the weight update sub-flow. Reuses the standard text input.
   void _startWeightUpdate() {
     setState(() {
       _isWeightUpdateMode = true;
@@ -588,6 +727,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         'Enter your current weight (${_weightUnit == 'lb' ? 'in pounds' : 'in kg'}):');
   }
 
+  /// Validates the new weight, updates state + SharedPreferences,
+  /// recalculates BMR/TDEE using Mifflin-St Jeor, and checks goal status.
   Future<void> _handleWeightUpdate(String text) async {
     final n = double.tryParse(text);
     if (n == null || n <= 0) {
@@ -608,7 +749,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
     await _sendBot('Weight updated to ${_formatWeightForDisplay(kg)}.');
 
-    // Recalculate with new weight
+    // Recalculate BMR and TDEE with the updated weight
     if (_age != null && _height != null) {
       double bmr;
       if (_gender == 'Male') {
@@ -639,21 +780,23 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           delayMs: 600);
     }
 
-    // Check goal
+    // Check if the new weight means the user has reached their goal
     await _checkGoalReached();
     setState(() {});
   }
 
   // ── Calculation logic ────────────────────────────────────────────────
 
+  /// Applies the goal adjustment to TDEE to produce the daily calorie target.
+  /// Floor of 1200 kcal prevents dangerously low targets.
   double _computeCalorieTarget(double tdee) {
     double target;
     switch (_goal) {
       case 'gain':
-        target = tdee + 400;
+        target = tdee + 400; // lean-bulk surplus
         break;
       case 'lose':
-        target = tdee - 500;
+        target = tdee - 500; // fat-loss deficit
         break;
       case 'maintain':
       default:
@@ -664,8 +807,12 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     return target;
   }
 
-  // Protein from body weight (g/kg), fat fixed at 25% of calories,
-  // carbs fill whatever is left.
+  /// Calculates the daily protein target in grams.
+  ///
+  /// Method: body-weight scaling (g/kg), with different rates per goal:
+  ///   lose: 2.0 g/kg, gain: 2.2 g/kg, maintain: 1.8 g/kg
+  /// Cap: protein never exceeds 35% of total daily calories to stay
+  /// within evidence-based recommendations.
   double _computeProteinTarget(double calories) {
     if (_weight == null) return (calories * 0.30) / 4;
     final double gPerKg;
@@ -680,15 +827,19 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         gPerKg = 1.8;
     }
     final proteinG = _weight! * gPerKg;
-    // Cap so protein never exceeds 35% of calories
+    // Cap protein at 35% of calories (4 kcal/g)
     final maxProteinG = (calories * 0.35) / 4;
     return proteinG < maxProteinG ? proteinG : maxProteinG;
   }
 
+  /// Fat = 25% of total daily calories (9 kcal/g).
   double _computeFatTarget(double calories) {
-    return (calories * 0.25) / 9; // 25% of calories, 9 kcal per gram
+    return (calories * 0.25) / 9;
   }
 
+  /// Carbs = remaining calories after protein and fat are accounted for.
+  /// If protein + fat exceed total calories (edge case with very low calorie
+  /// targets), carbs default to 0 rather than going negative.
   double _computeCarbTarget(double calories) {
     final proteinCals = _computeProteinTarget(calories) * 4;
     final fatCals = _computeFatTarget(calories) * 9;
@@ -696,13 +847,20 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     return remaining > 0 ? remaining / 4 : 0;
   }
 
+  /// Runs the full BMR → TDEE → macro calculation and streams results
+  /// as sequential bot messages with staggered delays for a natural feel.
+  ///
+  /// Mifflin-St Jeor equations:
+  ///   Male:   BMR = 10W + 6.25H − 5A + 5
+  ///   Female: BMR = 10W + 6.25H − 5A − 161
+  ///   TDEE  = BMR × activityMultiplier
   Future<void> _calculateAndShowResults() async {
     if (_age == null || _height == null || _weight == null) {
       await _sendBot('Missing information. Please restart.');
       return;
     }
 
-    // Mifflin-St Jeor
+    // Mifflin-St Jeor equation
     double bmr;
     if (_gender == 'Male') {
       bmr = 10 * _weight! + 6.25 * _height! - 5 * _age! + 5;
@@ -724,8 +882,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       _carbTarget = carbTarget;
       _fatTarget = fatTarget;
     });
+    // Save to SharedPreferences so other screens can read the targets
     await _saveResults();
 
+    // Stream results with staggered delays to simulate natural conversation
     await _sendBot('Here are your results:');
     await _sendBot('BMR (basal metabolic rate): ${bmr.round()} kcal/day',
         delayMs: 600);
@@ -756,6 +916,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     setState(() {});
   }
 
+  /// Shows a summary AlertDialog with all biometric data and calculated targets.
+  /// The dialog includes a "Restart" button that triggers _startConversation().
   void _showSummaryDialog() {
     final age = _age?.toString() ?? 'N/A';
     final height =
@@ -768,7 +930,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     final protein =
         _proteinTarget != null ? '${_proteinTarget!.round()}g/day' : 'N/A';
 
-    // Macro breakdown (40/30/30 split)
+    // Macro breakdown (40/30/30 split approximation)
     String fatStr = 'N/A';
     String carbStr = 'N/A';
     if (_calorieTarget != null) {
@@ -783,6 +945,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titlePadding: EdgeInsets.zero,
+        // Gradient header matching the screen's green theme
         title: Container(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
           decoration: const BoxDecoration(
@@ -840,7 +1003,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _startConversation();
+              _startConversation(); // restart the conversation from scratch
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _brandGreen,
@@ -855,6 +1018,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     );
   }
 
+  /// Builds a single icon + label: value row for the summary dialog.
   Widget _summaryRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -880,6 +1044,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     );
   }
 
+  /// Human-readable dietary preference string for display in the summary.
   String get _dietaryDisplayName {
     if (_dietaryOptions.isEmpty || _dietaryOptions.contains('No restrictions')) {
       return 'No restrictions';
@@ -887,6 +1052,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     return _dietaryOptions.join(', ');
   }
 
+  /// Opens the _RecipeSuggestionSheet as a DraggableScrollableSheet.
+  ///
+  /// Passes dietary tags to the sheet for initial filtering.
+  /// 'No restrictions' or empty → no tag filter (show all recipes).
   void _showRecipeSuggestions() {
     // "No restrictions" or nothing selected → no filter (show all recipes).
     // Otherwise pass the selected labels directly — they match the catalog
@@ -926,6 +1095,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // ── Helper methods ──────────────────────────────────────────────────
 
+  /// Human-readable goal label for display in chat and the summary dialog.
   String get _goalDisplayName {
     switch (_goal) {
       case 'gain':
@@ -938,6 +1108,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
   }
 
+  /// Converts a height stored in cm to the user's preferred display format.
+  /// ft mode: converts cm → total inches → feet + inches.
   String _formatHeightForDisplay(double cm) {
     if (_heightUnit == 'ft') {
       final totalInches = cm / 2.54;
@@ -949,6 +1121,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
   }
 
+  /// Converts a weight stored in kg to the user's preferred display format.
   String _formatWeightForDisplay(double kg) {
     if (_weightUnit == 'lb') {
       final lb = kg * 2.20462;
@@ -958,6 +1131,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
   }
 
+  /// Parses a height string to centimetres.
+  /// ft mode: splits on space or apostrophe, converts feet + inches to cm.
+  /// cm mode: direct double.tryParse.
   double _parseHeightToCm(String input) {
     if (_heightUnit == 'ft') {
       final parts = input.trim().split(RegExp(r"[\s']"));
@@ -972,6 +1148,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     }
   }
 
+  /// Converts a weight value from the user's display unit to kg.
   double _convertWeightToKg(double weight) {
     if (_weightUnit == 'lb') {
       return weight / 2.20462;
@@ -981,6 +1158,16 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   // ── Message bubble builder ───────────────────────────────────────────
 
+  /// Renders a single chat message as a styled bubble with avatar.
+  ///
+  /// User bubbles: light-green background, right-aligned, user avatar on right.
+  /// Bot bubbles: white background, left-aligned, bot avatar on left.
+  /// Typing bubble: shows a miniature CircularProgressIndicator + "…" text.
+  ///
+  /// Avatar priority for the user:
+  ///   1. Network image from _userAvatarUrl (profile photo)
+  ///   2. Asset image from _userAvatarAsset (currently null)
+  ///   3. Fallback: green circle with person icon
   Widget _buildMessage(_ChatMessage m) {
     const double avatarSize = 36;
 
@@ -1038,6 +1225,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
     final isUser = m.fromUser;
 
+    // ConstrainedBox caps bubble width at 72% of screen width so long
+    // messages don't stretch edge-to-edge.
     final bubble = ConstrainedBox(
       constraints:
           BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
@@ -1047,6 +1236,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
+            // Tail corner: user = bottom-right square, bot = bottom-left square
             bottomLeft: Radius.circular(isUser ? 16 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 16),
           ),
@@ -1065,6 +1255,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
           ],
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        // Typing indicator: spinner + "…" text while the bot "thinks"
         child: m.isTyping
             ? const Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1090,6 +1281,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
       ),
     );
 
+    // User messages: right-aligned with avatar on the right
     if (isUser) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
@@ -1104,6 +1296,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         ),
       );
     } else {
+      // Bot messages: left-aligned with avatar on the left
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
         child: Row(
@@ -1119,6 +1312,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
   }
 
   // ── Intro screen ──────────────────────────────────────────────────────
+  // Shown to first-time users before any results are saved.
+  // Contains: gradient header + bot avatar + info card + "Let's Go" button.
 
   Widget _buildIntroScreen() {
     return ColoredBox(
@@ -1127,7 +1322,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Gradient header — matches meal_spinner_page.dart
+              // Gradient header — consistent with meal_spinner_page.dart style
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
@@ -1180,7 +1375,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                 child: Column(
                   children: [
-                    // Avatar card
+                    // Bot avatar card with green glow shadow
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1215,7 +1410,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Info card — matches shopping_list.dart card style
+                    // Info card explaining what the coach does and data privacy
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1245,6 +1440,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                     ),
                     const SizedBox(height: 32),
 
+                    // CTA button: enters the conversation flow
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -1272,8 +1468,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     );
   }
 
-  // ── Selection panel helper ───────────────────────────────────────────
+  // ── Selection panel helpers ───────────────────────────────────────────
+  // Reusable container and chip widgets used across selection steps.
 
+  /// White card container with border and shadow — wraps all selection panels.
   Widget _panelContainer({required Widget child}) {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -1294,6 +1492,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     );
   }
 
+  /// Bold label text shown at the top of each selection panel.
   Widget _panelLabel(String text) {
     return Text(
       text,
@@ -1305,6 +1504,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     );
   }
 
+  /// A small pill-shaped choice chip with an icon, used for binary choices
+  /// (e.g. cm vs ft, kg vs lb, Male vs Female).
   Widget _styledChoiceChip({
     required String label,
     required IconData icon,
@@ -1335,6 +1536,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
     );
   }
 
+  /// A tappable card option with an icon, title, subtitle, and a green
+  /// checkmark when selected. Used for activity level and goal selection.
   Widget _styledOptionCard({
     required String title,
     required String subtitle,
@@ -1388,6 +1591,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                 ],
               ),
             ),
+            // Checkmark badge appears when option is selected
             if (selected)
               Container(
                 padding: const EdgeInsets.all(3),
@@ -1407,6 +1611,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 
   @override
   Widget build(BuildContext context) {
+    // Show the intro screen until the user taps "Let's Go"
     if (_showIntro) {
       return NavBarScaffold(
         title: 'Calorie Coach',
@@ -1421,7 +1626,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
         child: SafeArea(
           child: Column(
             children: [
-              // Gradient header — matches meal_spinner_page.dart / shopping_list.dart
+              // ── Gradient header ────────────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
@@ -1468,6 +1673,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ],
                 ),
               ),
+
+              // ── Chat message list ──────────────────────────────────────
+              // Grows as messages are added; scrolled by _scrollCtrl.
               Expanded(
                 child: ListView.builder(
                   controller: _scrollCtrl,
@@ -1477,7 +1685,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                 ),
               ),
 
-              // ── Step 1: Height unit selection ──
+              // ── Step 1: Height unit selection ──────────────────────────
               if (_step == 1)
                 _panelContainer(
                   child: Column(
@@ -1505,7 +1713,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Step 3: Weight unit selection ──
+              // ── Step 3: Weight unit selection ──────────────────────────
               if (_step == 3)
                 _panelContainer(
                   child: Column(
@@ -1533,7 +1741,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Step 5: Gender selection ──
+              // ── Step 5: Gender selection ───────────────────────────────
               if (_step == 5)
                 _panelContainer(
                   child: Column(
@@ -1571,7 +1779,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Step 6: Activity selection ──
+              // ── Step 6: Activity level selection ───────────────────────
+              // Iterates _activityMultipliers.keys to build one card per level.
               if (_step == 6)
                 _panelContainer(
                   child: Column(
@@ -1592,7 +1801,9 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Step 7: Goal selection ──
+              // ── Step 7: Goal selection ─────────────────────────────────
+              // Three options: gain / maintain / lose. Described with icons
+              // and subtitle text so the user can make an informed choice.
               if (_step == 7)
                 _panelContainer(
                   child: Column(
@@ -1640,7 +1851,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Step 75: Dietary options ──
+              // ── Step 75: Dietary options (multi-select) ────────────────
+              // Multi-select chip panel. "No restrictions" clears all others;
+              // selecting any specific option removes "No restrictions".
+              // "Continue" button calls _confirmDietaryOptions().
               if (_step == 75)
                 _panelContainer(
                   child: Column(
@@ -1662,6 +1876,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                             onTap: () {
                               setState(() {
                                 if (option == 'No restrictions') {
+                                  // "No restrictions" is mutually exclusive with all others
                                   _dietaryOptions.clear();
                                   _dietaryOptions.add('No restrictions');
                                 } else {
@@ -1713,6 +1928,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                         }).toList(),
                       ),
                       const SizedBox(height: 12),
+                      // "Continue" advances to step 8 (target weight) or step 9 (maintain)
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -1733,7 +1949,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Text input for numeric steps ──
+              // ── Text input (numeric steps 0, 2, 4, 8 + weight update) ──
+              // FilteringTextInputFormatter restricts input:
+              //   ft height: digits, dot, space (for "5 10" format)
+              //   all others: digits and dot only
               if (_showTextInput)
                 SafeArea(
                   top: false,
@@ -1759,9 +1978,10 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                           child: TextField(
                             controller: _inputCtrl,
                             keyboardType: TextInputType.numberWithOptions(
-                              decimal: _step != 0,
+                              decimal: _step != 0, // age is integer only
                             ),
                             inputFormatters: [
+                              // ft height allows a space between feet and inches
                               if (_step == 2 && _heightUnit == 'ft')
                                 FilteringTextInputFormatter.allow(
                                     RegExp(r'[0-9. ]'))
@@ -1790,6 +2010,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                           ),
                         ),
                         const SizedBox(width: 8),
+                        // Send button (green circle with arrow icon)
                         GestureDetector(
                           onTap: _handleSubmitText,
                           child: Container(
@@ -1807,7 +2028,11 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                   ),
                 ),
 
-              // ── Step 9: Done buttons ──
+              // ── Step 9: Done action buttons ────────────────────────────
+              // Four buttons arranged vertically:
+              //   Row: Restart (outlined) + Done/Summary (filled)
+              //   "Update Current Weight" — triggers weight-update sub-flow
+              //   "Suggest Recipes" — opens _RecipeSuggestionSheet
               if (_step == 9 && !_isWeightUpdateMode)
                 SafeArea(
                   top: false,
@@ -1830,6 +2055,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                       children: [
                         Row(
                           children: [
+                            // Restart: clears all data and returns to step 0
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: _startConversation,
@@ -1846,6 +2072,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            // Done: shows the full summary AlertDialog
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: _showSummaryDialog,
@@ -1864,6 +2091,7 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        // Update weight: triggers the weight-update sub-flow
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
@@ -1882,6 +2110,8 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        // Suggest Recipes: opens DraggableScrollableSheet with
+                        // filtered catalog based on dietary preferences
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -1913,6 +2143,25 @@ class _CalorieCoachViewState extends State<CalorieCoachView> {
 }
 
 // ── Recipe Suggestion Bottom Sheet ──────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
+// _RecipeSuggestionSheet
+// ────────────────────────────────────────────────────────────────────────────
+// DraggableScrollableSheet (initialSize: 0.85, min: 0.5, max: 0.95) that
+// fetches the full recipe catalog and filters it by the user's dietary tags.
+//
+// Tag chips at the top of the sheet allow further ad-hoc filtering.
+// When all filters are cleared, all recipes are shown.
+//
+// Recipe field access pattern:
+//   _recipeField(recipe, key) first tries typed RecipeModel access (fast),
+//   then falls back to Map['key'] for raw API shapes. This handles both
+//   strongly-typed RecipeModel objects and dynamically-typed JSON maps
+//   from the API without needing reflection or toJson overhead.
+//
+// Calorie badge colour (_kcalColor):
+//   < 25% of daily target → blue (very light meal)
+//   25–45%                → green (well-portioned)
+//   > 45%                 → orange (heavy meal)
 
 class _RecipeSuggestionSheet extends StatefulWidget {
   final double? calorieTarget;
@@ -1948,18 +2197,21 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
   List<dynamic> _allRecipes = [];
   bool _isLoading = true;
 
-  // All tags found across loaded recipes — derived at runtime, not hardcoded
+  /// All distinct tags found across loaded recipes — derived at runtime.
   List<String> _availableTags = [];
-  // Currently active filters — seeded from the coach's dietary selection
+
+  /// Currently active tag filters — seeded from the coach's dietary selection.
   late Set<String> _activeFilters;
 
   @override
   void initState() {
     super.initState();
+    // Pre-seed filters with the coach's dietary selection
     _activeFilters = Set<String>.from(widget.dietaryTags);
     _loadRecipes();
   }
 
+  /// Fetches all recipes and collects every distinct tag for the filter row.
   Future<void> _loadRecipes() async {
     try {
       final recipes = await _catalogService.getAllRecipes();
@@ -1978,22 +2230,27 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
     }
   }
 
+  /// Returns recipes that carry every currently active filter tag (AND logic).
+  /// When no filters are active, all recipes are returned.
   List<dynamic> get _filteredRecipes {
-    // No active filters → return every recipe
     if (_activeFilters.isEmpty) return List<dynamic>.from(_allRecipes);
-    // Keep only recipes that carry every selected tag
+    // Keep only recipes that carry every selected tag (strict AND filtering)
     return _allRecipes.where((r) {
       final tags = _recipeTags(r);
       return _activeFilters.every((dt) => tags.contains(dt));
     }).toList();
   }
 
+  /// Polymorphic field accessor for both RecipeModel and Map<String, dynamic>.
+  ///
+  /// Prefers typed access (switch on key → recipe.nutrition.calories etc.)
+  /// which avoids serialisation overhead. Falls back to Map['key'] for
+  /// raw JSON shapes returned directly by some API endpoints.
   dynamic _recipeField(dynamic recipe, String key) {
-    // Prefer typed RecipeModel access (avoids reflection / toJson overhead)
     try {
       switch (key) {
         case 'calories':
-          return recipe.nutrition.calories; // int
+          return recipe.nutrition.calories; // int from RecipeModel
         case 'protein':
           return recipe.nutrition.protein;  // String e.g. "25g"
         case 'tags':
@@ -2009,6 +2266,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
     return null;
   }
 
+  /// Extracts the tags list from either a RecipeModel or a raw Map.
   List<String> _recipeTags(dynamic recipe) {
     try {
       final t = recipe.tags;
@@ -2019,22 +2277,29 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
     return [];
   }
 
+  /// Extracts an integer field, handling int/num/String inputs.
+  /// Strips non-numeric characters (e.g. "25g" → 25).
   int _recipeInt(dynamic recipe, String key) {
     final value = _recipeField(recipe, key);
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) {
-      // Strip non-numeric chars (e.g. "25g" → 25)
       return int.tryParse(value.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     }
     return 0;
   }
 
+  /// Extracts a string field, returning empty string when absent.
   String _recipeString(dynamic recipe, String key) {
     final value = _recipeField(recipe, key);
     return value?.toString() ?? '';
   }
 
+  /// Returns a colour coding the meal's calorie density relative to the
+  /// daily target:
+  ///   < 25%  → blue  (light snack)
+  ///   25–45% → green (suitable main meal portion)
+  ///   > 45%  → orange (large meal)
   Color _kcalColor(int kcal) {
     final target = widget.calorieTarget;
     if (target == null) return Colors.blueGrey;
@@ -2044,6 +2309,9 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
     return Colors.orange;
   }
 
+  /// Navigates to the recipe detail page using the named '/recipe' route.
+  /// The recipe object is passed as arguments and extracted in main.dart's
+  /// route builder via ModalRoute.of(context)!.settings.arguments.
   Future<void> _navigateToRecipe(
       BuildContext context, dynamic recipe) async {
     try {
@@ -2073,6 +2341,8 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
       goalLabel = 'Maintain Weight';
     }
 
+    // DraggableScrollableSheet: user can drag the sheet between 50% and 95%
+    // of screen height. initialChildSize 0.85 provides immediate visibility.
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -2085,7 +2355,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
         ),
         child: Column(
           children: [
-            // Handle
+            // Drag handle visual indicator
             Container(
               margin: const EdgeInsets.only(top: 12, bottom: 4),
               width: 40,
@@ -2095,7 +2365,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            // Header
+            // Gradient header: goal + dietary label + daily kcal badge
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               decoration: BoxDecoration(
@@ -2139,6 +2409,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                       ],
                     ),
                   ),
+                  // Daily calorie target badge
                   if (widget.calorieTarget != null)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -2158,7 +2429,10 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                 ],
               ),
             ),
-            // ── Filter chips row ──
+
+            // ── Tag filter chips ──────────────────────────────────────────
+            // Derived from all tags across loaded recipes (not hardcoded).
+            // Toggling a chip updates _activeFilters and rebuilds _filteredRecipes.
             if (!_isLoading && _availableTags.isNotEmpty)
               Container(
                 color: Colors.white,
@@ -2179,6 +2453,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                               color: widget.textMuted),
                         ),
                         const Spacer(),
+                        // "Clear all" resets filters to show every recipe
                         if (_activeFilters.isNotEmpty)
                           GestureDetector(
                             onTap: () =>
@@ -2254,7 +2529,11 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                   ],
                 ),
               ),
-            // Recipe list — rebuilds reactively when _activeFilters changes
+
+            // ── Recipe list ───────────────────────────────────────────────
+            // Rebuilds reactively when _activeFilters changes (setState inside
+            // chip tap handlers). Each card shows name, description, calorie
+            // badge (colour-coded by _kcalColor), protein, and up to 3 tags.
             Expanded(
                 child: _isLoading
                   ? Center(
@@ -2288,6 +2567,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                               .withValues(alpha: 0.7)),
                         ),
                         const SizedBox(height: 16),
+                        // Quick "Clear all" button in the empty state
                         GestureDetector(
                           onTap: () => setState(() => _activeFilters.clear()),
                           child: Container(
@@ -2358,6 +2638,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                                 ),
                               ),
                               ),
+                              // Calorie badge: colour reflects portion relative to daily target
                               Container(
                               padding:
                                 const EdgeInsets.symmetric(
@@ -2402,6 +2683,7 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
                                 color: widget.textDark),
                               ),
                               const Spacer(),
+                              // Show at most 3 tags to keep cards compact
                               Wrap(
                               spacing: 4,
                               children: tags.take(3).map((tag) {
@@ -2444,6 +2726,13 @@ class _RecipeSuggestionSheetState extends State<_RecipeSuggestionSheet> {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _ChatMessage
+// Immutable data class for a single entry in the chat history.
+// fromUser=true → right-aligned user bubble.
+// fromUser=false, isTyping=false → left-aligned bot message.
+// fromUser=false, isTyping=true → typing indicator bubble (temporary).
+// ────────────────────────────────────────────────────────────
 class _ChatMessage {
   final String text;
   final bool fromUser;
