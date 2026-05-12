@@ -1,3 +1,25 @@
+// ============================================================
+// views/recipes.dart
+// ============================================================
+// The main recipe discovery screen, wrapped in NavBarScaffold.
+// Presents two tabs via TabController:
+//   Tab 0 — "SimplyServe Originals": built-in catalog (id==null)
+//   Tab 1 — "My Recipes": user-created (id!=null) + favourited built-ins
+//
+// Filter pipeline (applied client-side on every rebuild):
+//   1. AllergenFilterService — hides allergen-matching recipes
+//   2. Full-text search — title, summary, tags
+//   3. Tag filter    — recipe must carry ANY selected tag (OR logic)
+//   4. Cuisine filter — recipe must match ANY selected cuisine (OR logic)
+//   5. Difficulty filter
+//   6. Duration filter — max total minutes via Slider
+//
+// Key sub-widgets:
+//   _AdvancedFilterPanel — AnimatedSize collapsible filter drawer
+//   _RecipeCard          — image + metadata + tag chips + shopping list button
+//   _TagChip             — coloured tag pill using _tagColour()
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:simplyserve/recipe_page.dart';
 import 'package:simplyserve/services/allergen_filter_service.dart';
@@ -9,6 +31,10 @@ import 'package:simplyserve/services/shopping_list_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 
+// ── Tag colour mapping ────────────────────────────────────────────────────
+// Maps a tag string to the brand colour used for that category.
+// Called by _TagChip (list view) and _AdvancedFilterPanel (filter chips).
+// Falls back to a neutral grey for unknown/custom tags.
 Color _tagColour(String tag) {
   switch (tag) {
     case 'Vegan':
@@ -34,6 +60,8 @@ Color _tagColour(String tag) {
   }
 }
 
+// ── Cuisine colour mapping ────────────────────────────────────────────────
+// Separate mapping for cuisine tags, which appear in _AdvancedFilterPanel.
 Color _cuisineColour(String cuisine) {
   switch (cuisine) {
     case 'European':
@@ -57,6 +85,7 @@ Color _cuisineColour(String cuisine) {
   }
 }
 
+/// Main recipes screen — two-tab layout with search and advanced filters.
 class RecipesView extends StatefulWidget {
   const RecipesView({super.key});
 
@@ -64,7 +93,11 @@ class RecipesView extends StatefulWidget {
   State<RecipesView> createState() => _RecipesViewState();
 }
 
-// All distinct tags and difficulties used across recipes.
+// ── Filter constants ──────────────────────────────────────────────────────
+// Static lists of tags, difficulties, and cuisines used to populate the
+// filter panel. These match the values stored in recipe.tags by the API.
+
+/// All distinct dietary/meal-type tags used across the recipe catalog.
 const _kAllTags = [
   'Vegan',
   'High Protein',
@@ -90,38 +123,54 @@ const _kAllCuisines = [
   'Mediterranean',
 ];
 
-// Parse "30 min" → 30.  Returns 0 if unparseable.
+/// Parse "30 min" → 30.  Strips non-digits with a regex then parses.
+/// Returns 0 if the string is unparseable (treated as "unknown duration",
+/// which passes the duration filter even when a max is set).
 int _parseMins(String t) =>
     int.tryParse(t.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
+// ─────────────────────────────────────────────────────────────────────────
+// _RecipesViewState
+// SingleTickerProviderStateMixin — provides the vsync token for TabController.
+// ─────────────────────────────────────────────────────────────────────────
 class _RecipesViewState extends State<RecipesView>
     with SingleTickerProviderStateMixin {
+  /// TabController drives both the TabBar indicator and TabBarView pages.
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+
   final AllergyService _allergyService = AllergyService();
   final RecipeCatalogService _recipeCatalogService = RecipeCatalogService();
   final FavouritesService _favouritesService = FavouritesService();
   final CustomTagService _customTagService = CustomTagService();
+
   String _query = '';
   bool _isLoading = true;
+
+  // _localRecipes: built-in catalog (id == null), alphabetically sorted
   final List<RecipeModel> _localRecipes = [];
+  // _userRecipes: user-created (id != null) + favourited built-ins
   final List<RecipeModel> _userRecipes = [];
+
   List<String> _allergies = const [];
   Set<String> _favourites = {};
   List<String> _customTags = [];
 
+  // ── Active filter state ────────────────────────────────────────────────
   final Set<String> _selectedTags = {};
   final Set<String> _selectedDifficulties = {};
   final Set<String> _selectedCuisines = {};
-  double _maxDuration = 120;
+  double _maxDuration = 120; // 120 = "Any" (no cap applied)
   bool _showAdvanced = false;
 
+  /// Count of currently active filter dimensions (used for the badge pill).
   int get _activeFilterCount =>
       _selectedTags.length +
       _selectedDifficulties.length +
       _selectedCuisines.length +
       (_maxDuration < 120 ? 1 : 0);
 
+  /// Reset all filter dimensions and duration to their defaults.
   void _clearFilters() {
     setState(() {
       _selectedTags.clear();
@@ -134,19 +183,30 @@ class _RecipesViewState extends State<RecipesView>
   @override
   void initState() {
     super.initState();
+    // TabController(length: 2) — Originals + My Recipes
     _tabController = TabController(length: 2, vsync: this);
     _fetchRecipes();
     _loadCustomTags();
   }
 
+  /// Loads user-defined tags from CustomTagService (SharedPreferences).
+  /// These appear as a separate chip group in _AdvancedFilterPanel.
   Future<void> _loadCustomTags() async {
     final tags = await _customTagService.loadTags();
     if (mounted) setState(() => _customTags = tags);
   }
 
+  /// Fetches recipes, allergies, and favourites in parallel using Future.wait.
+  /// Partition:
+  ///   • id == null → built-in catalog, sorted alphabetically.
+  ///   • id != null → user-created recipes.
+  ///   • Favourited built-ins are duplicated into the user list so they also
+  ///     appear on the "My Recipes" tab without altering the originals list.
+  /// The user list is then sorted: favourites first (alpha), then rest (alpha).
   Future<void> _fetchRecipes() async {
     setState(() => _isLoading = true);
 
+    // Parallel fetch: recipes + allergies + favourites
     final results = await Future.wait([
       _recipeCatalogService.getAllRecipes(),
       _allergyService.loadAllergies(),
@@ -158,13 +218,14 @@ class _RecipesViewState extends State<RecipesView>
       final allergies = results[1] as List<String>;
       final favourites = results[2] as Set<String>;
 
-      // Recipes without an id are SimplyServe built-ins; those with an id are user-created
+      // Recipes without an id are SimplyServe built-ins;
+      // those with an id are user-created (stored in the backend DB).
       final local = recipes.where((r) => r.id == null).toList()
         ..sort((a, b) => a.title.compareTo(b.title));
 
       final user = recipes.where((r) => r.id != null).toList();
 
-      // Favourited local recipes also appear in My Recipes
+      // Favourited local recipes also appear in My Recipes tab
       for (final r in local) {
         if (favourites.contains(r.title) &&
             !user.any((u) => u.title == r.title)) {
@@ -172,7 +233,7 @@ class _RecipesViewState extends State<RecipesView>
         }
       }
 
-      // Favourites first (alphabetical), then rest (alphabetical)
+      // Favourites first (alphabetical), then the rest (alphabetical)
       user.sort((a, b) {
         final aFav = favourites.contains(a.title);
         final bFav = favourites.contains(b.title);
@@ -201,14 +262,21 @@ class _RecipesViewState extends State<RecipesView>
     super.dispose();
   }
 
+  // ─────────────────────────────────────────────────────────────────────
+  // _filteredFrom — client-side filter pipeline
+  // Applies all active filter dimensions sequentially (short-circuit via
+  // return false). Each dimension is only evaluated when it has selections.
+  // ─────────────────────────────────────────────────────────────────────
   List<RecipeModel> _filteredFrom(List<RecipeModel> source) {
     final q = _query.trim().toLowerCase();
     return source.where((r) {
+      // Step 1: allergen check — AllergenFilterService scans ingredient names
+      //         against the user's saved allergen list (client-side, no API call).
       if (AllergenFilterService.recipeContainsAnyAllergen(r, _allergies)) {
         return false;
       }
 
-      // Text search
+      // Step 2: full-text search across title, summary, and tags
       if (q.isNotEmpty) {
         final title = r.title.toLowerCase();
         final summary = r.summary.toLowerCase();
@@ -219,25 +287,25 @@ class _RecipesViewState extends State<RecipesView>
         if (!textMatch) return false;
       }
 
-      // Tag filter - recipe must have ANY of the selected tags
+      // Step 3: tag filter — OR logic: recipe must have ANY of the selected tags
       if (_selectedTags.isNotEmpty &&
           !_selectedTags.any((t) => r.tags.contains(t))) {
         return false;
       }
 
-      // Cuisine filter - recipe must match ANY of the selected cuisines
+      // Step 4: cuisine filter — OR logic: recipe must match ANY selected cuisine
       if (_selectedCuisines.isNotEmpty &&
           !_selectedCuisines.any((c) => r.tags.contains(c))) {
         return false;
       }
 
-      // Difficulty filter
+      // Step 5: difficulty filter (exact match, OR across selected values)
       if (_selectedDifficulties.isNotEmpty &&
           !_selectedDifficulties.contains(r.difficulty)) {
         return false;
       }
 
-      // Duration filter
+      // Step 6: duration filter — only applied when < 120 (the "Any" sentinel)
       if (_maxDuration < 120) {
         final mins = _parseMins(r.totalTime);
         if (mins > _maxDuration) return false;
@@ -247,6 +315,9 @@ class _RecipesViewState extends State<RecipesView>
     }).toList();
   }
 
+  /// Builds the list of filtered recipe cards for a given source list.
+  /// Shows loading spinner, empty-state illustration, or a RefreshIndicator
+  /// wrapping the ListView depending on current state.
   Widget _buildRecipeList(List<RecipeModel> source) {
     final results = _filteredFrom(source);
     return _isLoading
@@ -275,8 +346,11 @@ class _RecipesViewState extends State<RecipesView>
                 ),
               )
             : RefreshIndicator(
+                // Pull-to-refresh re-fetches from the API
                 onRefresh: _fetchRecipes,
                 child: ListView.builder(
+                  // AlwaysScrollableScrollPhysics ensures pull-to-refresh works
+                  // even when the list is shorter than the viewport.
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -288,6 +362,7 @@ class _RecipesViewState extends State<RecipesView>
                       child: _RecipeCard(
                         recipe: recipe,
                         isFavourited: _favourites.contains(recipe.title),
+                        // onReturn re-fetches so favourite changes are reflected
                         onReturn: _fetchRecipes,
                       ),
                     );
@@ -302,6 +377,8 @@ class _RecipesViewState extends State<RecipesView>
 
     return NavBarScaffold(
       title: 'Recipes',
+      // FAB opens RecipeFormView (create mode). On return, refreshes both
+      // the recipe list and custom tags, then shows a success SnackBar.
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF74BC42),
         onPressed: () async {
@@ -326,7 +403,9 @@ class _RecipesViewState extends State<RecipesView>
       ),
       body: Column(
         children: [
-          // ── Search bar ──────────────────────────────
+          // ── Search bar ────────────────────────────────────────────────
+          // Live-filters on every keystroke via onChanged → setState.
+          // Suffix clear button appears only when _query is non-empty.
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
             child: TextField(
@@ -365,7 +444,13 @@ class _RecipesViewState extends State<RecipesView>
             ),
           ),
 
-          // ── Advanced-search toggle ──────────────────
+          // ── Advanced-search toggle ────────────────────────────────────
+          // Tap to expand/collapse the _AdvancedFilterPanel.
+          // When filters are active:
+          //   • Border turns brand-green.
+          //   • A green badge shows _activeFilterCount.
+          //   • A "Clear" link resets all filters.
+          // AnimatedRotation spins the chevron 180° when expanded.
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
             child: InkWell(
@@ -396,6 +481,7 @@ class _RecipesViewState extends State<RecipesView>
                         color: Color(0xFF555555),
                       ),
                     ),
+                    // Active filter count badge
                     if (hasFilters) ...[
                       const SizedBox(width: 6),
                       Container(
@@ -427,6 +513,7 @@ class _RecipesViewState extends State<RecipesView>
                         ),
                       ),
                     const SizedBox(width: 6),
+                    // Chevron rotates 180° when the panel is open
                     AnimatedRotation(
                       turns: _showAdvanced ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
@@ -439,7 +526,10 @@ class _RecipesViewState extends State<RecipesView>
             ),
           ),
 
-          // ── Advanced filter panel (dropdown) ────────
+          // ── Advanced filter panel (animated dropdown) ──────────────
+          // AnimatedSize smoothly expands/collapses the panel over 250ms
+          // using the easeInOut curve. When collapsed, SizedBox.shrink()
+          // takes up zero height, causing AnimatedSize to animate to 0.
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
@@ -450,6 +540,7 @@ class _RecipesViewState extends State<RecipesView>
                     selectedCuisines: _selectedCuisines,
                     customTags: _customTags,
                     maxDuration: _maxDuration,
+                    // Toggle callbacks update the parent state and re-filter
                     onTagToggled: (tag) => setState(() =>
                         _selectedTags.contains(tag)
                             ? _selectedTags.remove(tag)
@@ -467,7 +558,7 @@ class _RecipesViewState extends State<RecipesView>
                 : const SizedBox.shrink(),
           ),
 
-          // ── Tabs ────────────────────────────────────
+          // ── Tab bar ──────────────────────────────────────────────────
           TabBar(
             controller: _tabController,
             labelColor: const Color(0xFF74BC42),
@@ -479,7 +570,7 @@ class _RecipesViewState extends State<RecipesView>
             ],
           ),
 
-          // ── Tab content ─────────────────────────────
+          // ── Tab content ──────────────────────────────────────────────
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -496,8 +587,18 @@ class _RecipesViewState extends State<RecipesView>
 }
 
 // ─────────────────────────────────────────────
-// Advanced filter panel
+// _AdvancedFilterPanel
 // ─────────────────────────────────────────────
+// StatelessWidget that renders the collapsible filter drawer.
+// All mutable state lives in the parent (_RecipesViewState);
+// the panel only calls callbacks.
+//
+// Sections:
+//   Tags       — AnimatedContainer chips (150ms colour transition)
+//   Custom Tags — same pattern, shown only when _customTags is non-empty
+//   Cuisine    — AnimatedContainer chips
+//   Difficulty — AnimatedContainer chips (uses brand-green when selected)
+//   Duration   — Slider with a custom SliderTheme; 120 = "Any"
 
 class _AdvancedFilterPanel extends StatelessWidget {
   final Set<String> selectedTags;
@@ -543,7 +644,10 @@ class _AdvancedFilterPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Tags ──────────────────────────────────
+          // ── Tags section ────────────────────────────────────────────
+          // AnimatedContainer (150ms) transitions background colour and border
+          // colour when a tag is toggled. Uses _tagColour() tinted at 18%
+          // opacity for the selected background.
           const Text(
             'Tags',
             style: TextStyle(
@@ -592,7 +696,10 @@ class _AdvancedFilterPanel extends StatelessWidget {
             }).toList(),
           ),
 
-          // ── Custom Tags ────────────────────────────
+          // ── Custom Tags section (conditional) ───────────────────────
+          // Only shown when the user has created at least one custom tag.
+          // Custom tags use a fixed purple colour (0xFF9C27B0) rather than
+          // the per-tag colour mapping.
           if (customTags.isNotEmpty) ...[
             const SizedBox(height: 10),
             const Text(
@@ -648,7 +755,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           const SizedBox(height: 12),
 
-          // ── Cuisine ───────────────────────────────
+          // ── Cuisine section ─────────────────────────────────────────
           const Text(
             'Cuisine',
             style: TextStyle(
@@ -701,7 +808,9 @@ class _AdvancedFilterPanel extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           const SizedBox(height: 12),
 
-          // ── Difficulty ────────────────────────────
+          // ── Difficulty section ──────────────────────────────────────
+          // Horizontal row of three chips. Selected chip fills with brand
+          // green; unselected remains light grey.
           const Text(
             'Difficulty',
             style: TextStyle(
@@ -752,7 +861,11 @@ class _AdvancedFilterPanel extends StatelessWidget {
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
           const SizedBox(height: 10),
 
-          // ── Duration slider ───────────────────────
+          // ── Duration slider ─────────────────────────────────────────
+          // Range 10–120 minutes with 22 divisions (~5-min steps).
+          // When maxDuration == 120 the label shows "Any" and the filter
+          // is not applied (see _filteredFrom step 6).
+          // SliderTheme overrides colours to match the brand palette.
           Row(
             children: [
               const Text(
@@ -773,6 +886,7 @@ class _AdvancedFilterPanel extends StatelessWidget {
               ),
             ],
           ),
+          // Custom SliderTheme for brand-consistent colours
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: const Color(0xFF74BC42),
@@ -808,6 +922,27 @@ class _AdvancedFilterPanel extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// _RecipeCard
+// ─────────────────────────────────────────────
+// Tap-to-navigate card. On tap: pushes the '/recipe' named route
+// with the RecipeModel as arguments; on return calls onReturn()
+// so the parent can refresh favourite state.
+//
+// Structure (top to bottom):
+//   • 4px green accent stripe
+//   • 180px image (asset or network with loadingBuilder)
+//   • Favourited heart badge (Stack overlay, conditional)
+//   • Title + summary
+//   • Metadata bar (time / difficulty / servings)
+//   • Tag chip row (Wrap)
+//   • "Add to Shopping List" outlined button
+//
+// Shopping list sheet: _showAddToShoppingListSheet uses
+// showModalBottomSheet + StatefulBuilder so the checkbox state
+// (Set<int> selected) is local to the sheet without needing a
+// separate widget class.
+
 class _RecipeCard extends StatelessWidget {
   final RecipeModel recipe;
   final bool isFavourited;
@@ -819,6 +954,14 @@ class _RecipeCard extends StatelessWidget {
     this.onReturn,
   });
 
+  /// Opens a bottom sheet allowing the user to select individual ingredients
+  /// before adding them to the shopping list.
+  ///
+  /// Uses StatefulBuilder to maintain per-ingredient checkbox state
+  /// (Set<int> selected — indices into recipe.ingredients) inside the
+  /// modal sheet without promoting it to a full StatefulWidget.
+  ///
+  /// "Select/Deselect all" toggle: if all are selected → clear; else → fill.
   Future<void> _showAddToShoppingListSheet(BuildContext context) async {
     final service = ShoppingListService();
     final ingredients = recipe.ingredients;
@@ -832,6 +975,7 @@ class _RecipeCard extends StatelessWidget {
       return;
     }
 
+    // Pre-select all ingredients by default
     final selected = <int>{...List.generate(ingredients.length, (i) => i)};
 
     await showModalBottomSheet<void>(
@@ -839,6 +983,8 @@ class _RecipeCard extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        // StatefulBuilder: local setState for checkbox toggles without
+        // rebuilding the entire parent screen.
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             return Container(
@@ -900,12 +1046,12 @@ class _RecipeCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // Select / deselect all
+                      // Select / deselect all toggle
                       TextButton(
                         onPressed: () {
                           setSheetState(() {
                             if (selected.length == ingredients.length) {
-                              selected.clear();
+                              selected.clear(); // deselect all
                             } else {
                               selected.addAll(
                                   List.generate(ingredients.length, (i) => i));
@@ -926,6 +1072,8 @@ class _RecipeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Divider(height: 1, color: Color(0xFFF0F0F0)),
+                  // Constrain list height to 45% of screen to keep the
+                  // confirm button above the keyboard on short displays.
                   ConstrainedBox(
                     constraints: BoxConstraints(
                       maxHeight: MediaQuery.of(ctx).size.height * 0.45,
@@ -953,6 +1101,8 @@ class _RecipeCard extends StatelessWidget {
                                 vertical: 10, horizontal: 4),
                             child: Row(
                               children: [
+                                // AnimatedContainer transitions the checkbox
+                                // fill colour when toggled (150ms)
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 150),
                                   width: 22,
@@ -1005,6 +1155,7 @@ class _RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  // Confirm button — disabled (grey) when nothing is selected
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -1021,9 +1172,11 @@ class _RecipeCard extends StatelessWidget {
                       onPressed: selected.isEmpty
                           ? null
                           : () {
+                              // Resolve display labels for selected indices
                               final chosenLabels = selected
                                   .map((i) => ingredients[i].displayLabel)
                                   .toList();
+                              // Add ingredients and recipe metadata to the list
                               service.addIngredients(
                                 chosenLabels,
                                 recipeTitle: recipe.title,
@@ -1081,6 +1234,8 @@ class _RecipeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // GestureDetector wraps the entire card for full-surface tap target.
+    // After navigation returns, onReturn() re-fetches to sync favourite changes.
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, '/recipe', arguments: recipe)
           .then((_) => onReturn?.call()),
@@ -1101,7 +1256,7 @@ class _RecipeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Green accent stripe
+            // 4px brand-green accent stripe at the very top of every card
             Container(
               height: 4,
               decoration: const BoxDecoration(
@@ -1110,6 +1265,7 @@ class _RecipeCard extends StatelessWidget {
                 ),
               ),
             ),
+            // Image area with optional favourited heart badge
             Stack(
               children: [
                 SizedBox(
@@ -1130,6 +1286,7 @@ class _RecipeCard extends StatelessWidget {
                       : Image.network(
                           recipe.imageUrl,
                           fit: BoxFit.cover,
+                          // loadingBuilder shows a spinner while the image loads
                           loadingBuilder: (context, child, progress) {
                             if (progress == null) return child;
                             return Container(
@@ -1151,6 +1308,7 @@ class _RecipeCard extends StatelessWidget {
                           ),
                         ),
                 ),
+                // Favourited heart badge — positioned top-right over image
                 if (isFavourited)
                   Positioned(
                     top: 10,
@@ -1182,6 +1340,7 @@ class _RecipeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Recipe title
                   Text(
                     recipe.title,
                     maxLines: 1,
@@ -1193,6 +1352,7 @@ class _RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
+                  // Summary (max 2 lines)
                   Text(
                     recipe.summary,
                     maxLines: 2,
@@ -1204,6 +1364,7 @@ class _RecipeCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  // Metadata bar: time / difficulty / servings
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 8),
@@ -1243,6 +1404,7 @@ class _RecipeCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  // Tag chip row (Wrap, only when tags exist)
                   if (recipe.tags.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Wrap(
@@ -1256,6 +1418,7 @@ class _RecipeCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   const Divider(height: 1, color: Color(0xFFF0F5EC)),
                   const SizedBox(height: 8),
+                  // "Add to Shopping List" outlined button — opens the sheet
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -1290,6 +1453,12 @@ class _RecipeCard extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _TagChip
+// A small pill chip that displays a tag label using its mapped
+// brand colour. Background is the colour at 12% opacity;
+// border is the same colour at 40% opacity.
+// ────────────────────────────────────────────────────────────
 class _TagChip extends StatelessWidget {
   final String label;
 

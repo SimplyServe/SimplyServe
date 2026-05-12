@@ -1,3 +1,19 @@
+// ============================================================
+// recipe_page.dart
+// ============================================================
+// Full-screen detail view for a single recipe. Contains three
+// data-model classes (IngredientEntry, RecipeModel, NutritionInfo)
+// shared across the app, the main RecipePage StatefulWidget, and
+// a suite of private sub-widgets that build each section of the
+// scrollable body.
+//
+// Layout pattern: CustomScrollView with a pinned SliverAppBar
+// (expandedHeight: 360) acting as the hero image, and a single
+// SliverToBoxAdapter containing the text body. A persistent
+// bottom bar provides one-tap addition of all ingredients to the
+// shopping list.
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/favourites_service.dart';
 import 'package:simplyserve/services/recipe_service.dart';
@@ -5,6 +21,14 @@ import 'package:simplyserve/services/shopping_list_service.dart';
 import 'package:simplyserve/services/private_notes_service.dart';
 import 'package:simplyserve/views/recipe_form.dart';
 
+// ────────────────────────────────────────────────────────────
+// Data model: IngredientEntry
+// Represents one line in a recipe's ingredient list.
+// Structured ingredients carry explicit quantity + unit;
+// legacy plain-text ingredients are wrapped via fromLegacy()
+// with sentinel values (quantity=1, unit='pcs') so the
+// displayLabel getter returns the raw name unchanged.
+// ────────────────────────────────────────────────────────────
 class IngredientEntry {
   final String name;
   final double quantity;
@@ -16,6 +40,10 @@ class IngredientEntry {
   final double protein;
   final double carbs;
   final double fats;
+
+  /// True when the user added this ingredient manually and supplied macros.
+  /// Custom-ingredient macros are accumulated by _submit() in RecipeFormView
+  /// and patched on top of the backend's auto-calculated nutrition total.
   final bool isCustom;
 
   const IngredientEntry({
@@ -29,8 +57,13 @@ class IngredientEntry {
     this.isCustom = false,
   });
 
+  /// Smart display label:
+  /// • Legacy entries (quantity==1, unit=='pcs') → just the name, because
+  ///   the name already encodes its own quantity (e.g. "2 salmon fillets").
+  /// • Structured entries → "400 g pasta" or "0.5 tsp salt".
+  ///   Integer quantities are formatted without a decimal point.
   String get displayLabel {
-    // For legacy ingredients with default values, just show the name
+    // For legacy ingredients with default sentinel values, just show the name
     // since it already contains quantity/unit (e.g., "2 salmon fillets")
     if (quantity == 1 && unit == 'pcs') {
       return name;
@@ -43,6 +76,9 @@ class IngredientEntry {
     return '$quantityLabel $unit $name';
   }
 
+  /// Serialise to the JSON shape expected by the backend API.
+  /// Custom-ingredient nutrition fields are only included when isCustom==true
+  /// (spread operator pattern: `if (condition) ...{map}`).
   Map<String, dynamic> toJson() => {
         'ingredient_name': name,
         'quantity': quantity,
@@ -56,6 +92,8 @@ class IngredientEntry {
         },
       };
 
+  /// Deserialise from the API response. Handles both 'ingredient_name' and
+  /// the legacy 'name' key for backwards compatibility.
   factory IngredientEntry.fromJson(Map<String, dynamic> json) {
     return IngredientEntry(
       name: (json['ingredient_name'] ?? json['name'] ?? '').toString(),
@@ -69,11 +107,26 @@ class IngredientEntry {
     );
   }
 
+  /// Wrap a legacy plain-text ingredient string so it can be stored
+  /// as an IngredientEntry without any parsing. The sentinel values
+  /// (quantity=1, unit='pcs') cause displayLabel to return name unchanged.
   factory IngredientEntry.fromLegacy(String ingredient) {
     return IngredientEntry(name: ingredient, quantity: 1, unit: 'pcs');
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// Data model: RecipeModel
+// Immutable value object passed via named route arguments
+// ('/recipe') and shared across the recipes list, spinning
+// wheel, shopping list, and meal calendar.
+//
+// Key design decision: `id` is nullable.
+// • id == null  → built-in SimplyServe catalog recipe (no server record).
+// • id != null  → user-created recipe stored in the backend database.
+// This distinction drives which action buttons are shown on the
+// detail page (edit/delete vs. favourite toggle).
+// ────────────────────────────────────────────────────────────
 class RecipeModel {
   final String title;
   final String summary;
@@ -87,6 +140,8 @@ class RecipeModel {
   final List<IngredientEntry> ingredients;
   final List<String> steps;
   final List<String> tags;
+
+  /// Null for built-in catalog recipes; non-null for user-created recipes.
   final int? id;
 
   const RecipeModel({
@@ -105,6 +160,9 @@ class RecipeModel {
     this.id,
   });
 
+  /// Produces a shallow copy with an updated NutritionInfo, used by
+  /// RecipeFormView._submit() to patch custom-ingredient macros on top
+  /// of the server-returned nutrition totals without mutating the original.
   RecipeModel copyWith({NutritionInfo? nutrition}) {
     return RecipeModel(
       title: title,
@@ -124,6 +182,12 @@ class RecipeModel {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// Data model: NutritionInfo
+// Simple value object for per-serving macro values.
+// protein/carbs/fats are stored as strings (e.g. "25g") because
+// the API returns them that way; calories is an int (kcal).
+// ────────────────────────────────────────────────────────────
 class NutritionInfo {
   final int calories;
   final String protein;
@@ -138,6 +202,12 @@ class NutritionInfo {
   });
 }
 
+// ────────────────────────────────────────────────────────────
+// RecipePage — StatefulWidget
+// Accepts an optional RecipeModel via the constructor.
+// When no recipe is supplied it falls back to the hardcoded
+// Spaghetti Bolognese demo, ensuring the page is never blank.
+// ────────────────────────────────────────────────────────────
 class RecipePage extends StatefulWidget {
   final RecipeModel? recipe;
 
@@ -149,8 +219,15 @@ class RecipePage extends StatefulWidget {
 
 class _RecipePageState extends State<RecipePage> {
   bool _isFavourited = false;
+
+  /// _currentRecipe can be updated in-place after a successful edit,
+  /// allowing the detail page to reflect changes without a full navigation.
   RecipeModel? _currentRecipe;
+
+  /// Private note fetched from PrivateNotesService (SharedPreferences).
+  /// Hidden when empty; shown as an amber lock-icon card when non-empty.
   String _privateNote = '';
+
   final FavouritesService _favouritesService = FavouritesService();
   final PrivateNotesService _notesService = PrivateNotesService();
 
@@ -164,6 +241,8 @@ class _RecipePageState extends State<RecipePage> {
     _loadPrivateNote();
   }
 
+  /// Reads the private note from SharedPreferences.
+  /// Keyed by recipe id (user recipes) or title (built-in recipes).
   Future<void> _loadPrivateNote() async {
     final recipe = _currentRecipe ?? widget.recipe;
     if (recipe == null) return;
@@ -174,6 +253,9 @@ class _RecipePageState extends State<RecipePage> {
     if (mounted) setState(() => _privateNote = note);
   }
 
+  /// Only built-in catalog recipes (id == null) can be favourited.
+  /// User-created recipes are already in "My Recipes" by virtue of existing
+  /// in the database, so favouriting them would be redundant.
   Future<void> _loadFavouriteState() async {
     if (widget.recipe?.id != null) return;
     final title = widget.recipe?.title;
@@ -182,6 +264,9 @@ class _RecipePageState extends State<RecipePage> {
     if (mounted) setState(() => _isFavourited = isFav);
   }
 
+  /// Getter that returns _currentRecipe if available, otherwise falls back
+  /// to the hardcoded demo recipe. This guarantees _recipe is never null
+  /// anywhere in the build tree.
   RecipeModel get _recipe =>
       _currentRecipe ??
       const RecipeModel(
@@ -232,18 +317,28 @@ class _RecipePageState extends State<RecipePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+
+      // ── Persistent bottom bar ──────────────────────────────────────
+      // Always visible regardless of scroll position. Tapping it:
+      // 1. Calls ShoppingListService.addIngredients() with displayLabel
+      //    strings (resolved via IngredientEntry.displayLabel getter).
+      // 2. Calls ShoppingListService.addRecipe() with per-serving macros
+      //    stripped of their 'g' suffix via replaceAll(RegExp(r'[^0-9.]'), '').
+      // 3. Shows a floating SnackBar confirmation.
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
           child: ElevatedButton.icon(
             onPressed: () {
               final service = ShoppingListService();
+              // Add each ingredient's display label to the shared list
               service.addIngredients(
                 _recipe.ingredients
                     .map((ingredient) => ingredient.displayLabel)
                     .toList(),
                 recipeTitle: _recipe.title,
               );
+              // Register the recipe entry for nutrition summary in the list view
               service.addRecipe(ShoppingRecipeEntry(
                 recipeTitle: _recipe.title,
                 caloriesPerServing: _recipe.nutrition.calories,
@@ -287,12 +382,17 @@ class _RecipePageState extends State<RecipePage> {
           ),
         ),
       ),
+
+      // ── Scrollable body ────────────────────────────────────────────
+      // CustomScrollView enables the SliverAppBar (hero image) to
+      // collapse and pin the toolbar as the user scrolls down.
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
           SliverToBoxAdapter(
             child: Center(
               child: ConstrainedBox(
+                // Cap content width for readability on large screens
                 constraints: const BoxConstraints(maxWidth: 900),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -317,6 +417,11 @@ class _RecipePageState extends State<RecipePage> {
                       const _SectionHeader(title: 'Instructions'),
                       const SizedBox(height: 16),
                       _InstructionsList(steps: _recipe.steps),
+
+                      // ── Private notes card ─────────────────────────
+                      // Only rendered when the user has saved a private note.
+                      // Uses the collection-if spread pattern to conditionally
+                      // inject two children (header + card) into the Column.
                       if (_privateNote.isNotEmpty) ...[
                         const SizedBox(height: 28),
                         const _SectionHeader(title: 'Private Notes'),
@@ -325,6 +430,7 @@ class _RecipePageState extends State<RecipePage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
+                            // Amber tint to visually distinguish private content
                             color: const Color(0xFFFFF8E1),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
@@ -334,6 +440,7 @@ class _RecipePageState extends State<RecipePage> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // Lock icon signals this note is private
                               const Icon(Icons.lock_outline,
                                   size: 18, color: Color(0xFFFF8F00)),
                               const SizedBox(width: 10),
@@ -363,12 +470,24 @@ class _RecipePageState extends State<RecipePage> {
     );
   }
 
+  /// Builds the collapsible hero image AppBar.
+  ///
+  /// Key decisions:
+  /// • expandedHeight: 360 — gives the image plenty of real estate.
+  /// • pinned: true — the toolbar stays visible when collapsed.
+  /// • Action buttons are conditional:
+  ///   - Edit + Delete shown only when recipe.id != null (user-created).
+  ///   - Favourite toggle shown only when recipe.id == null (built-in).
+  /// • Image source branching: 'assets/' prefix → Image.asset,
+  ///   otherwise Image.network with a loadingBuilder that shows a
+  ///   determinate CircularProgressIndicator while bytes arrive.
   SliverAppBar _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
       expandedHeight: 360,
       pinned: true,
       backgroundColor: Colors.white,
       elevation: 1,
+      // Back button — uses maybePop so it's safe from nested routes
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
         child: _CircleIconButton(
@@ -378,6 +497,7 @@ class _RecipePageState extends State<RecipePage> {
         ),
       ),
       actions: [
+        // ── Edit button (user-created recipes only) ──────────────────
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: _CircleIconButton(
@@ -385,8 +505,9 @@ class _RecipePageState extends State<RecipePage> {
             iconColor: Colors.black87,
             onTap: () async {
               if (_recipe.id == null) {
-                return;
+                return; // built-in recipes cannot be edited
               }
+              // Push RecipeFormView in edit mode; await the returned RecipeModel
               final updated = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -394,16 +515,19 @@ class _RecipePageState extends State<RecipePage> {
                 ),
               );
 
+              // If a RecipeModel was returned, update the page in-place
               if (updated is RecipeModel && mounted) {
                 setState(() {
                   _currentRecipe = updated;
                 });
-                _loadPrivateNote();
+                _loadPrivateNote(); // re-fetch note in case it was changed
               }
             },
             tooltip: 'Edit Recipe',
           ),
         ),
+
+        // ── Delete button (user-created recipes only) ────────────────
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: _CircleIconButton(
@@ -411,6 +535,7 @@ class _RecipePageState extends State<RecipePage> {
             iconColor: Colors.black87,
             onTap: () async {
               if (_recipe.id == null) return;
+              // showDialog<bool> awaited for confirmation before API call
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -431,16 +556,22 @@ class _RecipePageState extends State<RecipePage> {
                   ],
                 ),
               );
+              // Soft-delete: marks the recipe as deleted on the server.
+              // It will appear in DeletedRecipesView and can be restored.
               if (confirmed == true && context.mounted) {
                 final success = await RecipeService().deleteRecipe(_recipe.id!);
                 if (success && context.mounted) {
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // return to recipes list
                 }
               }
             },
             tooltip: 'Delete Recipe',
           ),
         ),
+
+        // ── Favourite toggle (built-in catalog recipes only) ─────────
+        // User-created recipes are already in "My Recipes" by definition,
+        // so the favourite button is hidden when id != null.
         if (_recipe.id == null)
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -481,12 +612,15 @@ class _RecipePageState extends State<RecipePage> {
             ),
           ),
       ],
+
+      // ── Hero image in the flexible space ────────────────────────────
       flexibleSpace: FlexibleSpaceBar(
         background: ClipRRect(
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(24),
             bottomRight: Radius.circular(24),
           ),
+          // Branch between local asset and remote URL image loading
           child: _recipe.imageUrl.startsWith('assets/')
               ? Image.asset(
                   _recipe.imageUrl,
@@ -502,6 +636,8 @@ class _RecipePageState extends State<RecipePage> {
               : Image.network(
                   _recipe.imageUrl,
                   fit: BoxFit.cover,
+                  // loadingBuilder: shows a determinate progress indicator
+                  // while the image bytes are downloading from the network.
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return Container(
@@ -531,6 +667,13 @@ class _RecipePageState extends State<RecipePage> {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _CircleIconButton
+// Reusable circular action button with a white card shadow.
+// Used in the SliverAppBar for back, edit, delete, and favourite
+// actions. Wraps InkWell for ripple feedback; border-radius
+// matches BoxShape.circle so the ripple clips correctly.
+// ────────────────────────────────────────────────────────────
 class _CircleIconButton extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
@@ -577,6 +720,10 @@ class _CircleIconButton extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _TitleSection
+// Displays the recipe title (bold, 30px) and summary paragraph.
+// ────────────────────────────────────────────────────────────
 class _TitleSection extends StatelessWidget {
   final RecipeModel recipe;
 
@@ -610,6 +757,12 @@ class _TitleSection extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _SectionHeader
+// Consistent section heading pattern: a 4px brand-green left
+// accent bar followed by bold text. Used before Ingredients,
+// Instructions, Nutrition, and Private Notes sections.
+// ────────────────────────────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   final String title;
 
@@ -619,6 +772,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
+        // Brand-green vertical accent bar
         Container(
           width: 4,
           height: 22,
@@ -641,6 +795,25 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _MetadataRow + _MetaItem + _MetaChip
+// A horizontally scrollable row of metadata chips (prep time,
+// cook time, total time, servings, difficulty). Uses
+// SingleChildScrollView + Row to handle overflow on narrow
+// screens without wrapping.
+// ────────────────────────────────────────────────────────────
+
+/// Plain data class for a metadata chip. Not a Widget.
+class _MetaItem {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _MetaItem(
+      {required this.icon, required this.label, required this.value});
+}
+
+/// Builds the horizontally scrollable strip of _MetaChip widgets.
 class _MetadataRow extends StatelessWidget {
   final RecipeModel recipe;
 
@@ -669,6 +842,7 @@ class _MetadataRow extends StatelessWidget {
           value: recipe.difficulty),
     ];
 
+    // Horizontal scroll prevents overflow on narrow screens
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -683,15 +857,7 @@ class _MetadataRow extends StatelessWidget {
   }
 }
 
-class _MetaItem {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _MetaItem(
-      {required this.icon, required this.label, required this.value});
-}
-
+/// A single white card chip showing an icon, value, and label.
 class _MetaChip extends StatelessWidget {
   final _MetaItem item;
 
@@ -736,6 +902,13 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _NutritionGrid
+// Responsive grid of macro cards. Uses LayoutBuilder to switch
+// between 2-column (narrow) and 4-column (wide) layouts at the
+// 500px breakpoint. shrinkWrap + NeverScrollableScrollPhysics
+// is required because GridView is nested inside CustomScrollView.
+// ────────────────────────────────────────────────────────────
 class _NutritionGrid extends StatelessWidget {
   final NutritionInfo nutrition;
 
@@ -774,13 +947,19 @@ class _NutritionGrid extends StatelessWidget {
       ),
     ];
 
+    // LayoutBuilder: switch grid column count based on available width.
+    // crossAxisCount 4 for wide screens (>500px), 2 for narrow.
     return LayoutBuilder(builder: (context, constraints) {
       final crossCount = constraints.maxWidth > 500 ? 4 : 2;
       return GridView.count(
         crossAxisCount: crossCount,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
+        // shrinkWrap: prevents the GridView from expanding to fill the
+        // parent's height when nested in a scrollable Column.
         shrinkWrap: true,
+        // NeverScrollableScrollPhysics: delegates all scroll gestures
+        // to the outer CustomScrollView.
         physics: const NeverScrollableScrollPhysics(),
         childAspectRatio: 1.4,
         children: cards,
@@ -789,6 +968,13 @@ class _NutritionGrid extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _NutritionCard
+// Individual macro card with a coloured icon badge, bold value,
+// and a small unit label. The icon background uses
+// color.withOpacity(0.12) to create a tinted circle without
+// hardcoding a separate colour per macro.
+// ────────────────────────────────────────────────────────────
 class _NutritionCard extends StatelessWidget {
   final String label;
   final String value;
@@ -824,6 +1010,7 @@ class _NutritionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Tinted icon badge
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
@@ -836,6 +1023,7 @@ class _NutritionCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Value + unit on the same baseline
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
@@ -869,6 +1057,13 @@ class _NutritionCard extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _IngredientsList
+// Renders all ingredients inside a single white card using a
+// ListView.separated with NeverScrollableScrollPhysics (nested
+// inside CustomScrollView). Each item shows a brand-green bullet
+// dot followed by the ingredient's displayLabel.
+// ────────────────────────────────────────────────────────────
 class _IngredientsList extends StatelessWidget {
   final List<IngredientEntry> ingredients;
 
@@ -895,7 +1090,7 @@ class _IngredientsList extends StatelessWidget {
         itemCount: ingredients.length,
         separatorBuilder: (_, __) => Divider(
           height: 1,
-          indent: 56,
+          indent: 56, // align divider with text, not bullet
           color: Colors.grey[100],
         ),
         itemBuilder: (context, index) {
@@ -904,6 +1099,7 @@ class _IngredientsList extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Brand-green bullet dot
                 Container(
                   margin: const EdgeInsets.only(top: 6),
                   width: 8,
@@ -916,6 +1112,7 @@ class _IngredientsList extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
+                    // displayLabel resolves legacy vs structured format
                     ingredients[index].displayLabel,
                     style: const TextStyle(
                         fontSize: 14, height: 1.5, color: Color(0xFF333333)),
@@ -930,6 +1127,14 @@ class _IngredientsList extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────────────────────────────────
+// _InstructionsList + _StepCard
+// Renders each cooking step as a numbered card. List.generate
+// is used instead of ListView.builder because the list is always
+// short and is nested in a non-scrolling Column.
+// ────────────────────────────────────────────────────────────
+
+/// Generates one _StepCard per step (1-indexed).
 class _InstructionsList extends StatelessWidget {
   final List<String> steps;
 
@@ -948,6 +1153,8 @@ class _InstructionsList extends StatelessWidget {
   }
 }
 
+/// A single white card with a green numbered badge on the left
+/// and the step instruction text on the right.
 class _StepCard extends StatelessWidget {
   final int stepNumber;
   final String instruction;
@@ -973,6 +1180,7 @@ class _StepCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Brand-green rounded step number badge
           Container(
             width: 32,
             height: 32,

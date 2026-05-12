@@ -1,4 +1,44 @@
 // ignore_for_file: use_build_context_synchronously
+// ============================================================
+// views/recipe_form.dart
+// ============================================================
+// Create / Edit recipe form. Opened via:
+//   • FAB on RecipesView → create mode (existingRecipe == null)
+//   • Edit button on RecipePage → edit mode  (existingRecipe.id != null)
+//
+// _isEditMode = existingRecipe?.id != null
+//
+// Key patterns:
+//
+// Image picker:
+//   ImagePicker.pickImage(source: ImageSource.gallery) → XFile
+//   Preview: kIsWeb → NetworkImage(path), mobile → FileImage(File(path))
+//
+// Ingredient search with debounce guard:
+//   _searchIngredients() saves the query, fires the API, then checks
+//   _ingredientSearchController.text against the saved query before
+//   applying results — discards stale responses when the user keeps typing.
+//
+// _showIngredientDetailDialog():
+//   AlertDialog + StatefulBuilder + Form with validation.
+//   Custom ingredients (isCustom=true) show extra nutrition fields.
+//   Unit selection uses DropdownButtonFormField<String>.
+//
+// Tag sections:
+//   FilterChip widgets with selectedColor: Color(0xFF74BC42).
+//   Three preset groups: meal type, dietary/nutrition, cuisine.
+//   CustomTagService manages a fourth user-defined group (add/rename/delete).
+//   Long-press on a custom tag opens showModalBottomSheet with edit/delete options.
+//
+// _submit():
+//   1. Validates the Form and checks ingredient list non-empty.
+//   2. Builds RecipeModel — uses 'New' sentinel tag if no tags were selected.
+//   3. Calls RecipeService.createRecipe or updateRecipe.
+//   4. Saves private note via PrivateNotesService.
+//   5. Patches nutrition by accumulating custom-ingredient macros on top of
+//      the backend-returned totals (via RecipeModel.copyWith).
+//   6. Pops the route, returning the patched RecipeModel to the caller.
+// ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -9,8 +49,14 @@ import 'package:simplyserve/services/custom_tag_service.dart';
 import 'package:simplyserve/services/private_notes_service.dart';
 import 'dart:io' show File;
 
+// ── Tag constant lists ────────────────────────────────────────────────────
+// Three groups of preset tags. These mirror the tag strings used by the
+// recipe catalog so that filtering in RecipesView works correctly.
+
+/// Meal-type tags (when in the day the recipe is eaten).
 const List<String> _kMealTypeTags = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
+/// Dietary and nutritional characteristic tags.
 const List<String> _kDietaryAndNutritionTags = [
   'Vegan',
   'High Protein',
@@ -21,6 +67,7 @@ const List<String> _kDietaryAndNutritionTags = [
   'Budget Friendly',
 ];
 
+/// Cuisine / regional tags.
 const List<String> _kCuisineTags = [
   'European',
   'Asian',
@@ -32,6 +79,7 @@ const List<String> _kCuisineTags = [
   'Mediterranean',
 ];
 
+/// Units available in the ingredient detail dialog's dropdown.
 const List<String> _allowedUnits = [
   'tsp',
   'tbsp',
@@ -45,7 +93,13 @@ const List<String> _allowedUnits = [
   'pcs',
 ];
 
+// ─────────────────────────────────────────────────────────────────────────
+// RecipeFormView
+// StatefulWidget with an optional existingRecipe for edit mode.
+// ─────────────────────────────────────────────────────────────────────────
 class RecipeFormView extends StatefulWidget {
+  /// When provided, the form pre-populates with this recipe's data.
+  /// id != null means the recipe exists in the backend database (edit mode).
   final RecipeModel? existingRecipe;
 
   const RecipeFormView({super.key, this.existingRecipe});
@@ -56,6 +110,8 @@ class RecipeFormView extends StatefulWidget {
 
 class _RecipeFormViewState extends State<RecipeFormView> {
   final _formKey = GlobalKey<FormState>();
+
+  // ── Text controllers (one per form field) ─────────────────────────────
   final _titleController = TextEditingController();
   final _summaryController = TextEditingController();
   final _prepTimeController = TextEditingController();
@@ -65,12 +121,24 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   final _stepsController = TextEditingController();
   final _notesController = TextEditingController();
   final _customTagController = TextEditingController();
+
+  /// Picked image file (null when no image was selected or in edit mode
+  /// where the existing imageUrl is preserved).
   XFile? _imageFile;
+
+  /// Currently selected tags from all three preset groups + custom tags.
   final Set<String> _selectedTags = {};
+
+  /// User-defined tags loaded from CustomTagService (SharedPreferences).
   List<String> _customTags = [];
+
   bool _isLoading = false;
   bool _isSearchingIngredients = false;
+
+  /// API suggestions returned by the ingredient search endpoint.
   List<String> _ingredientSuggestions = [];
+
+  /// Ordered list of ingredients the user has added to the recipe.
   final List<IngredientEntry> _selectedIngredients = [];
 
   final ImagePicker _picker = ImagePicker();
@@ -78,11 +146,13 @@ class _RecipeFormViewState extends State<RecipeFormView> {
   final CustomTagService _customTagService = CustomTagService();
   final PrivateNotesService _notesService = PrivateNotesService();
 
+  /// True when editing an existing user-created recipe (id != null).
   bool get _isEditMode => widget.existingRecipe?.id != null;
 
   @override
   void initState() {
     super.initState();
+    // Pre-populate form fields when editing an existing recipe
     final recipe = widget.existingRecipe;
     if (recipe != null) {
       _titleController.text = recipe.title;
@@ -90,6 +160,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       _prepTimeController.text = recipe.prepTime;
       _cookTimeController.text = recipe.cookTime;
       _servingsController.text = recipe.servings.toString();
+      // Join steps with newlines; the user sees one step per line
       _stepsController.text = recipe.steps.join('\n');
       _selectedIngredients.addAll(recipe.ingredients);
       _selectedTags.addAll(recipe.tags);
@@ -98,6 +169,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     _loadPrivateNote();
   }
 
+  /// Loads user-defined tags from CustomTagService (SharedPreferences).
   Future<void> _loadCustomTags() async {
     final tags = await _customTagService.loadTags();
     if (mounted) {
@@ -105,6 +177,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     }
   }
 
+  /// Loads the private note for the recipe being edited, if any.
   Future<void> _loadPrivateNote() async {
     final recipe = widget.existingRecipe;
     if (recipe == null) return;
@@ -117,6 +190,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     }
   }
 
+  /// Opens the gallery image picker and stores the resulting XFile.
+  /// On web: XFile.path is a blob URL usable with NetworkImage.
+  /// On mobile: XFile.path is a file system path usable with FileImage.
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
@@ -126,6 +202,19 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     }
   }
 
+  /// Validates and submits the form.
+  ///
+  /// Flow:
+  ///   1. Form.validate() — aborts if any field fails its validator.
+  ///   2. Guard: at least one ingredient required.
+  ///   3. Build RecipeModel with steps split on newlines.
+  ///   4. 'New' sentinel tag: prevents sending an empty tag list to the API,
+  ///      which would be treated as "no classification" on the backend.
+  ///   5. Create or update via RecipeService.
+  ///   6. Save private note (even if empty, to clear an old one).
+  ///   7. Patch custom-ingredient nutrition on top of the backend total
+  ///      using RecipeModel.copyWith + accumulating fold().
+  ///   8. Pop with the patched RecipeModel so RecipePage can update in-place.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedIngredients.isEmpty) {
@@ -142,6 +231,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     final prepTime = _prepTimeController.text.trim();
     final cookTime = _cookTimeController.text.trim();
     final servings = int.tryParse(_servingsController.text.trim()) ?? 1;
+    // Split the textarea on newlines, trim each line, drop blanks
     final List<String> steps = _stepsController.text
         .split('\n')
         .map((s) => s.trim())
@@ -158,14 +248,16 @@ class _RecipeFormViewState extends State<RecipeFormView> {
           '$prepTime + $cookTime', // stored as display string, not a computed sum
       servings: servings,
       difficulty: 'Medium',
+      // Placeholder nutrition — real values come from the backend after creation
       nutrition: const NutritionInfo(
           calories: 0, protein: '0g', carbs: '0g', fats: '0g'),
       ingredients: List<IngredientEntry>.from(_selectedIngredients),
       steps: steps,
+      // 'New' is a sentinel so the backend never receives an empty tag list.
+      // If the user selects at least one tag, the sentinel is not used.
       tags: _selectedTags.isEmpty
           ? const ['New']
-          : _selectedTags
-              .toList(), // 'New' is a sentinel so the backend never receives an empty tag list
+          : _selectedTags.toList(),
       id: widget.existingRecipe?.id,
     );
 
@@ -183,7 +275,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (result != null) {
-        // Save private note
+        // Save private note to SharedPreferences keyed by id+title
         final noteText = _notesController.text.trim();
         await _notesService.saveNote(
           id: result.id,
@@ -191,7 +283,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
           note: noteText,
         );
 
-        // Add custom ingredient nutrition on top of what the backend returned
+        // Patch custom-ingredient macros onto the server-returned nutrition.
+        // The backend only calculates nutrition for known ingredients; custom
+        // ingredients must be accumulated locally and added on top.
         final customIngredients =
             _selectedIngredients.where((i) => i.isCustom).toList();
         final patchedResult = customIngredients.isEmpty
@@ -211,6 +305,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                 ),
               );
 
+        // Return the patched recipe so the caller (RecipePage) can update in-place
         if (mounted) Navigator.of(context).pop(patchedResult);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +346,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    // ── Image picker area ────────────────────────────────
+                    // GestureDetector calls _pickImage() on tap.
+                    // Preview: kIsWeb → NetworkImage (blob URL from XFile.path),
+                    //          mobile → FileImage(File(path)) cast to ImageProvider.
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
@@ -277,6 +376,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // ── Basic recipe metadata fields ────────────────────
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(
@@ -292,6 +393,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 16),
+                    // Prep and cook time side by side
                     Row(
                       children: [
                         Expanded(
@@ -317,6 +419,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
+
+                    // ── Tag sections ─────────────────────────────────────
+                    // Three preset groups (meal type, dietary, cuisine).
+                    // Each uses FilterChip with selectedColor: brand-green.
                     _buildTagSection(
                       context: context,
                       title: 'Meal Type',
@@ -335,8 +441,11 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       options: _kCuisineTags,
                     ),
                     const SizedBox(height: 12),
+                    // User-defined tags (add/rename/delete via CustomTagService)
                     _buildCustomTagSection(context),
                     const SizedBox(height: 16),
+
+                    // ── Ingredient search area ────────────────────────────
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -345,6 +454,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    // Search field — calls _searchIngredients(query) on each change
                     TextField(
                       controller: _ingredientSearchController,
                       onChanged: _searchIngredients,
@@ -365,16 +475,20 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                             : null,
                       ),
                     ),
+                    // Slim loading bar while the API request is in flight
                     if (_isSearchingIngredients)
                       const Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: LinearProgressIndicator(minHeight: 2),
                       ),
+                    // Suggestion panel appears only when the search field is non-empty
                     if (_ingredientSearchController.text.trim().isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _buildSuggestionPanel(),
                     ],
                     const SizedBox(height: 12),
+
+                    // ── Selected ingredients list ─────────────────────────
                     if (_selectedIngredients.isEmpty)
                       const Align(
                         alignment: Alignment.centerLeft,
@@ -386,6 +500,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                     else
                       ListView.separated(
                         shrinkWrap: true,
+                        // NeverScrollableScrollPhysics: scrolling handled by
+                        // the outer SingleChildScrollView.
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _selectedIngredients.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -401,10 +517,12 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                // Edit: re-opens the ingredient detail dialog with current values
                                 IconButton(
                                   icon: const Icon(Icons.edit_outlined),
                                   onPressed: () => _editIngredient(index),
                                 ),
+                                // Delete: removes the ingredient from the list
                                 IconButton(
                                   icon: const Icon(Icons.delete_outline),
                                   onPressed: () {
@@ -419,6 +537,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         },
                       ),
                     const SizedBox(height: 16),
+
+                    // ── Instructions textarea ─────────────────────────────
+                    // One step per line; _submit splits on '\n' and trims.
                     TextFormField(
                       controller: _stepsController,
                       decoration: const InputDecoration(
@@ -427,7 +548,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       maxLines: 5,
                     ),
                     const SizedBox(height: 16),
-                    // Private Notes
+
+                    // ── Private notes ─────────────────────────────────────
+                    // Stored locally via PrivateNotesService (SharedPreferences).
+                    // Not sent to the API; shown only to the current user.
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Row(
@@ -458,6 +582,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                       maxLines: 4,
                     ),
                     const SizedBox(height: 24),
+
+                    // ── Submit button ─────────────────────────────────────
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -479,6 +605,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  // ── Tag section builders ──────────────────────────────────────────────
+
+  /// Renders a labelled section of FilterChip widgets for [options].
+  /// Calls _buildTagChip for each option to produce the individual chips.
   Widget _buildTagSection({
     required BuildContext context,
     required String title,
@@ -501,6 +631,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  /// Builds a single FilterChip for [tag].
+  /// selectedColor: brand-green fills the chip when selected.
+  /// checkmarkColor: white so the checkmark is visible on the green fill.
   Widget _buildTagChip(String tag) {
     final selected = _selectedTags.contains(tag);
     return FilterChip(
@@ -523,6 +656,10 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  /// Builds the custom tags section with an add-tag text field + button.
+  ///
+  /// Custom tag chips show a ⋮ icon; long-press opens a bottom sheet with
+  /// edit and delete options via _showCustomTagOptions().
   Widget _buildCustomTagSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,6 +669,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
+        // Add custom tag: text field + "Add" button
         Row(
           children: [
             Expanded(
@@ -566,7 +704,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                   return;
                 }
                 _customTagController.clear();
-                await _loadCustomTags();
+                await _loadCustomTags(); // reload to show new tag
               },
               child: const Text('Add',
                   style: TextStyle(color: Colors.white, fontSize: 14)),
@@ -586,6 +724,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
             children: _customTags.map((tag) {
               final selected = _selectedTags.contains(tag);
               return GestureDetector(
+                // Long-press opens edit/delete options bottom sheet
                 onLongPress: () => _showCustomTagOptions(tag),
                 child: FilterChip(
                   label: Row(
@@ -593,6 +732,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                     children: [
                       Text(tag),
                       const SizedBox(width: 4),
+                      // ⋮ icon hints that long-press has actions
                       Icon(
                         Icons.more_vert,
                         size: 14,
@@ -623,6 +763,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  /// Shows a bottom sheet with Edit and Delete options for a custom tag.
+  /// Destructive delete also removes the tag from _selectedTags if present.
   void _showCustomTagOptions(String tag) {
     showModalBottomSheet(
       context: context,
@@ -645,9 +787,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                   style: const TextStyle(color: Colors.redAccent)),
               onTap: () async {
                 Navigator.of(ctx).pop();
-                _selectedTags.remove(tag);
+                _selectedTags.remove(tag); // remove from active selection
                 await _customTagService.deleteTag(tag);
-                await _loadCustomTags();
+                await _loadCustomTags(); // reload to remove chip from UI
               },
             ),
           ],
@@ -656,6 +798,11 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  /// Opens an AlertDialog for renaming a custom tag.
+  ///
+  /// If the tag was selected, it is removed from _selectedTags before rename
+  /// and re-added under the new name after the rename completes so the form
+  /// state remains consistent.
   void _editCustomTag(String tag) {
     final controller = TextEditingController(text: tag);
     showDialog(
@@ -682,7 +829,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
               // Update the selected tags set if this tag was selected
               final wasSelected = _selectedTags.remove(tag);
               await _customTagService.renameTag(tag, newName);
-              if (wasSelected) _selectedTags.add(newName);
+              if (wasSelected) _selectedTags.add(newName); // re-add under new name
               await _loadCustomTags();
               if (ctx.mounted) Navigator.of(ctx).pop();
             },
@@ -693,6 +840,13 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  // ── Ingredient search ─────────────────────────────────────────────────
+
+  /// Builds the suggestion dropdown panel below the ingredient search field.
+  ///
+  /// Renders API suggestions as tappable list tiles. If the current query
+  /// doesn't exactly match any suggestion, an "Add as new ingredient" option
+  /// appears at the bottom with isCustom=true so the nutrition fields are shown.
   Widget _buildSuggestionPanel() {
     final query = _ingredientSearchController.text.trim();
     final lowerQuery = query.toLowerCase();
@@ -713,8 +867,11 @@ class _RecipeFormViewState extends State<RecipeFormView> {
               dense: true,
               leading: const Icon(Icons.food_bank_outlined),
               title: Text(suggestion),
+              // Tapping a suggestion opens the quantity/unit/nutrition dialog
               onTap: () => _selectIngredient(suggestion),
             ),
+          // "Add as new ingredient" appears when no exact match exists.
+          // isCustom=true causes the nutrition fields to appear in the dialog.
           if (query.isNotEmpty && !hasExactMatch)
             ListTile(
               dense: true,
@@ -727,10 +884,17 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     );
   }
 
+  /// Strips non-numeric characters from a macro string (e.g. "25g" → 25.0).
   double _parseGrams(String value) {
     return double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
   }
 
+  /// Debounce-guarded ingredient search.
+  ///
+  /// The guard works by comparing the controller text after the API responds
+  /// to the trimmed query that was sent. If the user typed more characters
+  /// while the request was in flight, the stale results are discarded silently.
+  /// This prevents older slow responses from replacing newer fast ones.
   Future<void> _searchIngredients(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
@@ -748,7 +912,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
 
     final results = await _recipeService.searchIngredients(trimmed);
     if (!mounted) return;
-    // Discard results if the query changed while the request was in flight
+    // Debounce guard: discard results if the query changed while in-flight
     if (_ingredientSearchController.text.trim() != trimmed) {
       return;
     }
@@ -759,6 +923,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     });
   }
 
+  /// Opens the ingredient detail dialog to collect quantity, unit, and
+  /// (for custom ingredients) nutrition values. On confirm, appends the
+  /// new IngredientEntry to _selectedIngredients and clears the search field.
   Future<void> _selectIngredient(String ingredientName,
       {bool isCustom = false}) async {
     final IngredientEntry? ingredient =
@@ -774,6 +941,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     });
   }
 
+  /// Re-opens the ingredient detail dialog for an existing ingredient at [index].
+  /// On confirm, replaces the entry at that index with the updated values.
   Future<void> _editIngredient(int index) async {
     final current = _selectedIngredients[index];
     final IngredientEntry? updated = await _showIngredientDetailDialog(
@@ -789,11 +958,22 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     });
   }
 
+  /// Shows an AlertDialog for entering/editing ingredient details.
+  ///
+  /// Uses StatefulBuilder so the DropdownButtonFormField can update
+  /// [selectedUnit] within the dialog without a full-page rebuild.
+  ///
+  /// [showNutrition]: true when adding a custom ingredient or editing
+  /// an existing custom ingredient. Shows calories, protein, carbs, and
+  /// fats fields so the user can supply macros the backend cannot look up.
+  ///
+  /// Returns the constructed IngredientEntry on confirm, or null on cancel.
   Future<IngredientEntry?> _showIngredientDetailDialog(
     String ingredientName, {
     IngredientEntry? initialIngredient,
     bool isCustom = false,
   }) {
+    // showNutrition: show extra fields for custom ingredients
     final bool showNutrition = isCustom || (initialIngredient?.isCustom ?? false);
 
     final nameController = TextEditingController(
@@ -815,6 +995,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
       text: (initialIngredient?.fats ?? 0).toString(),
     );
     final formKey = GlobalKey<FormState>();
+
+    // Normalise the initial unit: lower-case and validate against _allowedUnits
     final initialUnit =
         (initialIngredient?.unit ?? _allowedUnits.first).toLowerCase();
     String selectedUnit =
@@ -823,6 +1005,8 @@ class _RecipeFormViewState extends State<RecipeFormView> {
     return showDialog<IngredientEntry>(
       context: context,
       builder: (context) {
+        // StatefulBuilder: selectedUnit can change inside the dialog via the
+        // DropdownButtonFormField without needing a new StatefulWidget class.
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -836,6 +1020,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Name field (editable so "2 salmon fillets" can be cleaned up)
                       TextFormField(
                         controller: nameController,
                         decoration: const InputDecoration(
@@ -850,6 +1035,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         },
                       ),
                       const SizedBox(height: 12),
+                      // Quantity field — decimal allowed
                       TextFormField(
                         controller: quantityController,
                         keyboardType:
@@ -867,6 +1053,7 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                         },
                       ),
                       const SizedBox(height: 12),
+                      // Unit dropdown — limited to _allowedUnits
                       DropdownButtonFormField<String>(
                         initialValue: selectedUnit,
                         items: _allowedUnits
@@ -884,6 +1071,9 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      // ── Custom ingredient nutrition fields ─────────────
+                      // Only shown for custom (unknown) ingredients where the
+                      // backend cannot auto-calculate nutrition.
                       if (showNutrition) ...[
                         const SizedBox(height: 16),
                         const Text(
@@ -988,12 +1178,13 @@ class _RecipeFormViewState extends State<RecipeFormView> {
                     }
                     final quantity =
                         double.parse(quantityController.text.trim());
+                    // Pop the dialog, returning the constructed IngredientEntry
                     Navigator.of(context).pop(
                       IngredientEntry(
                         name: nameController.text.trim(),
                         quantity: quantity,
                         unit: selectedUnit,
-                        isCustom: showNutrition,
+                        isCustom: showNutrition, // marks as custom for nutrition patching
                         calories: showNutrition
                             ? (double.tryParse(caloriesController.text.trim()) ?? 0)
                             : 0,

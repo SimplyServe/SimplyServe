@@ -1,3 +1,25 @@
+// ============================================================
+// views/settings.dart — Settings View
+//
+// Two-tab settings screen accessible from the side drawer.
+//
+// Tab 1 – General
+//   Organised into sections (Account, Preferences, About) using
+//   card-based ListTiles. The Logout button clears the local
+//   SharedPreferences login flag and navigates back to '/login',
+//   clearing the entire route stack (pushNamedAndRemoveUntil).
+//
+// Tab 2 – Allergies
+//   Lets users declare food allergens. The allergen list is
+//   persisted locally via AllergyService (SharedPreferences).
+//   AllergenFilterService.hiddenRecipes() is called after every
+//   change to show how many catalog recipes are being hidden by
+//   the current filter set. Preset allergens are displayed as
+//   animated toggle chips; users can also type custom allergens.
+//
+// Route: '/settings'  (named route in main.dart)
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:simplyserve/services/allergen_filter_service.dart';
 import 'package:simplyserve/services/allergy_service.dart';
@@ -5,6 +27,10 @@ import 'package:simplyserve/services/recipe_catalog_service.dart';
 import 'package:simplyserve/widgets/navbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// The full-screen settings page with General and Allergies tabs.
+///
+/// Uses [StatefulWidget] + [SingleTickerProviderStateMixin] because the
+/// [TabController] requires a vsync (TickerProvider) to drive its animation.
 class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
 
@@ -14,37 +40,61 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView>
     with SingleTickerProviderStateMixin {
+  /// Controls which tab (General / Allergies) is active.
+  /// Requires [SingleTickerProviderStateMixin] for the vsync parameter.
   late TabController _tabController;
+
+  /// Text field controller for typing a custom allergen name.
   final TextEditingController _allergyController = TextEditingController();
+
+  /// Service that reads/writes the allergen list from SharedPreferences.
   final AllergyService _allergyService = AllergyService();
+
+  /// Service that fetches the full recipe catalog (needed to count how
+  /// many recipes are hidden by the current allergen filters).
   final RecipeCatalogService _recipeCatalogService = RecipeCatalogService();
+
+  /// The user's currently active allergen filters (case-insensitive).
   final List<String> _allergies = [];
+
+  /// Titles of the recipes currently hidden by [_allergies].
   final List<String> _hiddenRecipeTitles = [];
+
+  /// Whether the "hidden recipes" list is expanded in the UI.
   bool _showHidden = false;
+
+  /// True while [_refreshHiddenRecipes] is running an async lookup.
   bool _isLoadingHiddenRecipes = false;
 
   @override
   void initState() {
     super.initState();
+    // 2 tabs: General and Allergies.
     _tabController = TabController(length: 2, vsync: this);
     _loadAllergiesAndHiddenRecipes();
   }
 
   @override
   void dispose() {
+    // Always dispose controllers to avoid memory leaks and ticker errors.
     _tabController.dispose();
     _allergyController.dispose();
     super.dispose();
   }
 
+  // ── Helpers ───────────────────────────────────────────────────────────
+
+  /// Capitalises the first letter of a string for display purposes.
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+  // ── Data loading ──────────────────────────────────────────────────────
+
+  /// Called once on init. Loads the persisted allergen list then computes
+  /// how many catalog recipes are hidden by those allergens.
   Future<void> _loadAllergiesAndHiddenRecipes() async {
     final storedAllergies = await _allergyService.loadAllergies();
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _allergies
@@ -55,12 +105,14 @@ class _SettingsViewState extends State<SettingsView>
     await _refreshHiddenRecipes();
   }
 
+  /// Queries the full recipe catalog and runs [AllergenFilterService.hiddenRecipes]
+  /// to determine which recipes are currently blocked by [_allergies].
+  ///
+  /// Pattern: compute the intersection of the allergen set and the catalog
+  /// client-side, so no extra backend endpoint is needed.
   Future<void> _refreshHiddenRecipes() async {
     if (_allergies.isEmpty) {
-      if (!mounted) {
-        return;
-      }
-
+      if (!mounted) return;
       setState(() {
         _hiddenRecipeTitles.clear();
         _isLoadingHiddenRecipes = false;
@@ -69,17 +121,14 @@ class _SettingsViewState extends State<SettingsView>
       return;
     }
 
-    setState(() {
-      _isLoadingHiddenRecipes = true;
-    });
+    setState(() => _isLoadingHiddenRecipes = true);
 
+    // Fetch all catalog recipes, then filter with the allergen service.
     final allRecipes = await _recipeCatalogService.getAllRecipes();
     final hiddenRecipes =
         AllergenFilterService.hiddenRecipes(allRecipes, _allergies);
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _hiddenRecipeTitles
@@ -89,10 +138,16 @@ class _SettingsViewState extends State<SettingsView>
     });
   }
 
+  // ── Allergen CRUD ─────────────────────────────────────────────────────
+
+  /// Adds a new allergen from [_allergyController] to [_allergies],
+  /// persists the change, and refreshes the hidden-recipe count.
+  /// Ignores duplicates (case-insensitive comparison).
   Future<void> _addAllergy() async {
     final value = _allergyController.text.trim();
     if (value.isEmpty) return;
 
+    // Prevent case-insensitive duplicates.
     final exists = _allergies
         .any((allergy) => allergy.toLowerCase() == value.toLowerCase());
     if (exists) {
@@ -105,18 +160,20 @@ class _SettingsViewState extends State<SettingsView>
       _allergyController.clear();
     });
 
+    // Persist to SharedPreferences, then recompute hidden recipes.
     await _allergyService.saveAllergies(_allergies);
     await _refreshHiddenRecipes();
   }
 
+  /// Removes the allergen at [index] from [_allergies], persists the
+  /// change, and refreshes the hidden-recipe count.
   Future<void> _removeAllergy(int index) async {
-    setState(() {
-      _allergies.removeAt(index);
-    });
-
+    setState(() => _allergies.removeAt(index));
     await _allergyService.saveAllergies(_allergies);
     await _refreshHiddenRecipes();
   }
+
+  // ── Build ─────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +181,9 @@ class _SettingsViewState extends State<SettingsView>
       title: 'Settings',
       body: Column(
         children: [
+          // ── TabBar ────────────────────────────────────────────────────
+          // Placed outside TabBarView so it stays fixed at the top while
+          // the tab content scrolls independently.
           TabBar(
             controller: _tabController,
             labelColor: const Color(0xFF74BC42),
@@ -134,6 +194,8 @@ class _SettingsViewState extends State<SettingsView>
               Tab(text: 'Allergies'),
             ],
           ),
+          // TabBarView fills the remaining height; each tab is a scrollable
+          // ListView built by its own helper method.
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -148,11 +210,20 @@ class _SettingsViewState extends State<SettingsView>
     );
   }
 
+  // ── Tab: General ──────────────────────────────────────────────────────
+
+  /// Builds the General tab: grouped settings sections + logout button.
+  ///
+  /// Settings are organised into labelled Card sections (Account,
+  /// Preferences, About) built by [_buildSettingsSection]. Each entry
+  /// is a [ListTile] wrapped by [_buildSettingsTile].
   Widget _buildGeneralTab() {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
         const SizedBox(height: 8),
+
+        // ── Account section ──────────────────────────────────────────
         _buildSettingsSection(
           title: 'Account',
           children: [
@@ -160,25 +231,26 @@ class _SettingsViewState extends State<SettingsView>
               icon: Icons.person,
               title: 'Profile',
               subtitle: 'Manage your profile information',
-              onTap: () {
-                Navigator.pushNamed(context, '/profile');
-              },
+              onTap: () => Navigator.pushNamed(context, '/profile'),
             ),
             _buildSettingsTile(
               icon: Icons.delete_outline,
               title: 'Deleted Recipes',
               subtitle: 'View and restore deleted recipes',
-              onTap: () => Navigator.pushNamed(context, '/deleted-recipes'),
+              onTap: () =>
+                  Navigator.pushNamed(context, '/deleted-recipes'),
             ),
             _buildSettingsTile(
               icon: Icons.lock,
               title: 'Privacy',
               subtitle: 'Control your privacy settings',
-              onTap: () {},
+              onTap: () {}, // stub — not yet implemented
             ),
           ],
         ),
         const SizedBox(height: 16),
+
+        // ── Preferences section ──────────────────────────────────────
         _buildSettingsSection(
           title: 'Preferences',
           children: [
@@ -186,17 +258,19 @@ class _SettingsViewState extends State<SettingsView>
               icon: Icons.notifications,
               title: 'Notifications',
               subtitle: 'Manage notification preferences',
-              onTap: () {},
+              onTap: () {}, // stub
             ),
             _buildSettingsTile(
               icon: Icons.palette,
               title: 'Appearance',
               subtitle: 'Customize app appearance',
-              onTap: () {},
+              onTap: () {}, // stub
             ),
           ],
         ),
         const SizedBox(height: 16),
+
+        // ── About section ────────────────────────────────────────────
         _buildSettingsSection(
           title: 'About',
           children: [
@@ -215,6 +289,12 @@ class _SettingsViewState extends State<SettingsView>
           ],
         ),
         const SizedBox(height: 24),
+
+        // ── Logout button ────────────────────────────────────────────
+        // Auth state is local-only: we clear the SharedPreferences flag
+        // (no server session to invalidate) then navigate to '/login'
+        // with pushNamedAndRemoveUntil, which clears the entire stack
+        // so the back button cannot return to a protected screen.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: ElevatedButton(
@@ -228,16 +308,18 @@ class _SettingsViewState extends State<SettingsView>
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             onPressed: () async {
-              // Auth state is local-only (SharedPreferences), not a server session
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool('isLoggedIn', false);
               if (!mounted) return;
+              // Clear all routes; the user must log in again to access
+              // any protected content.
               Navigator.of(context)
                   .pushNamedAndRemoveUntil('/login', (route) => false);
             },
             child: const Text(
               'Log Out',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              style:
+                  TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
           ),
         ),
@@ -246,15 +328,27 @@ class _SettingsViewState extends State<SettingsView>
     );
   }
 
+  // ── Tab: Allergies ────────────────────────────────────────────────────
+
+  /// Builds the Allergies tab: preset allergen chips, custom allergen
+  /// text input, active-filter chips, and a hidden-recipe count banner.
   Widget _buildAllergiesTab() {
+    // The known allergen preset list is defined in AllergenFilterService.
     final presets = AllergenFilterService.knownAllergens;
+
+    // Pre-compute a lowercase set for O(1) active-state lookup.
     final activeLower = _allergies.map((a) => a.toLowerCase()).toSet();
 
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
         const SizedBox(height: 8),
-        // ── Common allergens ─────────────────────────
+
+        // ── Preset allergen chips ──────────────────────────────────
+        // Each chip is an AnimatedContainer that smoothly transitions
+        // between green (active) and grey (inactive) when tapped.
+        // Tapping an active chip removes it; tapping an inactive chip
+        // adds it to [_allergies].
         const Text(
           'Common Allergens',
           style: TextStyle(
@@ -274,14 +368,17 @@ class _SettingsViewState extends State<SettingsView>
           spacing: 8,
           runSpacing: 8,
           children: presets.map((preset) {
-            final active = activeLower.contains(preset.toLowerCase());
+            final active =
+                activeLower.contains(preset.toLowerCase());
             return GestureDetector(
               onTap: () async {
                 if (active) {
+                  // Toggle off: find and remove by case-insensitive match.
                   final idx = _allergies.indexWhere(
                       (a) => a.toLowerCase() == preset.toLowerCase());
                   if (idx != -1) await _removeAllergy(idx);
                 } else {
+                  // Toggle on: add if not already present.
                   final already = _allergies.any(
                       (a) => a.toLowerCase() == preset.toLowerCase());
                   if (!already) {
@@ -291,10 +388,12 @@ class _SettingsViewState extends State<SettingsView>
                   }
                 }
               },
+              // AnimatedContainer smoothly interpolates colors over 150ms
+              // without rebuilding child widgets unnecessarily.
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: active
                       ? const Color(0xFF74BC42)
@@ -309,8 +408,10 @@ class _SettingsViewState extends State<SettingsView>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Show a checkmark when the allergen is active.
                     if (active) ...[
-                      const Icon(Icons.check, size: 13, color: Colors.white),
+                      const Icon(Icons.check,
+                          size: 13, color: Colors.white),
                       const SizedBox(width: 4),
                     ],
                     Text(
@@ -318,7 +419,9 @@ class _SettingsViewState extends State<SettingsView>
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: active ? Colors.white : const Color(0xFF555555),
+                        color: active
+                            ? Colors.white
+                            : const Color(0xFF555555),
                       ),
                     ),
                   ],
@@ -330,7 +433,10 @@ class _SettingsViewState extends State<SettingsView>
         const SizedBox(height: 20),
         const Divider(),
         const SizedBox(height: 12),
-        // ── Custom allergen input ─────────────────────
+
+        // ── Custom allergen input ──────────────────────────────────
+        // A text field + "Add" button. The field also submits on the
+        // keyboard Done action (onSubmitted) for convenience.
         const Text(
           'Custom Allergen',
           style: TextStyle(
@@ -353,11 +459,14 @@ class _SettingsViewState extends State<SettingsView>
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF74BC42)),
+                    borderSide:
+                        const BorderSide(color: Color(0xFF74BC42)),
                   ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
                 ),
+                // Also trigger add when the user presses the keyboard's
+                // Done/Return button.
                 onSubmitted: (_) => _addAllergy(),
               ),
             ),
@@ -370,8 +479,8 @@ class _SettingsViewState extends State<SettingsView>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 14),
               ),
               onPressed: _addAllergy,
               child: const Text('Add'),
@@ -379,7 +488,11 @@ class _SettingsViewState extends State<SettingsView>
           ],
         ),
         const SizedBox(height: 16),
-        // ── Active allergens ─────────────────────────
+
+        // ── Active filters ─────────────────────────────────────────
+        // Displayed as deletable Chip widgets so the user can see and
+        // remove individual allergens without scrolling back to the
+        // preset grid.
         if (_allergies.isNotEmpty) ...[
           const Text(
             'Active Filters',
@@ -394,6 +507,8 @@ class _SettingsViewState extends State<SettingsView>
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            // asMap().entries gives both the index and the value so we
+            // can pass the correct index to _removeAllergy().
             children: _allergies.asMap().entries.map((entry) {
               return Chip(
                 label: Text(entry.value),
@@ -401,30 +516,38 @@ class _SettingsViewState extends State<SettingsView>
                 onDeleted: () => _removeAllergy(entry.key),
                 backgroundColor:
                     const Color(0xFF74BC42).withValues(alpha: 0.1),
-                labelStyle: const TextStyle(color: Color(0xFF74BC42)),
+                labelStyle:
+                    const TextStyle(color: Color(0xFF74BC42)),
                 deleteIconColor: const Color(0xFF74BC42),
-                side: const BorderSide(color: Color(0xFF74BC42), width: 0.8),
+                side: const BorderSide(
+                    color: Color(0xFF74BC42), width: 0.8),
               );
             }).toList(),
           ),
           const SizedBox(height: 24),
         ],
-        // Hidden recipes banner
+
+        // ── Hidden-recipe banner ───────────────────────────────────
+        // Shows how many catalog recipes are currently hidden and
+        // gives the user the option to reveal their titles inline.
         if (_allergies.isNotEmpty) ...[
           Card(
             margin: EdgeInsets.zero,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Count header ──────────────────────────────────
                   Row(
                     children: [
-                      const Icon(Icons.visibility_off, color: Colors.orange),
+                      const Icon(Icons.visibility_off,
+                          color: Colors.orange),
                       const SizedBox(width: 8),
                       Text(
+                        // Pluralise "recipe" / "recipes" correctly.
                         'Hidden ${_hiddenRecipeTitles.length} ${_hiddenRecipeTitles.length == 1 ? 'recipe' : 'recipes'}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
@@ -434,12 +557,15 @@ class _SettingsViewState extends State<SettingsView>
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // ── Warning notice with inline "show/hide" toggle ──
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.shade200),
+                      border:
+                          Border.all(color: Colors.orange.shade200),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,38 +575,43 @@ class _SettingsViewState extends State<SettingsView>
                         const SizedBox(width: 8),
                         Expanded(
                           child: Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                            crossAxisAlignment:
+                                WrapCrossAlignment.center,
                             children: [
                               const Text(
                                 'The recipes hidden contain items you are allergic to. Are you sure you want to ',
                                 style: TextStyle(fontSize: 13),
                               ),
+                              // Inline tappable text toggle — more
+                              // discoverable than a separate button.
                               GestureDetector(
                                 onTap: () {
-                                  setState(() {
-                                    _showHidden = !_showHidden;
-                                  });
+                                  setState(
+                                      () => _showHidden = !_showHidden);
                                 },
                                 child: Text(
-                                  _showHidden ? 'hide again' : 'show them',
+                                  _showHidden
+                                      ? 'hide again'
+                                      : 'show them',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.orange.shade800,
                                     fontWeight: FontWeight.w700,
-                                    decoration: TextDecoration.underline,
+                                    decoration:
+                                        TextDecoration.underline,
                                   ),
                                 ),
                               ),
-                              const Text(
-                                '?',
-                                style: TextStyle(fontSize: 13),
-                              ),
+                              const Text('?',
+                                  style: TextStyle(fontSize: 13)),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
+
+                  // ── Expandable recipe title list ───────────────────
                   if (_showHidden) ...[
                     const SizedBox(height: 12),
                     if (_isLoadingHiddenRecipes)
@@ -488,8 +619,7 @@ class _SettingsViewState extends State<SettingsView>
                         padding: EdgeInsets.symmetric(vertical: 8),
                         child: Center(
                           child: CircularProgressIndicator(
-                            color: Color(0xFF74BC42),
-                          ),
+                              color: Color(0xFF74BC42)),
                         ),
                       )
                     else if (_hiddenRecipeTitles.isEmpty)
@@ -501,34 +631,37 @@ class _SettingsViewState extends State<SettingsView>
                         ),
                       )
                     else
+                      // Bulleted list of hidden recipe titles.
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange.shade200),
+                          border: Border.all(
+                              color: Colors.orange.shade200),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: _hiddenRecipeTitles
                               .map(
                                 (title) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.only(
+                                      bottom: 8),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      const Icon(
-                                        Icons.circle,
-                                        size: 8,
-                                        color: Colors.orange,
-                                      ),
+                                      const Icon(Icons.circle,
+                                          size: 8,
+                                          color: Colors.orange),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
                                           title,
-                                          style: const TextStyle(fontSize: 13),
+                                          style: const TextStyle(
+                                              fontSize: 13),
                                         ),
                                       ),
                                     ],
@@ -549,6 +682,9 @@ class _SettingsViewState extends State<SettingsView>
     );
   }
 
+  // ── Reusable section / tile builders ─────────────────────────────────
+
+  /// Renders a labelled group of settings entries inside a [Card].
   Widget _buildSettingsSection({
     required String title,
     required List<Widget> children,
@@ -557,7 +693,8 @@ class _SettingsViewState extends State<SettingsView>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             title,
             style: const TextStyle(
@@ -567,6 +704,8 @@ class _SettingsViewState extends State<SettingsView>
             ),
           ),
         ),
+        // Card groups the tiles visually, providing the elevated surface
+        // that separates sections on the white background.
         Card(
           margin: EdgeInsets.zero,
           child: Column(children: children),
@@ -575,6 +714,8 @@ class _SettingsViewState extends State<SettingsView>
     );
   }
 
+  /// Returns a single [ListTile] formatted for the settings list.
+  /// The trailing chevron implies the tile is navigable.
   Widget _buildSettingsTile({
     required IconData icon,
     required String title,
