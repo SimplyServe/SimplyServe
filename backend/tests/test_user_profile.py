@@ -192,3 +192,107 @@ class TestGetUserMe:
         assert "profile_image_url" in data
         assert "email" in data
         assert "id" in data
+
+
+class TestSR8UserProfile:
+    """SR-8: User profile management."""
+
+    async def test_patch_updates_name(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: PATCH /users/me updates display name."""
+        resp = await async_client.patch(
+            "/users/me", json={"name": "SR8 User"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "SR8 User"
+
+    async def test_put_replaces_name(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: PUT /users/me replaces display name."""
+        resp = await async_client.put(
+            "/users/me", json={"name": "SR8 New Name"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "SR8 New Name"
+
+    async def test_put_empty_name_rejected(self, async_client: AsyncClient, auth_headers: dict):
+        """NT: empty name rejected with 400."""
+        resp = await async_client.put(
+            "/users/me", json={"name": "   "}, headers=auth_headers
+        )
+        assert resp.status_code == 400
+
+    async def test_profile_includes_all_fields(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: GET /users/me includes all profile fields."""
+        resp = await async_client.get("/users/me", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        for field in ["id", "email", "name", "is_active", "profile_image_url"]:
+            assert field in data
+
+
+class TestSR8AvatarUpload:
+    """SR-8: Avatar image upload."""
+
+    async def test_upload_jpeg_avatar(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: JPEG avatar upload succeeds."""
+        fake = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.jpg", fake, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert "/uploads/" in resp.json()["profile_image_url"]
+
+    async def test_upload_png_avatar(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: PNG avatar upload succeeds."""
+        fake = io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.png", fake, "image/png")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
+    async def test_upload_webp_avatar(self, async_client: AsyncClient, auth_headers: dict):
+        """EP: WebP avatar upload succeeds."""
+        fake = io.BytesIO(b"RIFF" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.webp", fake, "image/webp")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
+    async def test_unsupported_type_rejected(self, async_client: AsyncClient, auth_headers: dict):
+        """NT: unsupported file type rejected with 400."""
+        fake = io.BytesIO(b"%PDF-1.4" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("doc.pdf", fake, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+
+    async def test_avatar_without_auth_rejected(self, async_client: AsyncClient):
+        """NT: avatar upload without auth rejected."""
+        fake = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        resp = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.jpg", fake, "image/jpeg")},
+        )
+        assert resp.status_code == 401
+
+    async def test_avatar_url_persists_across_requests(
+        self, async_client: AsyncClient, auth_headers: dict
+    ):
+        """IT: uploaded avatar URL persists on subsequent profile fetch."""
+        fake = io.BytesIO(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+        upload = await async_client.post(
+            "/users/me/avatar",
+            files={"image": ("avatar.jpg", fake, "image/jpeg")},
+            headers=auth_headers,
+        )
+        assert upload.status_code == 200
+
+        me = await async_client.get("/users/me", headers=auth_headers)
+        assert me.json()["profile_image_url"] == upload.json()["profile_image_url"]

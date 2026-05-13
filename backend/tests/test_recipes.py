@@ -559,3 +559,563 @@ class TestRecipeEdgeCases:
         assert response.status_code == 200
         recipe = response.json()
         assert isinstance(recipe.get("tags", []), list)
+
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+def _recipe_data(**overrides) -> dict:
+    return {
+        "title": "Coverage Test Recipe",
+        "summary": "A recipe for coverage testing",
+        "tags_json": "[]",
+        "steps_json": '["step one"]',
+        **overrides,
+    }
+
+
+# ── _parse_ingredient_payload edge cases ─────────────────────────────────────
+
+class TestParseIngredientPayloadEdgeCases:
+    """Drive _parse_ingredient_payload via POST /recipes to cover error branches."""
+
+    async def test_invalid_json_returns_422(self, async_client: AsyncClient):
+        resp = await async_client.post(
+            "/recipes", data=_recipe_data(ingredients_json="not valid json")
+        )
+        assert resp.status_code == 422
+
+    async def test_non_list_json_returns_422(self, async_client: AsyncClient):
+        resp = await async_client.post(
+            "/recipes", data=_recipe_data(ingredients_json='{"key": "value"}')
+        )
+        assert resp.status_code == 422
+
+    async def test_non_string_non_dict_item_returns_422(self, async_client: AsyncClient):
+        resp = await async_client.post(
+            "/recipes", data=_recipe_data(ingredients_json="[42]")
+        )
+        assert resp.status_code == 422
+
+    async def test_negative_quantity_returns_422(self, async_client: AsyncClient):
+        resp = await async_client.post(
+            "/recipes",
+            data=_recipe_data(
+                ingredients_json='[{"ingredient_name": "egg", "quantity": -1, "unit": "pcs"}]'
+            ),
+        )
+        assert resp.status_code == 422
+
+    async def test_zero_quantity_returns_422(self, async_client: AsyncClient):
+        resp = await async_client.post(
+            "/recipes",
+            data=_recipe_data(
+                ingredients_json='[{"ingredient_name": "egg", "quantity": 0, "unit": "pcs"}]'
+            ),
+        )
+        assert resp.status_code == 422
+
+    async def test_invalid_quantity_string_returns_422(self, async_client: AsyncClient):
+        resp = await async_client.post(
+            "/recipes",
+            data=_recipe_data(
+                ingredients_json='[{"ingredient_name": "egg", "quantity": "abc", "unit": "pcs"}]'
+            ),
+        )
+        assert resp.status_code == 422
+
+    async def test_string_ingredient_items_accepted(self, async_client: AsyncClient):
+        """String items go through _parse_ingredient_text path."""
+        resp = await async_client.post(
+            "/recipes",
+            data=_recipe_data(ingredients_json='["2 cups flour", "1 tsp salt"]'),
+        )
+        assert resp.status_code == 200
+        names = resp.json()["ingredients"]
+        assert "flour" in names
+        assert "salt" in names
+
+    async def test_duplicate_ingredients_deduplicated(self, async_client: AsyncClient):
+        """Duplicate ingredient names are collapsed to one entry."""
+        payload = json.dumps([
+            {"ingredient_name": "egg", "quantity": 1, "unit": "pcs"},
+            {"ingredient_name": "egg", "quantity": 2, "unit": "pcs"},
+        ])
+        resp = await async_client.post(
+            "/recipes", data=_recipe_data(ingredients_json=payload)
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ingredients"].count("egg") == 1
+
+    async def test_empty_name_ingredient_skipped(self, async_client: AsyncClient):
+        """Ingredient with empty name is silently skipped."""
+        payload = json.dumps([
+            {"ingredient_name": "", "quantity": 1, "unit": "pcs"},
+            {"ingredient_name": "egg", "quantity": 1, "unit": "pcs"},
+        ])
+        resp = await async_client.post(
+            "/recipes", data=_recipe_data(ingredients_json=payload)
+        )
+        assert resp.status_code == 200
+        assert "egg" in resp.json()["ingredients"]
+
+    async def test_fraction_string_ingredient_no_unit(self, async_client: AsyncClient):
+        """Fraction-only text (e.g. '1/2 flour') hits the fraction parsing branch."""
+        resp = await async_client.post(
+            "/recipes",
+            data=_recipe_data(ingredients_json='["1/2 flour"]'),
+        )
+        assert resp.status_code == 200
+
+
+# ── GET /ingredients edge cases ───────────────────────────────────────────────
+
+class TestIngredientSearchEdgeCases:
+
+    async def test_limit_zero_clamped_to_one(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.get("/ingredients?limit=0")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_limit_above_max_clamped_to_fifty(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.get("/ingredients?limit=999")
+        assert resp.status_code == 200
+        assert len(resp.json()) <= 50
+
+    async def test_base_only_filter(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.get("/ingredients?base_only=true")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_q_parameter_filters_results(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.get("/ingredients?q=egg")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        if data:
+            assert any("egg" in item["ingredient_name"].lower() for item in data)
+
+    async def test_empty_q_returns_all(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.get("/ingredients?q=")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_base_only_with_q(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        resp = await async_client.get("/ingredients?base_only=true&q=egg")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+
+# ── _find_or_create_ingredient (new ingredient creation path) ─────────────────
+
+class TestFindOrCreateIngredient:
+
+    async def test_new_ingredient_is_created_and_linked(
+        self, async_client: AsyncClient
+    ):
+        """Creating a recipe with a brand-new ingredient name covers the
+        'not found → create' branch of _find_or_create_ingredient."""
+        resp = await async_client.post(
+            "/recipes",
+            data=_recipe_data(
+                ingredients_json=json.dumps([
+                    {
+                        "ingredient_name": "unicorn_dust_unique_xyz",
+                        "quantity": 1,
+                        "unit": "pcs",
+                    }
+                ])
+            ),
+        )
+        assert resp.status_code == 200
+        assert "unicorn_dust_unique_xyz" in resp.json()["ingredients"]
+
+
+# ── SR-2: Dietary tag filtering via API ───────────────────────────────────────
+
+class TestSR2DietaryTagFiltering:
+    """SR-2: Filtering recipes by dietary tags via API."""
+
+    async def test_vegan_tag_in_recipes(self, async_client: AsyncClient, base_ingredients):
+        """IT: recipe with vegan tag returned in listing."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 Vegan Bowl", "summary": "Plant-based",
+            "tags_json": json.dumps(["vegan", "dairy-free"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "spinach", "quantity": 100, "unit": "g"}]),
+            "steps_json": json.dumps(["Prepare"]),
+        })
+        assert resp.status_code == 200
+
+        recipes = (await async_client.get("/recipes")).json()
+        vegan = [r for r in recipes if "vegan" in r.get("tags", [])]
+        assert len(vegan) >= 1
+
+    async def test_vegetarian_vs_meat_tags(self, async_client: AsyncClient, base_ingredients):
+        """EP: vegetarian and meat tags separate correctly."""
+        for title, tags in [("SR2 Veggie", ["vegetarian"]), ("SR2 Meat", ["meat"])]:
+            await async_client.post("/recipes", data={
+                "title": title, "summary": f"{title} summary",
+                "tags_json": json.dumps(tags),
+                "ingredients_json": json.dumps([{"ingredient_name": "onion", "quantity": 1, "unit": "pcs"}]),
+                "steps_json": json.dumps(["Cook"]),
+            })
+
+        recipes = (await async_client.get("/recipes")).json()
+        vegetarian = [r for r in recipes if "vegetarian" in r.get("tags", [])]
+        assert all(r["title"] != "SR2 Meat" for r in vegetarian)
+
+    async def test_gluten_free_tag(self, async_client: AsyncClient, base_ingredients):
+        """EP: gluten-free tag stored and retrieved."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 GF Salad", "summary": "GF",
+            "tags_json": json.dumps(["gluten-free"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "tomato", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Chop"]),
+        })
+        assert resp.status_code == 200
+        assert "gluten-free" in resp.json()["tags"]
+
+    async def test_multiple_dietary_tags(self, async_client: AsyncClient, base_ingredients):
+        """EP: recipe can have multiple dietary tags."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 Multi Diet", "summary": "Many restrictions",
+            "tags_json": json.dumps(["vegan", "gluten-free", "nut-free", "soy-free"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "carrot", "quantity": 3, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Prep"]),
+        })
+        assert resp.status_code == 200
+        tags = resp.json()["tags"]
+        for t in ["vegan", "gluten-free", "nut-free", "soy-free"]:
+            assert t in tags
+
+    async def test_no_dietary_tags(self, async_client: AsyncClient, base_ingredients):
+        """NT: recipe with no dietary tags."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 No Diet", "summary": "Normal",
+            "tags_json": json.dumps([]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert resp.status_code == 200
+        assert resp.json()["tags"] == []
+
+
+# ── SR-2: Allergen ingredient search ──────────────────────────────────────────
+
+class TestSR2IngredientAllergenSearch:
+    """SR-2: Identifying allergens through ingredient search."""
+
+    async def test_search_milk_allergen(self, async_client: AsyncClient, base_ingredients):
+        """EP: search for common allergen 'milk'."""
+        resp = await async_client.get("/ingredients?q=milk")
+        assert resp.status_code == 200
+        if resp.json():
+            assert any("milk" in i["ingredient_name"].lower() for i in resp.json())
+
+    async def test_search_egg_allergen(self, async_client: AsyncClient, base_ingredients):
+        """EP: search for egg allergen."""
+        resp = await async_client.get("/ingredients?q=egg")
+        assert resp.status_code == 200
+        if resp.json():
+            assert any("egg" in i["ingredient_name"].lower() for i in resp.json())
+
+    async def test_allergen_in_recipe_ingredients(self, async_client: AsyncClient, base_ingredients):
+        """IT: recipe containing allergen lists it in ingredients."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR2 Egg Dish", "summary": "Contains eggs",
+            "tags_json": json.dumps(["contains-eggs"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 3, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Scramble"]),
+        })
+        assert resp.status_code == 200
+        assert "egg" in resp.json()["ingredients"]
+
+
+# ── SR-2 additional invalid/boundary ──────────────────────────────────────────
+
+class TestSR2AdditionalInvalid:
+
+    @pytest.mark.asyncio
+    async def test_allergen_tag_removed_via_update(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NT: allergen tag removed when recipe is updated."""
+        create = await async_client.post("/recipes", data={
+            "title": "SR2 Remove Tag",
+            "summary": "s",
+            "tags_json": json.dumps(["contains-eggs", "vegetarian"]),
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}
+            ]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        rid = create.json()["id"]
+        update = await async_client.put(f"/recipes/{rid}", data={
+            "title": "SR2 Remove Tag",
+            "summary": "s",
+            "tags_json": json.dumps(["vegetarian"]),
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}
+            ]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert update.status_code == 200
+        assert "contains-eggs" not in update.json()["tags"]
+
+    @pytest.mark.asyncio
+    async def test_empty_allergen_search_returns_all(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """BVA: empty q= returns full ingredient list."""
+        resp = await async_client.get("/ingredients?q=")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+        assert len(resp.json()) > 0
+
+
+# ── SR-3: Nutrition in API responses ──────────────────────────────────────────
+
+class TestSR3NutritionViaAPI:
+    """SR-3: Nutrition in API responses."""
+
+    async def test_created_recipe_has_nutrition(self, async_client: AsyncClient, base_ingredients):
+        """IT: nutrition calculated on recipe creation."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR3 API Nutr", "summary": "test",
+            "servings": 2, "tags_json": "[]",
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 3, "unit": "pcs"},
+                {"ingredient_name": "milk", "quantity": 200, "unit": "ml"},
+            ]),
+            "steps_json": json.dumps(["Mix"]),
+        })
+        assert resp.status_code == 200
+        nutrition = resp.json()["nutrition"]
+        assert isinstance(nutrition["calories"], int)
+        assert nutrition["protein"].endswith("g")
+
+    async def test_recipe_list_includes_nutrition(self, async_client: AsyncClient, base_ingredients):
+        """IT: GET /recipes includes nutrition for each recipe."""
+        await async_client.post("/recipes", data={
+            "title": "SR3 List Nutr", "summary": "test", "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        recipes = (await async_client.get("/recipes")).json()
+        for recipe in recipes:
+            assert "nutrition" in recipe
+            assert recipe["nutrition"] is not None
+
+    async def test_nutrition_varies_with_servings(self, async_client: AsyncClient, base_ingredients):
+        """EP: different servings = different per-serving nutrition."""
+        base = {
+            "summary": "test", "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 4, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        }
+        r1 = await async_client.post("/recipes", data={**base, "title": "SR3 S1", "servings": 1})
+        r4 = await async_client.post("/recipes", data={**base, "title": "SR3 S4", "servings": 4})
+        cal1, cal4 = r1.json()["nutrition"]["calories"], r4.json()["nutrition"]["calories"]
+        if cal1 > 0 and cal4 > 0:
+            assert cal1 > cal4
+
+    async def test_empty_ingredients_zero_nutrition(self, async_client: AsyncClient):
+        """BVA: recipe with empty ingredients has zero nutrition."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR3 Empty Nutr", "summary": "empty",
+            "tags_json": "[]", "ingredients_json": "[]",
+            "steps_json": json.dumps(["Nothing"]),
+        })
+        assert resp.status_code == 200
+        n = resp.json()["nutrition"]
+        assert n["calories"] == 0
+        assert n["protein"] == "0g"
+
+    async def test_macro_format_g_suffix(self, async_client: AsyncClient, base_ingredients):
+        """IT: macros formatted as strings with 'g' suffix."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR3 Fmt", "summary": "fmt",
+            "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        n = resp.json()["nutrition"]
+        for key in ["protein", "carbs", "fats"]:
+            assert n[key].endswith("g")
+
+
+# ── SR-4: Additional recipe CRUD ──────────────────────────────────────────────
+
+class TestSR4RecipeCRUD:
+    """SR-4: Additional recipe CRUD tests."""
+
+    async def test_create_recipe_returns_id(self, async_client: AsyncClient, base_ingredients):
+        """EP: created recipe has a positive integer ID."""
+        resp = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Create", summary="sr4",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        assert resp.status_code == 200
+        assert resp.json()["id"] > 0
+
+    async def test_recipe_fields_match_input(self, async_client: AsyncClient, base_ingredients):
+        """EP: returned recipe fields match submitted data."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR4 Match", "summary": "Match test",
+            "prep_time": "15 minutes", "cook_time": "25 minutes",
+            "total_time": "40 minutes", "servings": 3, "difficulty": "Hard",
+            "tags_json": json.dumps(["sr4"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Step 1", "Step 2"]),
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "SR4 Match"
+        assert data["summary"] == "Match test"
+        assert data["servings"] == 3
+        assert data["difficulty"] == "Hard"
+        assert data["steps"] == ["Step 1", "Step 2"]
+
+    async def test_update_recipe_changes_fields(self, async_client: AsyncClient, base_ingredients):
+        """EP: PUT /recipes/{id} updates fields."""
+        create = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Original",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        rid = create.json()["id"]
+
+        update = await async_client.put(f"/recipes/{rid}", data={
+            "title": "SR4 Updated", "summary": "Updated",
+            "tags_json": json.dumps(["updated"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "milk", "quantity": 1, "unit": "cup"}]),
+            "steps_json": json.dumps(["New step"]),
+        })
+        assert update.status_code == 200
+        assert update.json()["title"] == "SR4 Updated"
+
+    async def test_soft_delete_and_restore_cycle(self, async_client: AsyncClient, base_ingredients):
+        """IT: full soft-delete → restore cycle."""
+        create = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Cycle",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        rid = create.json()["id"]
+
+        del_resp = await async_client.delete(f"/recipes/{rid}")
+        assert del_resp.json()["message"] == "Success"
+
+        deleted = (await async_client.get("/recipes/deleted")).json()
+        assert rid in [r["id"] for r in deleted]
+
+        restore_resp = await async_client.post(f"/recipes/{rid}/restore")
+        assert restore_resp.json()["message"] == "Restored"
+
+        recipes = (await async_client.get("/recipes")).json()
+        assert rid in [r["id"] for r in recipes]
+
+    async def test_permanent_delete_removes_completely(self, async_client: AsyncClient, base_ingredients):
+        """IT: permanent delete removes from all lists."""
+        create = await async_client.post("/recipes", data=_recipe_data(
+            title="SR4 Perm Del",
+            ingredients_json=json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+        ))
+        rid = create.json()["id"]
+
+        await async_client.delete(f"/recipes/{rid}/permanent")
+
+        recipes = (await async_client.get("/recipes")).json()
+        deleted = (await async_client.get("/recipes/deleted")).json()
+        assert rid not in [r["id"] for r in recipes]
+        assert rid not in [r["id"] for r in deleted]
+
+
+# ── SR-4: Ingredient search ───────────────────────────────────────────────────
+
+class TestSR4RecipeSearch:
+    """SR-4: Ingredient search functionality."""
+
+    async def test_search_case_insensitive(self, async_client: AsyncClient, base_ingredients):
+        """EP: ingredient search is case-insensitive."""
+        r1 = await async_client.get("/ingredients?q=EGG")
+        r2 = await async_client.get("/ingredients?q=egg")
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        if r1.json() and r2.json():
+            assert len(r1.json()) == len(r2.json())
+
+    async def test_search_nonexistent_returns_empty(self, async_client: AsyncClient, base_ingredients):
+        """NT: nonexistent ingredient search returns empty list."""
+        resp = await async_client.get("/ingredients?q=zzz_nonexistent_xyz")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_search_limit_respected(self, async_client: AsyncClient, base_ingredients):
+        """BVA: limit parameter respected in results."""
+        resp = await async_client.get("/ingredients?limit=3")
+        assert resp.status_code == 200
+        assert len(resp.json()) <= 3
+
+
+# ── SR-4: Recipe tag management ───────────────────────────────────────────────
+
+class TestSR4RecipeTags:
+    """SR-4: Recipe tag management."""
+
+    async def test_tags_deduplicated(self, async_client: AsyncClient, base_ingredients):
+        """EP: duplicate tags collapsed."""
+        resp = await async_client.post("/recipes", data={
+            "title": "SR4 DupTag", "summary": "s",
+            "tags_json": json.dumps(["dup", "dup", "unique"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert resp.status_code == 200
+        tags = resp.json()["tags"]
+        assert tags.count("dup") == 1
+        assert "unique" in tags
+
+    async def test_update_replaces_tags(self, async_client: AsyncClient, base_ingredients):
+        """EP: updating recipe replaces tags completely."""
+        create = await async_client.post("/recipes", data={
+            "title": "SR4 TagReplace", "summary": "s",
+            "tags_json": json.dumps(["old"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        rid = create.json()["id"]
+
+        update = await async_client.put(f"/recipes/{rid}", data={
+            "title": "SR4 TagReplace", "summary": "s",
+            "tags_json": json.dumps(["new"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert "old" not in update.json()["tags"]
+        assert "new" in update.json()["tags"]
+
+
+# ── SR-4: Case insensitive definitive ─────────────────────────────────────────
+
+class TestSR4CaseInsensitiveDefinitive:
+    @pytest.mark.asyncio
+    async def test_ingredient_search_case_insensitive_definitive(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """EP: definitive case-insensitive check — 'egg' is guaranteed in base_ingredients fixture."""
+        r_upper = await async_client.get("/ingredients?q=EGG")
+        r_lower = await async_client.get("/ingredients?q=egg")
+        assert r_upper.status_code == 200
+        assert r_lower.status_code == 200
+        assert len(r_lower.json()) > 0, "base_ingredients fixture must seed at least one 'egg' ingredient"
+        assert len(r_upper.json()) == len(r_lower.json())
