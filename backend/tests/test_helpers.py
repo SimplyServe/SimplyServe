@@ -5,6 +5,7 @@ Unit tests for helper functions in main.py:
   - _build_nutrition_info
 """
 
+import json
 import pytest
 from main import _normalize_unit, _parse_ingredient_text, _build_nutrition_info
 
@@ -162,3 +163,117 @@ class TestBuildNutritionInfo:
         result = _build_nutrition_info(totals, servings=10)
         assert result["calories"] == 1000
         assert result["protein"] == "50g"
+
+
+# ── SR-4 additional helper function tests ─────────────────────────────────────
+
+class TestSR4HelperFunctions:
+    """SR-4: Additional helper function tests."""
+
+    def test_normalize_unit_informal_units(self):
+        """EP: informal units mapped to pcs."""
+        for unit in ["pinch", "clove", "bunch", "slice", "can"]:
+            assert _normalize_unit(unit) == "pcs"
+
+    def test_parse_ingredient_text_fraction(self):
+        """EP: fractional quantity parsing."""
+        result = _parse_ingredient_text("1/2 tsp salt")
+        assert result["quantity"] == pytest.approx(0.5)
+        assert result["unit"] == "tsp"
+        assert result["ingredient_name"] == "salt"
+
+    def test_parse_ingredient_text_plain_name(self):
+        """EP: plain name with no quantity/unit."""
+        result = _parse_ingredient_text("salt and pepper")
+        assert result["ingredient_name"] == "salt and pepper"
+        assert result["quantity"] == 1.0
+        assert result["unit"] == "pcs"
+
+
+class TestSR3PerServingNutrition:
+    """SR-3: Per-serving nutrition via _build_nutrition_info."""
+
+    def test_even_division(self):
+        """EP: even division by servings."""
+        result = _build_nutrition_info(
+            {"calories": 800, "protein": 60, "carbs": 100, "fats": 30}, servings=4
+        )
+        assert result["calories"] == 200
+        assert result["protein"] == "15g"
+
+    def test_fractional_rounding(self):
+        """BVA: fractional results rounded."""
+        result = _build_nutrition_info(
+            {"calories": 100, "protein": 7, "carbs": 15, "fats": 3}, servings=3
+        )
+        assert result["calories"] == 33
+        assert isinstance(result["protein"], str)
+
+    def test_single_serving(self):
+        """BVA: 1 serving returns totals."""
+        result = _build_nutrition_info(
+            {"calories": 500, "protein": 40, "carbs": 60, "fats": 20}, servings=1
+        )
+        assert result["calories"] == 500
+
+    def test_zero_servings(self):
+        """BVA: 0 servings treated as 1."""
+        result = _build_nutrition_info(
+            {"calories": 300, "protein": 25, "carbs": 35, "fats": 10}, servings=0
+        )
+        assert result["calories"] == 300
+
+    def test_large_servings(self):
+        """BVA: very large servings count."""
+        result = _build_nutrition_info(
+            {"calories": 10000, "protein": 500, "carbs": 1500, "fats": 300}, servings=100
+        )
+        assert result["calories"] == 100
+        assert result["protein"] == "5g"
+
+
+# ── recipe_ingredients.py module ──────────────────────────────────────────────
+
+class TestRecipeIngredientsModule:
+
+    def test_returns_empty_dict_when_file_missing(self, tmp_path, monkeypatch):
+        """Covers line 9: DATA_FILE.exists() is False → return {}."""
+        import recipe_ingredients
+        monkeypatch.setattr(
+            recipe_ingredients, "DATA_FILE", tmp_path / "nonexistent.json"
+        )
+        result = recipe_ingredients.load_recipe_ingredients()
+        assert result == {}
+
+    def test_raises_when_top_level_is_not_dict(self, tmp_path, monkeypatch):
+        """Covers line 15: raises ValueError when JSON root is a list."""
+        import recipe_ingredients
+        data_file = tmp_path / "recipe_ingredients.json"
+        data_file.write_text('["not", "a", "dict"]')
+        monkeypatch.setattr(recipe_ingredients, "DATA_FILE", data_file)
+        with pytest.raises(ValueError, match="must contain a JSON object"):
+            recipe_ingredients.load_recipe_ingredients()
+
+    def test_skips_items_with_non_list_ingredients(self, tmp_path, monkeypatch):
+        """Covers line 20: continue when ingredients value is not a list."""
+        import recipe_ingredients
+        data_file = tmp_path / "recipe_ingredients.json"
+        data_file.write_text(json.dumps({
+            "Good Recipe": ["1 cup flour", "2 eggs"],
+            "Bad Recipe": "this should be a list not a string",
+        }))
+        monkeypatch.setattr(recipe_ingredients, "DATA_FILE", data_file)
+        result = recipe_ingredients.load_recipe_ingredients()
+        assert "Good Recipe" in result
+        assert "Bad Recipe" not in result
+
+    def test_normalizes_list_items_to_strings(self, tmp_path, monkeypatch):
+        """Ingredients list items are converted to str."""
+        import recipe_ingredients
+        data_file = tmp_path / "recipe_ingredients.json"
+        data_file.write_text(json.dumps({
+            "Mixed Recipe": ["1 cup flour", 2, True],
+        }))
+        monkeypatch.setattr(recipe_ingredients, "DATA_FILE", data_file)
+        result = recipe_ingredients.load_recipe_ingredients()
+        assert result["Mixed Recipe"] == ["1 cup flour", "2", "True"]

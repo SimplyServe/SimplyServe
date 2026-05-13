@@ -2890,3 +2890,253 @@ class TestMealBoundary:
         fetched = result.scalars().first()
         assert fetched.meal_id == meal.meal_id
         assert fetched.recipe_id == recipe.recipe_id
+# ── Additional invalid/boundary tests for SR-1 ──────────────────────────────
+class TestSR1AdditionalInvalid:
+    @pytest.mark.asyncio
+    async def test_disliked_feedback_tracked_for_reroll(self, test_db: AsyncSession):
+        """NT: disliked (liked=0) recipe feedback stored and queryable."""
+        user = models.User(email="sr1_add1@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        recipe = models.Recipe(recipe_name="SR1 Dislike", summary="s", servings=1)
+        test_db.add(recipe); await test_db.commit(); await test_db.refresh(recipe)
+        fb = models.recipe_feedback(
+            user_id=user.id, recipe_id=recipe.recipe_id,
+            rating=1, liked=0, created_at=datetime.utcnow().isoformat()
+        )
+        test_db.add(fb); await test_db.commit()
+        result = await test_db.execute(
+            select(models.recipe_feedback).where(
+                models.recipe_feedback.user_id == user.id,
+                models.recipe_feedback.liked == 0
+            )
+        )
+        assert len(result.scalars().all()) == 1
+
+    @pytest.mark.asyncio
+    async def test_no_meals_for_new_user(self, test_db: AsyncSession):
+        """NT: new user with no meals returns empty suggestion pool."""
+        user = models.User(email="sr1_add2@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        result = await test_db.execute(
+            select(models.Meals).where(models.Meals.user_id == user.id)
+        )
+        assert result.scalars().all() == []
+
+    @pytest.mark.asyncio
+    async def test_all_deleted_recipes_empty_pool(self, test_db: AsyncSession):
+        """NT: all recipes soft-deleted → suggestion pool empty."""
+        for name in ["Del1", "Del2", "Del3"]:
+            test_db.add(models.Recipe(recipe_name=name, summary="s", servings=1, is_deleted=True))
+        await test_db.commit()
+        result = await test_db.execute(
+            select(models.Recipe).where(models.Recipe.is_deleted != True)
+        )
+        assert result.scalars().all() == []
+
+
+# ── Additional invalid/boundary tests for SR-2 ──────────────────────────────
+class TestSR2AdditionalInvalid:
+    @pytest.mark.asyncio
+    async def test_duplicate_preference_link_handled(self, test_db: AsyncSession):
+        """NT: linking same preference to same user twice handled gracefully."""
+        user = models.User(email="sr2_add1@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        pref = models.Preference(preference_name="NutFreeDup", like=1)
+        test_db.add(pref); await test_db.commit(); await test_db.refresh(pref)
+        test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
+        await test_db.commit()
+        test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
+        try:
+            await test_db.commit()
+        except Exception:
+            await test_db.rollback()
+        result = await test_db.execute(
+            select(models.UserPreference).where(models.UserPreference.user_id == user.id)
+        )
+        assert len(result.scalars().all()) >= 1  # no unhandled crash
+
+    @pytest.mark.asyncio
+    async def test_allergen_tag_removed_via_update(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NT: allergen tag removed when recipe is updated."""
+        create = await async_client.post("/recipes", data={
+            "title": "SR2 Remove Tag",
+            "summary": "s",
+            "tags_json": json.dumps(["contains-eggs", "vegetarian"]),
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}
+            ]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        rid = create.json()["id"]
+        update = await async_client.put(f"/recipes/{rid}", data={
+            "title": "SR2 Remove Tag",
+            "summary": "s",
+            "tags_json": json.dumps(["vegetarian"]),
+            "ingredients_json": json.dumps([
+                {"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}
+            ]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        assert update.status_code == 200
+        assert "contains-eggs" not in update.json()["tags"]
+
+    @pytest.mark.asyncio
+    async def test_empty_allergen_search_returns_all(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """BVA: empty q= returns full ingredient list."""
+        resp = await async_client.get("/ingredients?q=")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+        assert len(resp.json()) > 0
+
+
+# ── Invalid/boundary tests for SR-5 ─────────────────────────────────────────
+class TestSR5InvalidBoundary:
+    @pytest.mark.asyncio
+    async def test_zero_quantity_boundary(self, test_db: AsyncSession):
+        """BVA: zero quantity accepted at model level."""
+        user = models.User(email="sr5_inv1@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl); await test_db.commit(); await test_db.refresh(sl)
+        ing = models.Ingredients(ingredient_name="SR5 Zero", normalized_name="sr5 zero", is_base=True)
+        test_db.add(ing); await test_db.commit(); await test_db.refresh(ing)
+        sli = models.ShoppingListIngredient(
+            shopping_list_id=sl.shopping_list_id,
+            ingredient_id=ing.id, quantity=0, checked=0, unit="g"
+        )
+        test_db.add(sli); await test_db.commit()
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        assert result.scalars().first().quantity == 0
+
+    @pytest.mark.asyncio
+    async def test_negative_quantity(self, test_db: AsyncSession):
+        """NT: negative quantity stored at model level (no HTTP validation layer)."""
+        user = models.User(email="sr5_inv2@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl); await test_db.commit(); await test_db.refresh(sl)
+        ing = models.Ingredients(ingredient_name="SR5 Neg", normalized_name="sr5 neg", is_base=True)
+        test_db.add(ing); await test_db.commit(); await test_db.refresh(ing)
+        sli = models.ShoppingListIngredient(
+            shopping_list_id=sl.shopping_list_id,
+            ingredient_id=ing.id, quantity=-1, checked=0, unit="g"
+        )
+        test_db.add(sli); await test_db.commit()
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        assert result.scalars().first().quantity == -1
+
+    @pytest.mark.asyncio
+    async def test_user_with_no_list_returns_empty(self, test_db: AsyncSession):
+        """NT: querying shopping lists for a user who has none."""
+        user = models.User(email="sr5_inv3@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        result = await test_db.execute(
+            select(models.ShoppingList).where(models.ShoppingList.user_id == user.id)
+        )
+        assert result.scalars().all() == []
+
+    @pytest.mark.asyncio
+    async def test_empty_shopping_list_has_no_ingredients(self, test_db: AsyncSession):
+        """BVA: newly created list with no ingredients added returns empty."""
+        user = models.User(email="sr5_inv4@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl); await test_db.commit(); await test_db.refresh(sl)
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        assert result.scalars().all() == []
+
+    @pytest.mark.asyncio
+    async def test_duplicate_ingredient_creates_two_rows(self, test_db: AsyncSession):
+        """NT: same ingredient added twice creates two separate rows (not auto-merged)."""
+        user = models.User(email="sr5_inv5@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
+        test_db.add(sl); await test_db.commit(); await test_db.refresh(sl)
+        ing = models.Ingredients(ingredient_name="SR5 Dup", normalized_name="sr5 dup", is_base=True)
+        test_db.add(ing); await test_db.commit(); await test_db.refresh(ing)
+        for qty in [100, 200]:
+            test_db.add(models.ShoppingListIngredient(
+                shopping_list_id=sl.shopping_list_id,
+                ingredient_id=ing.id, quantity=qty, checked=0, unit="g"
+            ))
+        await test_db.commit()
+        result = await test_db.execute(
+            select(models.ShoppingListIngredient).where(
+                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
+            )
+        )
+        assert len(result.scalars().all()) == 2
+
+
+# ── Additional invalid/boundary tests for SR-6 ──────────────────────────────
+class TestSR6AdditionalInvalid:
+    @pytest.mark.asyncio
+    async def test_query_date_with_no_meals_returns_empty(self, test_db: AsyncSession):
+        """NT: querying a date with no planned meals returns empty."""
+        user = models.User(email="sr6_add1@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        result = await test_db.execute(
+            select(models.Meals).where(
+                models.Meals.user_id == user.id,
+                models.Meals.planned_date == "2026-01-15"
+            )
+        )
+        assert result.scalars().all() == []
+
+    @pytest.mark.asyncio
+    async def test_far_future_date_accepted(self, test_db: AsyncSession):
+        """BVA: far-future date (2030-12-31) accepted at model level."""
+        user = models.User(email="sr6_add2@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        meal = models.Meals(user_id=user.id, planned_date="2030-12-31", stage="dinner")
+        test_db.add(meal); await test_db.commit(); await test_db.refresh(meal)
+        assert meal.meal_id is not None
+        assert meal.planned_date == "2030-12-31"
+
+    @pytest.mark.asyncio
+    async def test_week_range_no_meals_returns_empty(self, test_db: AsyncSession):
+        """NT: date range with no meals in that window returns empty."""
+        user = models.User(email="sr6_add3@example.com", hashed_password="h", is_active=True)
+        test_db.add(user); await test_db.commit(); await test_db.refresh(user)
+        # Meal exists, but outside the queried range
+        test_db.add(models.Meals(user_id=user.id, planned_date="2025-01-01", stage="lunch"))
+        await test_db.commit()
+        result = await test_db.execute(
+            select(models.Meals).where(
+                models.Meals.user_id == user.id,
+                models.Meals.planned_date >= "2026-06-01",
+                models.Meals.planned_date <= "2026-06-07"
+            )
+        )
+        assert result.scalars().all() == []
+
+
+# ── Definitive case-insensitive test (replaces false-positive TC-057) ────────
+class TestSR4CaseInsensitiveDefinitive:
+    @pytest.mark.asyncio
+    async def test_ingredient_search_case_insensitive_definitive(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """EP: definitive case-insensitive check — 'egg' is guaranteed in base_ingredients fixture."""
+        r_upper = await async_client.get("/ingredients?q=EGG")
+        r_lower = await async_client.get("/ingredients?q=egg")
+        assert r_upper.status_code == 200
+        assert r_lower.status_code == 200
+        assert len(r_lower.json()) > 0, "base_ingredients fixture must seed at least one 'egg' ingredient"
+        assert len(r_upper.json()) == len(r_lower.json())

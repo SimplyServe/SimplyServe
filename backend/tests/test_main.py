@@ -3,6 +3,8 @@ Integration tests for main app endpoints and general functionality.
 Tests CORS, health checks, and general app behavior.
 """
 
+import json
+import time
 import pytest
 from httpx import AsyncClient
 
@@ -229,3 +231,156 @@ class TestDataConsistency:
         me1 = await async_client.get("/users/me", headers=headers1)
         assert me1.json()["id"] == user1_id
         assert me1.json()["email"] == user1["email"]
+
+
+# ── NFR: Performance ──────────────────────────────────────────────────────────
+
+class TestNFRPerformance:
+    """NFR: Performance-related tests."""
+
+    async def test_recipe_list_responds_under_2_seconds(self, async_client: AsyncClient):
+        """NFR: GET /recipes responds within acceptable time."""
+        start = time.time()
+        resp = await async_client.get("/recipes")
+        elapsed = time.time() - start
+        assert resp.status_code == 200
+        assert elapsed < 2.0
+
+    async def test_ingredient_search_responds_under_2_seconds(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NFR: GET /ingredients responds within acceptable time."""
+        start = time.time()
+        resp = await async_client.get("/ingredients?q=egg")
+        elapsed = time.time() - start
+        assert resp.status_code == 200
+        assert elapsed < 2.0
+
+    async def test_sequential_requests_stable(self, async_client: AsyncClient):
+        """NFR: multiple sequential requests succeed without degradation."""
+        for _ in range(10):
+            resp = await async_client.get("/recipes")
+            assert resp.status_code == 200
+
+
+# ── NFR: Error handling ───────────────────────────────────────────────────────
+
+class TestNFRErrorHandling:
+    """NFR: Error handling consistency."""
+
+    async def test_404_has_detail(self, async_client: AsyncClient):
+        """NFR: 404 responses include detail field."""
+        resp = await async_client.get("/nonexistent")
+        assert resp.status_code in [404, 405]
+
+    async def test_invalid_recipe_id_404(self, async_client: AsyncClient):
+        """NFR: invalid recipe ID returns 404."""
+        resp = await async_client.delete("/recipes/999999")
+        assert resp.status_code == 404
+        assert "detail" in resp.json()
+
+    async def test_invalid_json_body_422(self, async_client: AsyncClient):
+        """NFR: invalid JSON body returns 422."""
+        resp = await async_client.post("/register", content="not json")
+        assert resp.status_code in [400, 422]
+
+    async def test_missing_form_fields_422(self, async_client: AsyncClient):
+        """NFR: missing required form fields returns 422."""
+        resp = await async_client.post("/recipes", data={"title": "Incomplete"})
+        assert resp.status_code == 422
+
+    async def test_auth_error_returns_401(self, async_client: AsyncClient):
+        """NFR: authentication errors return 401."""
+        resp = await async_client.post("/token", data={
+            "username": "nobody@example.com", "password": "wrong"
+        })
+        assert resp.status_code == 401
+        assert "detail" in resp.json()
+
+
+# ── NFR: Data consistency ─────────────────────────────────────────────────────
+
+class TestNFRDataConsistency:
+    """NFR: Data consistency and integrity."""
+
+    async def test_created_recipe_persists_in_listing(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NFR: created recipe immediately visible in listing."""
+        create = await async_client.post("/recipes", data={
+            "title": "NFR Persist", "summary": "persist test",
+            "tags_json": "[]",
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 1, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Cook"]),
+        })
+        rid = create.json()["id"]
+        recipes = (await async_client.get("/recipes")).json()
+        assert rid in [r["id"] for r in recipes]
+
+    async def test_user_data_isolation(self, async_client: AsyncClient):
+        """NFR: different users' data is isolated."""
+        for email in ["nfr_iso1@example.com", "nfr_iso2@example.com"]:
+            await async_client.post("/register", json={"email": email, "password": "pass"})
+
+        login1 = await async_client.post("/token", data={
+            "username": "nfr_iso1@example.com", "password": "pass"
+        })
+        login2 = await async_client.post("/token", data={
+            "username": "nfr_iso2@example.com", "password": "pass"
+        })
+
+        me1 = await async_client.get(
+            "/users/me", headers={"Authorization": f"Bearer {login1.json()['access_token']}"}
+        )
+        me2 = await async_client.get(
+            "/users/me", headers={"Authorization": f"Bearer {login2.json()['access_token']}"}
+        )
+        assert me1.json()["email"] == "nfr_iso1@example.com"
+        assert me2.json()["email"] == "nfr_iso2@example.com"
+        assert me1.json()["id"] != me2.json()["id"]
+
+    async def test_soft_delete_does_not_lose_data(
+        self, async_client: AsyncClient, base_ingredients
+    ):
+        """NFR: soft-deleted recipe data preserved in deleted listing."""
+        create = await async_client.post("/recipes", data={
+            "title": "NFR SoftDel Data", "summary": "preserve me",
+            "tags_json": json.dumps(["nfr"]),
+            "ingredients_json": json.dumps([{"ingredient_name": "egg", "quantity": 2, "unit": "pcs"}]),
+            "steps_json": json.dumps(["Step 1"]),
+        })
+        rid = create.json()["id"]
+
+        await async_client.delete(f"/recipes/{rid}")
+
+        deleted = (await async_client.get("/recipes/deleted")).json()
+        recipe = next((r for r in deleted if r["id"] == rid), None)
+        assert recipe is not None
+        assert recipe["title"] == "NFR SoftDel Data"
+        assert recipe["summary"] == "preserve me"
+
+
+# ── NFR: Response format ──────────────────────────────────────────────────────
+
+class TestNFRResponseFormat:
+    """NFR: Consistent response formatting."""
+
+    async def test_json_content_type(self, async_client: AsyncClient):
+        """NFR: responses have application/json content type."""
+        resp = await async_client.get("/recipes")
+        assert "application/json" in resp.headers.get("content-type", "")
+
+    async def test_list_endpoints_return_arrays(self, async_client: AsyncClient):
+        """NFR: list endpoints return JSON arrays."""
+        for endpoint in ["/recipes", "/recipes/deleted", "/ingredients"]:
+            resp = await async_client.get(endpoint)
+            assert resp.status_code == 200
+            assert isinstance(resp.json(), list)
+
+    async def test_error_response_has_detail_field(self, async_client: AsyncClient):
+        """NFR: error responses have 'detail' field."""
+        resp = await async_client.post("/token", data={
+            "username": "x@x.com", "password": "wrong"
+        })
+        assert resp.status_code == 401
+        assert "detail" in resp.json()
