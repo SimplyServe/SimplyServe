@@ -543,22 +543,23 @@ class TestSR2UserPreferenceAssociation:
 class TestSR2AdditionalInvalidModel:
     @pytest.mark.asyncio
     async def test_duplicate_preference_link_handled(self, test_db: AsyncSession):
-        """NT: linking same preference to same user twice handled gracefully."""
+        """NT: linking same preference to same user twice raises IntegrityError (composite PK)."""
+        from sqlalchemy.exc import IntegrityError
         user = models.User(email="sr2_add1@example.com", hashed_password="h", is_active=True)
         test_db.add(user); await test_db.commit(); await test_db.refresh(user)
         pref = models.Preference(preference_name="NutFreeDup", like=1)
         test_db.add(pref); await test_db.commit(); await test_db.refresh(pref)
         test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
         await test_db.commit()
-        test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
-        try:
-            await test_db.commit()
-        except Exception:
-            await test_db.rollback()
+        # Verify the first link exists before attempting a duplicate
         result = await test_db.execute(
             select(models.UserPreference).where(models.UserPreference.user_id == user.id)
         )
-        assert len(result.scalars().all()) >= 1  # no unhandled crash
+        assert len(result.scalars().all()) == 1
+        # Duplicate insert must raise — composite PK prevents duplicates
+        test_db.add(models.UserPreference(user_id=user.id, preference_id=pref.preference_id))
+        with pytest.raises(IntegrityError):
+            await test_db.commit()
 
 
 # ── SR-3: Nutrition calculation ───────────────────────────────────────────────
@@ -977,26 +978,26 @@ class TestSR5InvalidBoundary:
         assert result.scalars().all() == []
 
     @pytest.mark.asyncio
-    async def test_duplicate_ingredient_creates_two_rows(self, test_db: AsyncSession):
-        """NT: same ingredient added twice creates two separate rows (not auto-merged)."""
+    async def test_duplicate_ingredient_raises_integrity_error(self, test_db: AsyncSession):
+        """NT: adding the same ingredient twice to one list raises IntegrityError (composite PK)."""
+        from sqlalchemy.exc import IntegrityError
         user = models.User(email="sr5_inv5@example.com", hashed_password="h", is_active=True)
         test_db.add(user); await test_db.commit(); await test_db.refresh(user)
         sl = models.ShoppingList(user_id=user.id, created_at=datetime.utcnow().isoformat())
         test_db.add(sl); await test_db.commit(); await test_db.refresh(sl)
         ing = models.Ingredients(ingredient_name="SR5 Dup", normalized_name="sr5 dup", is_base=True)
         test_db.add(ing); await test_db.commit(); await test_db.refresh(ing)
-        for qty in [100, 200]:
-            test_db.add(models.ShoppingListIngredient(
-                shopping_list_id=sl.shopping_list_id,
-                ingredient_id=ing.id, quantity=qty, checked=0, unit="g"
-            ))
+        test_db.add(models.ShoppingListIngredient(
+            shopping_list_id=sl.shopping_list_id, ingredient_id=ing.id,
+            quantity=100, checked=0, unit="g"
+        ))
         await test_db.commit()
-        result = await test_db.execute(
-            select(models.ShoppingListIngredient).where(
-                models.ShoppingListIngredient.shopping_list_id == sl.shopping_list_id
-            )
-        )
-        assert len(result.scalars().all()) == 2
+        test_db.add(models.ShoppingListIngredient(
+            shopping_list_id=sl.shopping_list_id, ingredient_id=ing.id,
+            quantity=200, checked=0, unit="g"
+        ))
+        with pytest.raises(IntegrityError):
+            await test_db.commit()
 
 
 # ── SR-6: Meal calendar ──────────────────────────────────────────────────────
